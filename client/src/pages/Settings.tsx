@@ -123,7 +123,15 @@ export default function Settings() {
   );
 }
 
-function ConfigButton({ icon, label, isActive, onClick, accent = false }) {
+interface ConfigButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+  accent?: boolean;
+}
+
+function ConfigButton({ icon, label, isActive, onClick, accent = false }: ConfigButtonProps) {
   return (
     <Button 
       variant={isActive ? "default" : accent ? "default" : "outline"}
