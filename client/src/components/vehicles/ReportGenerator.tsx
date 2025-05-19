@@ -24,7 +24,7 @@ import {
   User,
   Filter,
   ArrowDownToLine,
-  FilePdf,
+  FileDown,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { offlineStorage } from "@/services/offlineStorage";
@@ -308,9 +308,187 @@ export function ReportGenerator() {
     link.remove();
   };
 
-  // Gerar relatório em PDF (simplificado - na prática usaríamos uma biblioteca como jsPDF)
+  // Gerar relatório em PDF usando jsPDF
   const generatePDFReport = () => {
-    alert("Geração de PDF não implementada nesta versão. Por favor, escolha o formato CSV.");
+    const doc = new jsPDF();
+    const margin = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const filteredData = prepareReportData();
+    
+    // Cores Granduvale Mineração
+    const navyBlue = [18, 30, 61]; // rgb(18, 30, 61) em [r,g,b]
+    const gold = [184, 155, 28];   // rgb(184, 155, 28) em [r,g,b]
+    
+    // Adicionar cabeçalho com logo da empresa
+    doc.setFillColor(navyBlue[0], navyBlue[1], navyBlue[2]);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GRANDUVALE MINERAÇÃO', margin + 25, 12);
+    
+    doc.setTextColor(gold[0], gold[1], gold[2]);
+    doc.setFontSize(12);
+    doc.text('Sistema de Gestão de Frota', margin + 25, 20);
+    
+    // Título do relatório
+    doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
+    doc.setFontSize(14);
+    doc.text(`Relatório de ${getReportTypeName(reportType)}`, margin, 40);
+    
+    // Data de geração
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 48);
+    
+    // Informações dos filtros aplicados
+    doc.setFontSize(10);
+    doc.text(`Período: ${dateRange.from 
+      ? `${format(dateRange.from, "dd/MM/yyyy")}${dateRange.to ? ` a ${format(dateRange.to, "dd/MM/yyyy")}` : ""}` 
+      : "Todo o período"}`, margin, 54);
+    
+    // Adicionar linha divisória
+    doc.setDrawColor(gold[0], gold[1], gold[2]);
+    doc.setLineWidth(0.5);
+    doc.line(margin, 58, pageWidth - margin, 58);
+    
+    // Configurar para tabela de dados
+    doc.setFontSize(9);
+    doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
+    
+    // Cabeçalhos da tabela de acordo com o tipo de relatório
+    let headers = [];
+    let startY = 65;
+    const lineHeight = 8;
+    
+    switch (reportType) {
+      case "fuel":
+        headers = ["Data", "Veículo", "Motorista", "Posto", "Combustível", "Litros", "Preço", "Total", "Km"];
+        break;
+      case "maintenance":
+        headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor", "Km"];
+        break;
+      case "trip":
+        headers = ["Data", "Veículo", "Motorista", "Origem", "Destino", "Km Inicial", "Km Final", "Distância"];
+        break;
+      default:
+        headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor"];
+    }
+    
+    // Desenhar cabeçalhos da tabela
+    const colWidth = (pageWidth - 2 * margin) / headers.length;
+    
+    // Fundo dos cabeçalhos
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin, startY - 6, pageWidth - 2 * margin, 6, 'F');
+    
+    // Texto dos cabeçalhos
+    doc.setFont('helvetica', 'bold');
+    headers.forEach((header, i) => {
+      doc.text(header, margin + i * colWidth, startY - 2);
+    });
+    
+    // Dados das linhas
+    doc.setFont('helvetica', 'normal');
+    
+    let currentY = startY;
+    filteredData.forEach((reg, index) => {
+      // Adicionar nova página se necessário
+      if (currentY > pageHeight - 20) {
+        doc.addPage();
+        currentY = 20;
+      }
+      
+      // Fundo zebrado para facilitar leitura
+      if (index % 2 === 0) {
+        doc.setFillColor(250, 250, 250);
+        doc.rect(margin, currentY - 6, pageWidth - 2 * margin, lineHeight, 'F');
+      }
+      
+      // Dados específicos para cada tipo de registro
+      let rowData = [];
+      
+      switch (reg.type) {
+        case "fuel":
+          rowData = [
+            reg.formattedDate,
+            reg.vehicleName.substring(0, 12),
+            reg.driverName.substring(0, 12),
+            (reg.fuelStation || "N/A").substring(0, 10),
+            (reg.fuelType || "N/A").substring(0, 8),
+            (reg.fuelQuantity || "0").toString(),
+            formatCurrency((reg.fuelCost / Math.max(1, reg.fuelQuantity)) || 0),
+            formatCurrency(reg.fuelCost || 0),
+            (reg.currentKm || "0").toString()
+          ];
+          break;
+          
+        case "maintenance":
+          rowData = [
+            reg.formattedDate,
+            reg.vehicleName.substring(0, 12),
+            reg.driverName.substring(0, 12),
+            (reg.maintenanceType || "N/A").substring(0, 12),
+            (reg.description || "").substring(0, 15),
+            formatCurrency(reg.maintenanceCost || 0),
+            (reg.currentKm || "0").toString()
+          ];
+          break;
+          
+        case "trip":
+          const distance = (reg.finalKm || 0) - (reg.initialKm || 0);
+          rowData = [
+            reg.formattedDate,
+            reg.vehicleName.substring(0, 12),
+            reg.driverName.substring(0, 12),
+            (reg.origin || "N/A").substring(0, 12),
+            (reg.destination || "N/A").substring(0, 12),
+            (reg.initialKm || "0").toString(),
+            (reg.finalKm || "0").toString(),
+            distance.toString()
+          ];
+          break;
+          
+        default:
+          rowData = [
+            reg.formattedDate,
+            reg.vehicleName.substring(0, 12),
+            reg.driverName.substring(0, 12),
+            reg.type || "N/A",
+            (reg.description || "").substring(0, 15),
+            formatCurrency(reg.cost || 0)
+          ];
+      }
+      
+      rowData.forEach((cell, i) => {
+        doc.text(cell.toString(), margin + i * colWidth, currentY);
+      });
+      
+      currentY += lineHeight;
+    });
+    
+    // Rodapé
+    const totalPages = doc.internal.pages.length - 1;
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      
+      // Linha do rodapé
+      doc.setDrawColor(gold[0], gold[1], gold[2]);
+      doc.setLineWidth(0.5);
+      doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
+      
+      // Texto do rodapé
+      doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
+      doc.setFontSize(8);
+      doc.text('Granduvale Mineração - Sistema de Gestão de Frota', margin, pageHeight - 10);
+      
+      // Número da página
+      doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin - 25, pageHeight - 10);
+    }
+    
+    // Salvar o PDF
+    doc.save(`relatorio_${reportType}_${new Date().toISOString().slice(0, 10)}.pdf`);
   };
 
   // Manipular geração de relatório
@@ -344,12 +522,12 @@ export function ReportGenerator() {
 
   return (
     <Card className="w-full">
-      <CardHeader>
+      <CardHeader style={{ backgroundColor: brandColors.navyBlue, color: 'white' }}>
         <CardTitle className="flex items-center gap-2">
           <FileText className="h-5 w-5" />
           Gerador de Relatórios
         </CardTitle>
-        <CardDescription>
+        <CardDescription style={{ color: brandColors.lightGold }}>
           Configure e exporte relatórios personalizados para análise de dados
         </CardDescription>
       </CardHeader>
@@ -514,32 +692,43 @@ export function ReportGenerator() {
         </div>
       </CardContent>
       
-      <CardFooter className="flex justify-between">
+      <CardFooter className="flex justify-between" style={{ backgroundColor: '#f9f9f9', borderTop: `1px solid ${brandColors.mediumGray}` }}>
         <Button 
           variant="outline" 
           onClick={resetFilters}
           className="flex items-center gap-1"
+          style={{ borderColor: brandColors.navyBlue, color: brandColors.navyBlue }}
         >
           <Filter className="h-4 w-4" />
           Limpar filtros
         </Button>
-        <Button
-          onClick={handleGenerateReport}
-          disabled={isGenerating || getFilteredRegistrations().length === 0}
-          className="flex items-center gap-1"
-        >
-          {isGenerating ? (
-            <>
-              <span className="animate-spin">⏳</span>
-              Gerando...
-            </>
-          ) : (
-            <>
-              <ArrowDownToLine className="h-4 w-4" />
-              Gerar Relatório
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleGenerateReport}
+            disabled={isGenerating || getFilteredRegistrations().length === 0}
+            className="flex items-center gap-1"
+            style={{ 
+              backgroundColor: fileFormat === 'pdf' ? brandColors.gold : brandColors.navyBlue, 
+              color: 'white' 
+            }}
+          >
+            {isGenerating ? (
+              <>
+                <span className="animate-spin">⏳</span>
+                Gerando...
+              </>
+            ) : (
+              <>
+                {fileFormat === 'pdf' ? (
+                  <FileDown className="h-4 w-4" />
+                ) : (
+                  <ArrowDownToLine className="h-4 w-4" />
+                )}
+                Gerar Relatório
+              </>
+            )}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
