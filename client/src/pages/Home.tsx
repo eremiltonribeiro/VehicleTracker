@@ -10,9 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { offlineStorage } from "@/services/offlineStorage";
 
 export default function Home() {
-  const [location] = useLocation();
-  const searchParams = new URLSearchParams(location.split("?")[1] || "");
-  const view = searchParams.get("view");
+  const [location, setLocation] = useLocation();
+  const params = location.split("/");
+  const view = params[params.length - 1] === "registros" ? null : params[params.length - 1];
   
   // Monitor network status for offline functionality
   useEffect(() => {

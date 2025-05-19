@@ -40,7 +40,7 @@ export function Navigation() {
           <Button
             variant={isActive("/registros?view=history") ? "default" : "outline"}
             className="flex items-center gap-2 rounded-full"
-            onClick={() => setLocation("/registros?view=history")}
+            onClick={() => setLocation("/registros/history")}
           >
             <History className="h-4 w-4" />
             <span className="hidden md:inline">Histórico</span>
@@ -49,7 +49,7 @@ export function Navigation() {
           <Button
             variant={isActive("/registros?view=dashboard") ? "default" : "outline"}
             className="flex items-center gap-2 rounded-full"
-            onClick={() => setLocation("/registros?view=dashboard")}
+            onClick={() => setLocation("/registros/dashboard")}
           >
             <BarChart2 className="h-4 w-4" />
             <span className="hidden md:inline">Dashboard</span>

@@ -19,6 +19,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Welcome} />
           <Route path="/registros" component={Home} />
+          <Route path="/registros/:view" component={Home} />
           <Route path="/configuracoes" component={Settings} />
           <Route component={NotFound} />
         </Switch>
