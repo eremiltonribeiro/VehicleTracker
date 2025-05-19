@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, BarChart2, History, Settings, Car, Plus } from "lucide-react";
+import { Home, BarChart2, History, Settings, Car, Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Navigation() {
@@ -11,6 +11,7 @@ export function Navigation() {
     if (route === "/registros?view=dashboard" && location.includes("dashboard")) return true;
     if (route === "/registros?view=history" && location.includes("history")) return true;
     if (route === "/registros" && location === "/registros") return true;
+    if (route === "/relatorios" && location.includes("relatorios")) return true;
     if (route === "/configuracoes" && location.includes("configuracoes")) return true;
     return false;
   };
@@ -53,6 +54,15 @@ export function Navigation() {
           >
             <BarChart2 className="h-4 w-4" />
             <span className="hidden md:inline">Dashboard</span>
+          </Button>
+          
+          <Button
+            variant={isActive("/relatorios") ? "default" : "outline"}
+            className="flex items-center gap-2 rounded-full"
+            onClick={() => setLocation("/relatorios")}
+          >
+            <FileText className="h-4 w-4" />
+            <span className="hidden md:inline">Relatórios</span>
           </Button>
           
           <Button

@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Settings from "@/pages/Settings";
 import Welcome from "@/pages/Welcome";
+import Reports from "@/pages/Reports";
 import { Navigation } from "@/components/vehicles/Navigation";
 import { Header } from "@/components/vehicles/Header";
 
@@ -20,6 +21,7 @@ function Router() {
           <Route path="/" component={Welcome} />
           <Route path="/registros" component={Home} />
           <Route path="/registros/:view" component={Home} />
+          <Route path="/relatorios" component={Reports} />
           <Route path="/configuracoes" component={Settings} />
           <Route component={NotFound} />
         </Switch>
