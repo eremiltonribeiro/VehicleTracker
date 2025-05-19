@@ -68,14 +68,27 @@ function PrivateRoute(props: any) {
 
 function Router() {
   const { isAuthenticated } = useAuth();
+  const [location] = useLocation();
+  const isLoginPage = location === "/login";
   
+  // Se estiver na página de login, não mostra cabeçalho nem navegação
+  if (isLoginPage) {
+    return (
+      <div className="min-h-screen">
+        <Switch>
+          <Route path="/login" component={Login} />
+        </Switch>
+      </div>
+    );
+  }
+  
+  // Renderização normal para páginas autenticadas
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {isAuthenticated && <Header />}
       {isAuthenticated && <Navigation />}
-      <main className={`flex-grow ${isAuthenticated ? 'container mx-auto px-4 py-4 pb-12' : ''}`}>
+      <main className="flex-grow container mx-auto px-4 py-4 pb-12">
         <Switch>
-          <Route path="/login" component={Login} />
           <PrivateRoute path="/" component={Welcome} />
           <PrivateRoute path="/registros" component={Home} />
           <PrivateRoute path="/registros/:view" component={Home} />
