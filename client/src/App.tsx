@@ -16,34 +16,45 @@ import { useEffect, useState } from "react";
 
 // Context para gerenciar estado de autenticação
 export const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    localStorage.getItem("authenticated") === "true"
+  );
+  const [user, setUser] = useState<any>(
+    JSON.parse(localStorage.getItem("user") || "null")
+  );
   const [, setLocation] = useLocation();
 
-  useEffect(() => {
-    // Verificar autenticação no localStorage
-    const authenticated = localStorage.getItem("authenticated");
-    const storedUser = localStorage.getItem("user");
-    
-    if (authenticated === "true" && storedUser) {
-      setIsAuthenticated(true);
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
+  // A função de login salva os dados no localStorage e atualiza o estado
   const login = (userData: any) => {
-    localStorage.setItem("authenticated", "true");
-    localStorage.setItem("user", JSON.stringify(userData));
-    setIsAuthenticated(true);
-    setUser(userData);
+    console.log("Login chamado com:", userData);
+    try {
+      localStorage.setItem("authenticated", "true");
+      localStorage.setItem("user", JSON.stringify(userData));
+      setIsAuthenticated(true);
+      setUser(userData);
+      console.log("Estado de autenticação atualizado:", true);
+      return true;
+    } catch (error) {
+      console.error("Erro ao fazer login:", error);
+      return false;
+    }
   };
 
+  // A função de logout limpa os dados do localStorage e atualiza o estado
   const logout = () => {
-    localStorage.removeItem("authenticated");
-    localStorage.removeItem("user");
-    setIsAuthenticated(false);
-    setUser(null);
-    setLocation("/login");
+    console.log("Logout chamado");
+    try {
+      localStorage.removeItem("authenticated");
+      localStorage.removeItem("user");
+      setIsAuthenticated(false);
+      setUser(null);
+      setLocation("/login");
+      console.log("Estado de autenticação atualizado:", false);
+      return true;
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      return false;
+    }
   };
 
   return { isAuthenticated, user, login, logout };

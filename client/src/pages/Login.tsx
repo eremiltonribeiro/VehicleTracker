@@ -7,6 +7,7 @@ import { LogIn } from "lucide-react";
 import { brandColors } from "@/lib/colors";
 import { useLocation } from "wouter";
 import { useAuth } from "@/App";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -15,6 +16,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [, setLocation] = useLocation();
   const { isAuthenticated, login } = useAuth();
+  const { toast } = useToast();
   
   // Redirecionar para a página principal se já estiver autenticado
   useEffect(() => {
