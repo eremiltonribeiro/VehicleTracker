@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("vehicles");
   const [, setLocation] = useLocation();
-  
+
   return (
     <div className="space-y-6 pb-8">
       <Card>
@@ -28,7 +28,7 @@ export default function Settings() {
           <CardDescription>Cadastre e gerencie os dados do sistema</CardDescription>
         </CardHeader>
       </Card>
-      
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         <ConfigButton 
           icon={<Car />} 
@@ -82,7 +82,7 @@ export default function Settings() {
           accent={true}
         />
       </div>
-      
+
       <div className="space-y-6">
         {activeTab === "vehicles" && (
           <>
@@ -90,28 +90,28 @@ export default function Settings() {
             <VehiclesList />
           </>
         )}
-        
+
         {activeTab === "drivers" && (
           <>
             <DriverForm />
             <DriversList />
           </>
         )}
-        
+
         {activeTab === "fuel-stations" && (
           <>
             <FuelStationForm />
             <FuelStationsList />
           </>
         )}
-        
+
         {activeTab === "fuel-types" && (
           <>
             <FuelTypeForm />
             <FuelTypesList />
           </>
         )}
-        
+
         {activeTab === "maintenance-types" && (
           <>
             <MaintenanceTypeForm />
@@ -157,7 +157,7 @@ function VehiclesList() {
     model: string;
     year: number;
   } | null>(null);
-  
+
   const { data: vehicles = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: async () => {
@@ -177,7 +177,7 @@ function VehiclesList() {
       }
     }
   });
-  
+
   const handleEdit = (vehicle: {
     id: number;
     name: string;
@@ -190,15 +190,15 @@ function VehiclesList() {
     // Rola a tela para cima para o usuário ver o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
-  const handleDelete = async (id) => {
+
+  const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este veículo?")) return;
-    
+
     try {
       const res = await fetch(`/api/vehicles/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (res.ok) {
         toast({
           title: "Sucesso!",
@@ -217,11 +217,11 @@ function VehiclesList() {
       });
     }
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <>
       {editMode && currentVehicle && (
@@ -257,7 +257,7 @@ function VehiclesList() {
           </Card>
         </div>
       )}
-    
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -335,7 +335,7 @@ function DriversList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [currentDriver, setCurrentDriver] = useState(null);
-  
+
   const { data: drivers = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
@@ -355,21 +355,21 @@ function DriversList() {
       }
     }
   });
-  
+
   const handleEdit = (driver) => {
     setCurrentDriver(driver);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handleDelete = async (id) => {
     if (!confirm("Tem certeza que deseja excluir este motorista?")) return;
-    
+
     try {
       const res = await fetch(`/api/drivers/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (res.ok) {
         toast({
           title: "Sucesso!",
@@ -388,11 +388,11 @@ function DriversList() {
       });
     }
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <>
       {editMode && currentDriver && (
@@ -428,7 +428,7 @@ function DriversList() {
           </Card>
         </div>
       )}
-    
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -504,7 +504,7 @@ function FuelStationsList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [currentStation, setCurrentStation] = useState(null);
-  
+
   const { data: stations = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-stations"],
     queryFn: async () => {
@@ -524,21 +524,21 @@ function FuelStationsList() {
       }
     }
   });
-  
+
   const handleEdit = (station) => {
     setCurrentStation(station);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handleDelete = async (id) => {
     if (!confirm("Tem certeza que deseja excluir este posto?")) return;
-    
+
     try {
       const res = await fetch(`/api/fuel-stations/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (res.ok) {
         toast({
           title: "Sucesso!",
@@ -557,11 +557,11 @@ function FuelStationsList() {
       });
     }
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <>
       {editMode && currentStation && (
@@ -597,7 +597,7 @@ function FuelStationsList() {
           </Card>
         </div>
       )}
-    
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -671,7 +671,7 @@ function FuelTypesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [currentType, setCurrentType] = useState(null);
-  
+
   const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-types"],
     queryFn: async () => {
@@ -691,21 +691,21 @@ function FuelTypesList() {
       }
     }
   });
-  
+
   const handleEdit = (type) => {
     setCurrentType(type);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handleDelete = async (id) => {
     if (!confirm("Tem certeza que deseja excluir este tipo de combustível?")) return;
-    
+
     try {
       const res = await fetch(`/api/fuel-types/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (res.ok) {
         toast({
           title: "Sucesso!",
@@ -724,11 +724,11 @@ function FuelTypesList() {
       });
     }
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <>
       {editMode && currentType && (
@@ -764,7 +764,7 @@ function FuelTypesList() {
           </Card>
         </div>
       )}
-    
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -836,7 +836,7 @@ function MaintenanceTypesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [currentType, setCurrentType] = useState(null);
-  
+
   const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/maintenance-types"],
     queryFn: async () => {
@@ -856,21 +856,21 @@ function MaintenanceTypesList() {
       }
     }
   });
-  
+
   const handleEdit = (type) => {
     setCurrentType(type);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  
+
   const handleDelete = async (id) => {
     if (!confirm("Tem certeza que deseja excluir este tipo de manutenção?")) return;
-    
+
     try {
       const res = await fetch(`/api/maintenance-types/${id}`, {
         method: 'DELETE',
       });
-      
+
       if (res.ok) {
         toast({
           title: "Sucesso!",
@@ -889,11 +889,11 @@ function MaintenanceTypesList() {
       });
     }
   };
-  
+
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
+
   return (
     <>
       {editMode && currentType && (
@@ -929,7 +929,7 @@ function MaintenanceTypesList() {
           </Card>
         </div>
       )}
-    
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
