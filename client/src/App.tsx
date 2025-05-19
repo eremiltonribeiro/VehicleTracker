@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Settings from "@/pages/Settings";
@@ -65,17 +66,66 @@ export const useAuth = () => {
 
 // Componente PrivateRoute para proteger rotas
 function PrivateRoute(props: any) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
+  const [hasAccess, setHasAccess] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setLocation("/login");
+      return;
     }
-  }, [isAuthenticated, setLocation]);
+
+    // Verificar permissão baseada no perfil do usuário
+    const requiredPermission = props.permission;
+    if (requiredPermission) {
+      const userData = user || JSON.parse(localStorage.getItem("user") || "{}");
+      const userRole = userData.role;
+      
+      // Obter os perfis de usuário do localStorage
+      const userRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+      const currentRole = userRoles.find((role: any) => 
+        role.name.toLowerCase() === userRole.toLowerCase()
+      );
+      
+      if (currentRole && currentRole.permissions) {
+        // Verificar se o usuário tem a permissão necessária
+        setHasAccess(currentRole.permissions[requiredPermission]);
+      } else {
+        // Permissões padrão baseadas no papel do usuário
+        if (userRole === "admin") {
+          setHasAccess(true); // Admin tem acesso a tudo
+        } else if (userRole === "manager") {
+          // Gerente tem acesso a tudo exceto gerenciamento de usuários
+          setHasAccess(requiredPermission !== "userManagement");
+        } else {
+          // Usuário padrão tem acesso limitado
+          const basicPermissions = ["registrations", "history", "checklists"];
+          setHasAccess(basicPermissions.includes(requiredPermission));
+        }
+      }
+    }
+  }, [isAuthenticated, user, props.permission, setLocation]);
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-2">Acesso Negado</h2>
+        <p className="text-gray-600 mb-4">
+          Você não tem permissão para acessar esta página.
+        </p>
+        <Button 
+          onClick={() => setLocation("/")}
+          className="bg-blue-700 hover:bg-blue-800"
+        >
+          Voltar para a página inicial
+        </Button>
+      </div>
+    );
   }
 
   return <Route {...props} />;
@@ -105,14 +155,15 @@ function Router() {
       <main className="flex-grow container mx-auto px-4 py-4 pb-12">
         <Switch>
           <PrivateRoute path="/" component={Welcome} />
-          <PrivateRoute path="/registros" component={Home} />
-          <PrivateRoute path="/registros/:view" component={Home} />
-          <PrivateRoute path="/relatorios" component={Reports} />
-          <PrivateRoute path="/configuracoes" component={Settings} />
-          <PrivateRoute path="/usuarios" component={UserManagement} />
-          <PrivateRoute path="/checklists" component={Checklists} />
-          <PrivateRoute path="/checklists/new" component={NewChecklist} />
-          <PrivateRoute path="/checklists/:id" component={ChecklistDetails} />
+          <PrivateRoute path="/registros" component={Home} permission="registrations" />
+          <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
+          <PrivateRoute path="/registros/history" component={Home} permission="history" />
+          <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
+          <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
+          <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
+          <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
+          <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
+          <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
           <Route component={NotFound} />
         </Switch>
       </main>

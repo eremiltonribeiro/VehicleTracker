@@ -1233,7 +1233,7 @@ export default function UserManagement() {
                   
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <FileChart className="h-4 w-4 text-blue-600" />
+                      <FileText className="h-4 w-4 text-blue-600" />
                       <Label htmlFor="edit-perm-reports">Relatórios</Label>
                     </div>
                     <Switch 
