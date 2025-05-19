@@ -26,6 +26,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Fuel, Wrench, MapPin, Droplet, Car, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { offlineStorage } from "@/services/offlineStorage";
+import { Statistics } from "./Statistics";
+import { MaintenanceAlerts } from "./MaintenanceAlerts";
+import { ConsumptionComparison } from "./ConsumptionComparison";
+import { MonthlyExpenseHistory } from "./MonthlyExpenseHistory";
+import { ExpensesForecast } from "./ExpensesForecast";
 
 export function Dashboard() {
   const [dateRange, setDateRange] = useState("month");
@@ -214,13 +219,20 @@ export function Dashboard() {
         </Card>
       </div>
 
+      {/* Estatísticas rápidas */}
+      <Statistics />
+      
+      {/* Alertas de manutenção */}
+      <MaintenanceAlerts />
+      
       {/* Charts */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Visão Geral</TabsTrigger>
           <TabsTrigger value="fuel">Abastecimentos</TabsTrigger>
           <TabsTrigger value="maintenance">Manutenções</TabsTrigger>
-          <TabsTrigger value="trips">Viagens</TabsTrigger>
+          <TabsTrigger value="comparison">Comparações</TabsTrigger>
+          <TabsTrigger value="forecast">Previsões</TabsTrigger>
         </TabsList>
         
         {/* Overview Tab */}
@@ -339,35 +351,15 @@ export function Dashboard() {
           </Card>
         </TabsContent>
         
-        {/* Trips Tab */}
-        <TabsContent value="trips" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Viagens por Destino</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={tripsByDestinationData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis yAxisId="left" orientation="left" stroke="#3b82f6" />
-                    <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" />
-                    <Tooltip 
-                      formatter={(value: any, name: any) => [
-                        name === 'count' ? value : `${value} km`,
-                        name === 'count' ? 'Quantidade' : 'Km Total'
-                      ]}
-                      labelFormatter={(label) => `Destino: ${label}`}
-                    />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="count" name="Quantidade" fill="#3b82f6" />
-                    <Bar yAxisId="right" dataKey="kmTotal" name="Km Total" fill="#f59e0b" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Comparison Tab - Novo */}
+        <TabsContent value="comparison" className="space-y-4">
+          <ConsumptionComparison />
+          <MonthlyExpenseHistory />
+        </TabsContent>
+        
+        {/* Forecast Tab - Novo */}
+        <TabsContent value="forecast" className="space-y-4">
+          <ExpensesForecast />
         </TabsContent>
       </Tabs>
     </div>
