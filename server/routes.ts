@@ -1,11 +1,21 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { z } from "zod";
-import { extendedRegistrationSchema, fuelRegistrationSchema, maintenanceRegistrationSchema, tripRegistrationSchema } from "@shared/schema";
+import { 
+  extendedRegistrationSchema, 
+  fuelRegistrationSchema, 
+  maintenanceRegistrationSchema, 
+  tripRegistrationSchema,
+  insertVehicleSchema,
+  insertDriverSchema,
+  insertFuelStationSchema,
+  insertFuelTypeSchema,
+  insertMaintenanceTypeSchema
+} from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { DatabaseStorage } from "./dbStorage";
 
@@ -66,6 +76,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
+  
+  app.post("/api/vehicles", upload.single('image'), async (req, res) => {
+    try {
+      const vehicleData = req.body;
+      
+      // Converter valores numéricos
+      if (vehicleData.year) {
+        vehicleData.year = parseInt(vehicleData.year);
+      }
+      if (vehicleData.initialKm) {
+        vehicleData.initialKm = parseInt(vehicleData.initialKm);
+      }
+      
+      // Validar dados
+      insertVehicleSchema.parse(vehicleData);
+      
+      // Se houver imagem, adicionar URL à informação do veículo
+      if (req.file) {
+        vehicleData.imageUrl = `/uploads/${req.file.filename}`;
+      }
+      
+      const vehicle = await storage.createVehicle(vehicleData);
+      res.status(201).json(vehicle);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao criar veículo:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.get("/api/drivers", async (req, res) => {
     try {
@@ -75,12 +116,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
+  
+  app.post("/api/drivers", upload.single('image'), async (req, res) => {
+    try {
+      const driverData = req.body;
+      
+      // Validar dados
+      insertDriverSchema.parse(driverData);
+      
+      // Se houver imagem, adicionar URL à informação do motorista
+      if (req.file) {
+        driverData.imageUrl = `/uploads/${req.file.filename}`;
+      }
+      
+      const driver = await storage.createDriver(driverData);
+      res.status(201).json(driver);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao criar motorista:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.get("/api/fuel-stations", async (req, res) => {
     try {
       const fuelStations = await storage.getFuelStations();
       res.json(fuelStations);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post("/api/fuel-stations", async (req, res) => {
+    try {
+      const stationData = req.body;
+      
+      // Validar dados
+      insertFuelStationSchema.parse(stationData);
+      
+      const station = await storage.createFuelStation(stationData);
+      res.status(201).json(station);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao criar posto de combustível:", error);
       res.status(500).json({ message: error.message });
     }
   });
