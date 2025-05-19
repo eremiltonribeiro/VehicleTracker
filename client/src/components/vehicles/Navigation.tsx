@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, BarChart2, History, Settings, Car, Plus, FileText, Users } from "lucide-react";
+import { Home, BarChart2, History, Settings, Car, Plus, FileText, Users, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
@@ -22,6 +22,7 @@ export function Navigation() {
     if (route === "/relatorios" && location.includes("relatorios")) return true;
     if (route === "/configuracoes" && location.includes("configuracoes")) return true;
     if (route === "/usuarios" && location.includes("usuarios")) return true;
+    if (route === "/checklists" && location.includes("checklists")) return true;
     return false;
   };
   
@@ -65,6 +66,15 @@ export function Navigation() {
             <span className="hidden md:inline">Dashboard</span>
           </Button>
           
+          <Button
+            variant={isActive("/checklists") ? "default" : "outline"}
+            className="flex items-center gap-2 rounded-full"
+            onClick={() => setLocation("/checklists")}
+          >
+            <CheckSquare className="h-4 w-4" />
+            <span className="hidden md:inline">Checklists</span>
+          </Button>
+
           <Button
             variant={isActive("/relatorios") ? "default" : "outline"}
             className="flex items-center gap-2 rounded-full"

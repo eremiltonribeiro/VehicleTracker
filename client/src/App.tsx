@@ -10,6 +10,8 @@ import Welcome from "@/pages/Welcome";
 import Reports from "@/pages/Reports";
 import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
+import Checklists from "@/pages/Checklists";
+import NewChecklist from "@/pages/NewChecklist";
 import { Navigation } from "@/components/vehicles/Navigation";
 import { Header } from "@/components/vehicles/Header";
 import { useEffect, useState } from "react";
@@ -107,6 +109,9 @@ function Router() {
           <PrivateRoute path="/relatorios" component={Reports} />
           <PrivateRoute path="/configuracoes" component={Settings} />
           <PrivateRoute path="/usuarios" component={UserManagement} />
+          <PrivateRoute path="/checklists" component={Checklists} />
+          <PrivateRoute path="/checklists/new" component={NewChecklist} />
+          <PrivateRoute path="/checklists/:id" component={Checklists} />
           <Route component={NotFound} />
         </Switch>
       </main>
