@@ -114,14 +114,40 @@ export function SideNavigation() {
     setLocation("/login");
   };
   
+  // Carregar configurações do app
+  useEffect(() => {
+    try {
+      const savedConfig = localStorage.getItem("appConfig");
+      if (savedConfig) {
+        const config = JSON.parse(savedConfig);
+        
+        // Atualizar nome da empresa se disponível
+        if (config.companyName) {
+          document.querySelectorAll('.company-name').forEach(el => {
+            (el as HTMLElement).innerText = config.companyName;
+          });
+        }
+        
+        // Aplicar logo personalizado se disponível
+        if (config.logoUrl) {
+          document.querySelectorAll('.company-logo').forEach(el => {
+            (el as HTMLImageElement).src = config.logoUrl;
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar configurações:", error);
+    }
+  }, []);
+
   return (
     <>
       {/* Header for mobile */}
-      <div className="lg:hidden bg-blue-800 text-white shadow-md w-full">
+      <div className="lg:hidden bg-blue-800 text-white shadow-md w-full side-navigation">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center">
-            <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3" />
-            <h1 className="text-lg font-bold">Sistema de Gestão de Frota</h1>
+            <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3 company-logo" />
+            <h1 className="text-lg font-bold company-name">Sistema de Gestão de Frota</h1>
           </div>
           <Button
             variant="ghost"
@@ -279,10 +305,10 @@ export function SideNavigation() {
       </div>
       
       {/* Sidebar for desktop */}
-      <div className="hidden lg:flex h-screen fixed left-0 top-0 bg-blue-800 text-white w-64 shadow-lg flex-col">
+      <div className="hidden lg:flex h-screen fixed left-0 top-0 bg-blue-800 text-white w-64 shadow-lg flex-col side-navigation">
         <div className="p-4 flex items-center border-b border-blue-700">
-          <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3" />
-          <h1 className="text-xl font-bold">Sistema de Gestão de Frota</h1>
+          <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3 company-logo" />
+          <h1 className="text-xl font-bold company-name">Sistema de Gestão de Frota</h1>
         </div>
         
         <nav className="flex-1 p-3 space-y-2 overflow-y-auto">

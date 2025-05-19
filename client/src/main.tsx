@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./styles/app-theme.css";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 
 // Registrar o Service Worker para suporte offline

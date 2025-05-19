@@ -162,6 +162,26 @@ export default function AppConfig() {
     document.documentElement.style.setProperty('--color-primary', colors.primary);
     document.documentElement.style.setProperty('--color-secondary', colors.secondary);
     document.documentElement.style.setProperty('--color-accent', colors.accent);
+    
+    // Aplicar classes CSS aos elementos específicos
+    const sideNav = document.querySelector('.side-navigation') as HTMLElement;
+    if (sideNav) {
+      sideNav.style.background = `linear-gradient(to bottom, ${colors.primary}, ${colors.secondary})`;
+    }
+    
+    // Atualizar botões primários
+    const primaryButtons = document.querySelectorAll('.bg-blue-700, .bg-blue-800') as NodeListOf<HTMLElement>;
+    primaryButtons.forEach(button => {
+      button.style.backgroundColor = colors.primary;
+    });
+    
+    // Atualizar cores de texto nos cabeçalhos
+    const headings = document.querySelectorAll('h1, h2, h3') as NodeListOf<HTMLElement>;
+    headings.forEach(heading => {
+      if (heading.className.includes('text-blue-900')) {
+        heading.style.color = colors.primary;
+      }
+    });
   };
   
   // Quando o usuário seleciona um tema
@@ -249,6 +269,17 @@ export default function AppConfig() {
       
       // Aplicar tema
       applyTheme(selectedTheme, customColors);
+      
+      // Atualizar logo e nome da empresa em tempo real
+      document.querySelectorAll('.company-name').forEach(el => {
+        (el as HTMLElement).innerText = companyName;
+      });
+      
+      if (logoUrl) {
+        document.querySelectorAll('.company-logo').forEach(el => {
+          (el as HTMLImageElement).src = logoUrl;
+        });
+      }
       
       toast({
         title: "Configurações salvas",
