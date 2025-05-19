@@ -189,44 +189,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/fuel-types", async (req, res) => {
     try {
-      // Mostrar dados recebidos para diagnóstico
-      console.log("Recebido no servidor - Dados brutos:", req.body);
-      console.log("Headers:", req.headers);
+      // Verificar e extrair o nome do combustível
+      console.log("Dados recebidos do formulário:", req.body);
       
-      // Obter nome do combustível
-      const nome = req.body && req.body.name ? req.body.name.trim() : '';
+      const fuelTypeName = req.body.name;
       
-      // Validação direta sem Zod
-      if (!nome) {
-        console.log("Erro: Nome não fornecido");
-        return res.status(400).json({
-          message: "Nome do combustível é obrigatório"
-        });
+      if (!fuelTypeName || fuelTypeName.trim() === '') {
+        return res.status(400).json({ message: "Nome do combustível é obrigatório" });
       }
       
-      console.log("Inserindo no banco:", { name: nome });
+      // Criar objeto de dados para inserção
+      const typeData = {
+        name: fuelTypeName.trim()
+      };
       
+      // Tentar criar o tipo de combustível
       try {
-        // Inserção direta no banco de dados
-        const [novoTipo] = await db.insert(fuelTypes)
-          .values({ name: nome })
-          .returning();
-          
-        console.log("Tipo criado com sucesso:", novoTipo);
-        return res.status(201).json(novoTipo);
-      } catch (dbError) {
-        console.error("Erro ao inserir no banco:", dbError);
-        return res.status(500).json({
-          message: "Erro ao inserir no banco de dados",
-          error: String(dbError)
+        // Usar o storage para criar o tipo de combustível
+        const fuelType = await storage.createFuelType(typeData);
+        console.log("Tipo de combustível criado com sucesso:", fuelType);
+        return res.status(201).json(fuelType);
+      } catch (storageError) {
+        console.error("Erro ao salvar no armazenamento:", storageError);
+        return res.status(500).json({ 
+          message: "Não foi possível salvar o tipo de combustível" 
         });
       }
-    } catch (error: any) {
-      console.error("Erro geral no endpoint:", error);
-      res.status(500).json({ 
-        message: "Erro ao criar tipo de combustível", 
-        error: String(error)
-      });
+    } catch (error) {
+      console.error("Erro ao processar requisição:", error);
+      return res.status(500).json({ message: "Erro interno do servidor" });
     }
   });
 
