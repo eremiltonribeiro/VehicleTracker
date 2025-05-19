@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Plus, History, BarChart2, Wifi, WifiOff, Settings, FileText } from "lucide-react";
+import { Plus, History, BarChart2, Wifi, WifiOff, Settings, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/ui/logo";
 import { brandColors } from "@/lib/colors";
 import { AuthStatus } from "@/components/ui/auth-status";
+import { InstallPWAButton } from "@/components/ui/install-pwa-button";
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -128,6 +129,11 @@ export function Header() {
                 Offline
               </Badge>
             )}
+          </div>
+          
+          {/* PWA Install Button */}
+          <div className="mr-1 hidden sm:block">
+            <InstallPWAButton />
           </div>
           
           {/* Authentication Component */}
