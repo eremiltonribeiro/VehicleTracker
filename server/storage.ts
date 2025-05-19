@@ -18,10 +18,9 @@ import {
 
 // Extend the storage interface with CRUD methods
 export interface IStorage {
-  // User methods (keeping original)
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Métodos de usuário atualizados para Replit Auth
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
 
   // Vehicle methods
   getVehicles(): Promise<Vehicle[]>;

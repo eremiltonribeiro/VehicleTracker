@@ -6,6 +6,8 @@ import fs from "fs";
 import multer from "multer";
 import { z } from "zod";
 import { extendedRegistrationSchema, fuelRegistrationSchema, maintenanceRegistrationSchema, tripRegistrationSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./replitAuth";
+import { DatabaseStorage } from "./dbStorage";
 
 // Setup upload directory
 const uploadsDir = path.join(process.cwd(), "dist/public/uploads");
