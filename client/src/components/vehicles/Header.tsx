@@ -160,6 +160,17 @@ export function Header() {
                 <History className="h-5 w-5" />
               </Button>
             )}
+            
+            {/* Settings Button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setLocation("/configuracoes")}
+              className="text-white hover:bg-primary-700 rounded-full"
+              title="Configurações"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
 
             {/* Sync Button (shown only when there are pending syncs) */}
             {pendingSyncs > 0 && (
