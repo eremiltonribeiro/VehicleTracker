@@ -26,15 +26,11 @@ export interface IStorage {
   getVehicles(): Promise<Vehicle[]>;
   getVehicle(id: number): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
-  updateVehicle(id: number, vehicle: InsertVehicle): Promise<Vehicle>;
-  deleteVehicle(id: number): Promise<boolean>;
 
   // Driver methods
   getDrivers(): Promise<Driver[]>;
   getDriver(id: number): Promise<Driver | undefined>;
   createDriver(driver: InsertDriver): Promise<Driver>;
-  updateDriver(id: number, driver: InsertDriver): Promise<Driver>;
-  deleteDriver(id: number): Promise<boolean>;
 
   // Fuel station methods
   getFuelStations(): Promise<FuelStation[]>;
@@ -259,26 +255,6 @@ export class MemStorage implements IStorage {
     const driver: Driver = { ...insertDriver, id };
     this.drivers.set(id, driver);
     return driver;
-  }
-  
-  async updateDriver(id: number, insertDriver: InsertDriver): Promise<Driver> {
-    const existingDriver = await this.getDriver(id);
-    if (!existingDriver) {
-      throw new Error(`Motorista com ID ${id} não encontrado`);
-    }
-    
-    const updatedDriver: Driver = { ...insertDriver, id };
-    this.drivers.set(id, updatedDriver);
-    return updatedDriver;
-  }
-  
-  async deleteDriver(id: number): Promise<boolean> {
-    const existingDriver = await this.getDriver(id);
-    if (!existingDriver) {
-      return false;
-    }
-    
-    return this.drivers.delete(id);
   }
 
   // Fuel station methods

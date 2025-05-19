@@ -100,7 +100,7 @@ export function SideNavigation() {
     if (route === "/" && location === "/") return true;
     if (route === "/registros" && location === "/registros") return true;
     if (route === "/registros/history" && location.includes("/registros/history")) return true;
-    if (route === "/dashboard" && location.includes("/dashboard")) return true;
+    if (route === "/registros/dashboard" && location.includes("/registros/dashboard")) return true;
     if (route === "/relatorios" && location.includes("/relatorios")) return true;
     if (route === "/configuracoes" && location.includes("/configuracoes")) return true;
     if (route === "/usuarios" && location.includes("/usuarios")) return true;
@@ -214,10 +214,10 @@ export function SideNavigation() {
                   <Button
                     variant="ghost"
                     className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
-                      isActive("/dashboard") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
+                      isActive("/registros/dashboard") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
                     }`}
                     onClick={() => {
-                      setLocation("/dashboard");
+                      setLocation("/registros/dashboard");
                       setIsMobileMenuOpen(false);
                     }}
                   >
@@ -353,9 +353,9 @@ export function SideNavigation() {
             <Button
               variant="ghost"
               className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
-                isActive("/dashboard") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
+                isActive("/registros/dashboard") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
               }`}
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation("/registros/dashboard")}
             >
               <BarChart2 className="h-5 w-5" />
               <span className="text-sm font-medium">Dashboard</span>

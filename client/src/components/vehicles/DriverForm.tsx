@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,15 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FileInput } from "@/components/ui/file-input";
 import { Loader2, Save, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { offlineStorage } from "@/services/offlineStorage";
 
-// Schema simplificado sem imagem
-const driverFormSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  license: z.string().min(1, "CNH é obrigatória"),
-  phone: z.string().min(1, "Telefone é obrigatório")
+// Extend schema for validation
+const driverFormSchema = insertDriverSchema.extend({
+  image: z.instanceof(File).optional(),
 });
 
 type DriverFormValues = z.infer<typeof driverFormSchema>;
@@ -28,14 +27,15 @@ interface DriverFormProps {
 }
 
 export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
   // Default values
-  const defaultValues: DriverFormValues = {
-    name: "",
-    license: "",
-    phone: ""
+  const defaultValues: Partial<DriverFormValues> = {
+    name: editingDriver?.name || "",
+    license: editingDriver?.license || "",
+    phone: editingDriver?.phone || "",
   };
   
   const form = useForm<DriverFormValues>({
@@ -43,124 +43,141 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
     defaultValues,
   });
   
-  // Preencher o formulário quando estiver editando
-  useEffect(() => {
-    if (editingDriver) {
-      form.reset({
-        name: editingDriver.name,
-        license: editingDriver.license,
-        phone: editingDriver.phone
-      });
-    }
-  }, [editingDriver, form]);
-
-  const saveDriver = useMutation({
+  const createDriver = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       try {
-        console.log("Iniciando salvamento do motorista:", data);
-        const isEditing = !!editingDriver;
-        
-        // Dados para enviar ao servidor
-        const driverData = {
-          name: String(data.name),
-          license: String(data.license),
-          phone: String(data.phone)
-        };
-        
-        const url = isEditing 
-          ? `/api/drivers/${editingDriver?.id}` 
-          : '/api/drivers';
-        
-        console.log("Enviando para URL:", url, "Método:", isEditing ? 'PUT' : 'POST', "Dados:", driverData);
-        
-        const response = await fetch(url, {
-          method: isEditing ? 'PUT' : 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(driverData)
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Erro na resposta:", errorText);
-          throw new Error(`Erro ao salvar motorista: ${errorText}`);
+        // Handle offline state
+        if (!navigator.onLine) {
+          // Generate a temporary id (negative to avoid collisions with server ids)
+          const tempId = -(Date.now());
+          
+          // Create driver object
+          const driver = {
+            ...data,
+            id: tempId,
+          };
+          
+          // Get current drivers
+          const drivers = await offlineStorage.getDrivers();
+          
+          // Add new driver
+          drivers.push(driver);
+          
+          // Save to local storage
+          await offlineStorage.saveDrivers(drivers);
+          
+          // Save image if provided
+          if (data.image && imagePreview) {
+            await offlineStorage.saveImage(`driver_${tempId}`, imagePreview);
+          }
+          
+          return driver;
         }
         
-        const result = await response.json();
-        console.log("Resposta do servidor:", result);
-        return result;
+        // Online state - create FormData for file upload
+        const formData = new FormData();
+        
+        // Add all fields to form data
+        Object.entries(data).forEach(([key, value]) => {
+          if (key !== 'image') {
+            formData.append(key, String(value));
+          }
+        });
+        
+        // Add image if available
+        if (data.image) {
+          formData.append('image', data.image);
+        }
+        
+        // Send data to server
+        const response = await apiRequest('/api/drivers', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        return response;
       } catch (error) {
-        console.error("Exceção ao salvar motorista:", error);
+        console.error("Erro ao criar motorista:", error);
         throw error;
       }
     },
     onSuccess: () => {
       toast({
         title: "Sucesso!",
-        description: editingDriver 
-          ? "Motorista atualizado com sucesso" 
-          : "Motorista criado com sucesso",
+        description: "Motorista cadastrado com sucesso.",
       });
       
-      // Limpar o formulário
-      form.reset(defaultValues);
+      // Reset form
+      form.reset();
+      setImagePreview(null);
       
-      // Invalidar queries para atualizar a lista
+      // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
       
-      // Callback de sucesso
-      if (onSuccess) {
-        onSuccess();
-      }
+      // Call success callback if provided
+      if (onSuccess) onSuccess();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Erro!",
-        description: `Não foi possível salvar o motorista: ${error.message}`,
+        description: "Ocorreu um erro ao cadastrar o motorista. Tente novamente.",
         variant: "destructive",
       });
+      
+      console.error("Erro na mutação:", error);
     },
   });
   
-  const onSubmit = async (data: DriverFormValues) => {
-    saveDriver.mutate(data);
+  const handleImageChange = (file: File | null) => {
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setImagePreview(null);
+    }
   };
-
+  
+  const onSubmit = (data: DriverFormValues) => {
+    createDriver.mutate(data);
+  };
+  
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <UserCircle className="mr-2 h-6 w-6" />
+        <CardTitle className="flex items-center gap-2">
+          <UserCircle className="h-5 w-5" />
           {editingDriver ? "Editar Motorista" : "Novo Motorista"}
         </CardTitle>
         <CardDescription>
           {editingDriver 
-            ? "Atualize as informações do motorista" 
-            : "Preencha as informações do novo motorista"}
+            ? "Altere os dados do motorista conforme necessário" 
+            : "Preencha os dados para cadastrar um novo motorista"}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Completo*</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: João Silva" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Nome completo do motorista
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome*</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Nome completo" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Nome do motorista
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <FormField
                 control={form.control}
                 name="license"
@@ -168,7 +185,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
                   <FormItem>
                     <FormLabel>CNH*</FormLabel>
                     <FormControl>
-                      <Input placeholder="Número da CNH" {...field} />
+                      <Input placeholder="Ex: 12345678901" {...field} />
                     </FormControl>
                     <FormDescription>
                       Número da Carteira Nacional de Habilitação
@@ -196,13 +213,39 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
               />
             </div>
             
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field: { value, onChange, ...field } }) => (
+                <FormItem>
+                  <FormLabel>Foto do Motorista</FormLabel>
+                  <FormControl>
+                    <FileInput
+                      {...field}
+                      accept={['image/jpeg', 'image/png', 'image/jpg']}
+                      maxSize={5} // 5MB
+                      onFileChange={(file) => {
+                        onChange(file);
+                        handleImageChange(file);
+                      }}
+                      defaultPreview={imagePreview || undefined}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Adicione uma foto do motorista (opcional)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 
-                disabled={saveDriver.isPending}
+                disabled={createDriver.isPending}
                 className="flex items-center gap-1"
               >
-                {saveDriver.isPending ? (
+                {createDriver.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...

@@ -3,16 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { VehicleForm } from "@/components/vehicles/VehicleForm";
 import { DriverForm } from "@/components/vehicles/DriverForm";
 import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
@@ -132,11 +122,7 @@ export default function Settings() {
 
 // Componente para listar veículos
 function VehiclesList() {
-  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
-  const { data: vehicles = [], isLoading, refetch } = useQuery({
+  const { data: vehicles = [], isLoading } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: async () => {
       try {
@@ -156,155 +142,51 @@ function VehiclesList() {
     }
   });
   
-  const handleEdit = (vehicle: any) => {
-    setSelectedVehicle(vehicle);
-    setIsEditing(true);
-  };
-  
-  const handleDelete = (vehicle: any) => {
-    setSelectedVehicle(vehicle);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = async () => {
-    try {
-      if (selectedVehicle) {
-        const response = await fetch(`/api/vehicles/${selectedVehicle.id}`, {
-          method: 'DELETE',
-        });
-        
-        if (response.ok) {
-          // Atualizar o armazenamento offline após a exclusão
-          const updatedVehicles = vehicles.filter((v: any) => v.id !== selectedVehicle.id);
-          await offlineStorage.saveVehicles(updatedVehicles);
-          
-          // Fechar diálogo e recarregar dados
-          setIsDeleteDialogOpen(false);
-          refetch();
-        } else {
-          console.error('Erro ao excluir veículo');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao excluir veículo:', error);
-    }
-  };
-  
-  const cancelEdit = () => {
-    setSelectedVehicle(null);
-    setIsEditing(false);
-  };
-  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
-  if (isEditing && selectedVehicle) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Editar Veículo</h2>
-          <Button variant="outline" onClick={cancelEdit}>Cancelar</Button>
-        </div>
-        <VehicleForm editingVehicle={selectedVehicle} onSuccess={() => {
-          setIsEditing(false);
-          setSelectedVehicle(null);
-          refetch();
-        }} />
-      </div>
-    );
-  }
-  
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Veículos Cadastrados</CardTitle>
-          <CardDescription>Lista de veículos disponíveis no sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {vehicles.length === 0 ? (
-            <div className="text-center p-4 text-muted-foreground">
-              Nenhum veículo cadastrado.
-            </div>
-          ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {vehicles.map((vehicle: any) => (
-                <Card key={vehicle.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="p-4">
-                      <h3 className="font-bold flex items-center">
-                        <Car className="h-4 w-4 mr-2" />
-                        {vehicle.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{vehicle.plate}</p>
-                      <div className="text-xs mt-2">
-                        <p><span className="font-medium">Modelo:</span> {vehicle.model}</p>
-                        <p><span className="font-medium">Ano:</span> {vehicle.year}</p>
-                        <p><span className="font-medium">Km Inicial:</span> {vehicle.initialKm?.toLocaleString('pt-BR')} km</p>
-                      </div>
-                      
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => handleEdit(vehicle)}
-                        >
-                          Editar
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => handleDelete(vehicle)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Veículos Cadastrados</CardTitle>
+        <CardDescription>Lista de veículos disponíveis no sistema</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {vehicles.length === 0 ? (
+          <div className="text-center p-4 text-muted-foreground">
+            Nenhum veículo cadastrado.
+          </div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {vehicles.map((vehicle: any) => (
+              <Card key={vehicle.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4">
+                    <h3 className="font-bold flex items-center">
+                      <Car className="h-4 w-4 mr-2" />
+                      {vehicle.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">{vehicle.plate}</p>
+                    <div className="text-xs mt-2">
+                      <p><span className="font-medium">Modelo:</span> {vehicle.model}</p>
+                      <p><span className="font-medium">Ano:</span> {vehicle.year}</p>
+                      <p><span className="font-medium">Km Inicial:</span> {vehicle.initialKm?.toLocaleString('pt-BR')} km</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Diálogo de confirmação para exclusão */}
-      {isDeleteDialogOpen && selectedVehicle && (
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={() => setIsDeleteDialogOpen(false)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir o veículo <strong>{selectedVehicle.name}</strong> ({selectedVehicle.plate})? 
-                Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDelete}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 // Componente para listar motoristas
 function DriversList() {
-  const [selectedDriver, setSelectedDriver] = useState<any>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  
-  const { data: drivers = [], isLoading, refetch } = useQuery({
+  const { data: drivers = [], isLoading } = useQuery({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
       try {
@@ -324,143 +206,43 @@ function DriversList() {
     }
   });
   
-  const handleEdit = (driver: any) => {
-    setSelectedDriver(driver);
-    setIsEditing(true);
-  };
-  
-  const handleDelete = (driver: any) => {
-    setSelectedDriver(driver);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = async () => {
-    try {
-      if (selectedDriver) {
-        const response = await fetch(`/api/drivers/${selectedDriver.id}`, {
-          method: 'DELETE',
-        });
-        
-        if (response.ok) {
-          // Atualizar o armazenamento offline após a exclusão
-          const updatedDrivers = drivers.filter((d: any) => d.id !== selectedDriver.id);
-          await offlineStorage.saveDrivers(updatedDrivers);
-          
-          // Fechar diálogo e recarregar dados
-          setIsDeleteDialogOpen(false);
-          refetch();
-        } else {
-          console.error('Erro ao excluir motorista');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao excluir motorista:', error);
-    }
-  };
-  
-  const cancelEdit = () => {
-    setSelectedDriver(null);
-    setIsEditing(false);
-  };
-  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
-  if (isEditing && selectedDriver) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Editar Motorista</h2>
-          <Button variant="outline" onClick={cancelEdit}>Cancelar</Button>
-        </div>
-        <DriverForm editingDriver={selectedDriver} onSuccess={() => {
-          setIsEditing(false);
-          setSelectedDriver(null);
-          refetch();
-        }} />
-      </div>
-    );
-  }
-  
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Motoristas Cadastrados</CardTitle>
-          <CardDescription>Lista de motoristas disponíveis no sistema</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {drivers.length === 0 ? (
-            <div className="text-center p-4 text-muted-foreground">
-              Nenhum motorista cadastrado.
-            </div>
-          ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {drivers.map((driver: any) => (
-                <Card key={driver.id} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="p-4">
-                      <h3 className="font-bold flex items-center">
-                        <UserCircle className="h-4 w-4 mr-2" />
-                        {driver.name}
-                      </h3>
-                      <div className="text-xs mt-2">
-                        <p><span className="font-medium">CNH:</span> {driver.license}</p>
-                        <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
-                      </div>
-                      
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => handleEdit(driver)}
-                        >
-                          Editar
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          className="h-8 px-2 text-xs"
-                          onClick={() => handleDelete(driver)}
-                        >
-                          Excluir
-                        </Button>
-                      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Motoristas Cadastrados</CardTitle>
+        <CardDescription>Lista de motoristas disponíveis no sistema</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {drivers.length === 0 ? (
+          <div className="text-center p-4 text-muted-foreground">
+            Nenhum motorista cadastrado.
+          </div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {drivers.map((driver: any) => (
+              <Card key={driver.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="p-4">
+                    <h3 className="font-bold flex items-center">
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      {driver.name}
+                    </h3>
+                    <div className="text-xs mt-2">
+                      <p><span className="font-medium">CNH:</span> {driver.license}</p>
+                      <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Diálogo de confirmação para exclusão */}
-      {isDeleteDialogOpen && selectedDriver && (
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={() => setIsDeleteDialogOpen(false)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tem certeza que deseja excluir o motorista <strong>{selectedDriver.name}</strong>? 
-                Esta ação não pode ser desfeita.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDelete}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-    </>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
