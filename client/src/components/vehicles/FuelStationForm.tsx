@@ -64,7 +64,7 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
         }
         
         // Send data to server
-        const response = await apiRequest('/api/fuel-stations', {
+        const response = await fetch('/api/fuel-stations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -72,7 +72,11 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
           body: JSON.stringify(data),
         });
         
-        return response;
+        if (!response.ok) {
+          throw new Error('Erro ao salvar posto de combustível');
+        }
+        
+        return await response.json();
       } catch (error) {
         console.error("Erro ao criar posto de combustível:", error);
         throw error;
