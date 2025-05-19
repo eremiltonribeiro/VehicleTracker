@@ -111,7 +111,7 @@ function Router() {
           <PrivateRoute path="/usuarios" component={UserManagement} />
           <PrivateRoute path="/checklists" component={Checklists} />
           <PrivateRoute path="/checklists/new" component={NewChecklist} />
-          <PrivateRoute path="/checklists/:id" component={Checklists} />
+          <PrivateRoute path="/checklists/:id" component={ChecklistDetails} />
           <Route component={NotFound} />
         </Switch>
       </main>
