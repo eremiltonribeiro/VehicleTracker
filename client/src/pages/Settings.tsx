@@ -1,23 +1,27 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/VehicleForm";
 import { DriverForm } from "@/components/vehicles/DriverForm";
 import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
 import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
 import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
-import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, ArrowRight, Palette } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, Palette, Edit, Trash, Plus, FileText } from "lucide-react";
 import { offlineStorage } from "@/services/offlineStorage";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("vehicles");
   const [, setLocation] = useLocation();
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Configurações</CardTitle>
@@ -25,104 +29,122 @@ export default function Settings() {
         </CardHeader>
       </Card>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="mb-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-            <Button 
-              variant={activeTab === "vehicles" ? "default" : "outline"}
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
-              onClick={() => setActiveTab("vehicles")}
-            >
-              <Car className="h-5 w-5" />
-              <span className="text-xs font-medium">Veículos</span>
-            </Button>
-            
-            <Button 
-              variant={activeTab === "drivers" ? "default" : "outline"}
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
-              onClick={() => setActiveTab("drivers")}
-            >
-              <UserCircle className="h-5 w-5" />
-              <span className="text-xs font-medium">Motoristas</span>
-            </Button>
-            
-            <Button 
-              variant={activeTab === "fuel-stations" ? "default" : "outline"}
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
-              onClick={() => setActiveTab("fuel-stations")}
-            >
-              <Fuel className="h-5 w-5" />
-              <span className="text-xs font-medium">Postos</span>
-            </Button>
-            
-            <Button 
-              variant={activeTab === "fuel-types" ? "default" : "outline"}
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
-              onClick={() => setActiveTab("fuel-types")}
-            >
-              <Droplet className="h-5 w-5" />
-              <span className="text-xs font-medium">Combustíveis</span>
-            </Button>
-            
-            <Button 
-              variant={activeTab === "maintenance-types" ? "default" : "outline"}
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
-              onClick={() => setActiveTab("maintenance-types")}
-            >
-              <Wrench className="h-5 w-5" />
-              <span className="text-xs font-medium">Manutenções</span>
-            </Button>
-            
-            <Button 
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white"
-              onClick={() => setLocation("/checklist-templates")}
-            >
-              <ClipboardCheck className="h-5 w-5" />
-              <span className="text-xs font-medium">Templates</span>
-            </Button>
-            
-            <Button 
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white"
-              onClick={() => setLocation("/configuracoes/app")}
-            >
-              <Palette className="h-5 w-5" />
-              <span className="text-xs font-medium">Aparência</span>
-            </Button>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <ConfigButton 
+          icon={<Car />} 
+          label="Veículos" 
+          isActive={activeTab === "vehicles"} 
+          onClick={() => setActiveTab("vehicles")} 
+        />
+        <ConfigButton 
+          icon={<UserCircle />} 
+          label="Motoristas" 
+          isActive={activeTab === "drivers"} 
+          onClick={() => setActiveTab("drivers")} 
+        />
+        <ConfigButton 
+          icon={<Fuel />} 
+          label="Postos" 
+          isActive={activeTab === "fuel-stations"} 
+          onClick={() => setActiveTab("fuel-stations")} 
+        />
+        <ConfigButton 
+          icon={<Droplet />} 
+          label="Combustíveis" 
+          isActive={activeTab === "fuel-types"} 
+          onClick={() => setActiveTab("fuel-types")} 
+        />
+        <ConfigButton 
+          icon={<Wrench />} 
+          label="Manutenções" 
+          isActive={activeTab === "maintenance-types"} 
+          onClick={() => setActiveTab("maintenance-types")} 
+        />
+        <ConfigButton 
+          icon={<ClipboardCheck />} 
+          label="Templates" 
+          isActive={false}
+          onClick={() => setLocation("/checklist-templates")} 
+          accent={true}
+        />
+        <ConfigButton 
+          icon={<Palette />} 
+          label="Aparência" 
+          isActive={false}
+          onClick={() => setLocation("/configuracoes/app")} 
+          accent={true}
+        />
+        <ConfigButton 
+          icon={<FileText />} 
+          label="Relatórios" 
+          isActive={false}
+          onClick={() => setLocation("/relatorios")} 
+          accent={true}
+        />
+      </div>
+      
+      <div className="space-y-6">
+        {activeTab === "vehicles" && (
+          <>
+            <VehicleForm />
+            <VehiclesList />
+          </>
+        )}
         
-        <TabsContent value="vehicles" className="space-y-4">
-          <VehicleForm />
-          <VehiclesList />
-        </TabsContent>
+        {activeTab === "drivers" && (
+          <>
+            <DriverForm />
+            <DriversList />
+          </>
+        )}
         
-        <TabsContent value="drivers" className="space-y-4">
-          <DriverForm />
-          <DriversList />
-        </TabsContent>
+        {activeTab === "fuel-stations" && (
+          <>
+            <FuelStationForm />
+            <FuelStationsList />
+          </>
+        )}
         
-        <TabsContent value="fuel-stations" className="space-y-4">
-          <FuelStationForm />
-          <FuelStationsList />
-        </TabsContent>
+        {activeTab === "fuel-types" && (
+          <>
+            <FuelTypeForm />
+            <FuelTypesList />
+          </>
+        )}
         
-        <TabsContent value="fuel-types" className="space-y-4">
-          <FuelTypeForm />
-          <FuelTypesList />
-        </TabsContent>
-        
-        <TabsContent value="maintenance-types" className="space-y-4">
-          <MaintenanceTypeForm />
-          <MaintenanceTypesList />
-        </TabsContent>
-      </Tabs>
+        {activeTab === "maintenance-types" && (
+          <>
+            <MaintenanceTypeForm />
+            <MaintenanceTypesList />
+          </>
+        )}
+      </div>
     </div>
+  );
+}
+
+function ConfigButton({ icon, label, isActive, onClick, accent = false }) {
+  return (
+    <Button 
+      variant={isActive ? "default" : accent ? "default" : "outline"}
+      className={`h-20 w-full flex flex-col items-center justify-center gap-1 p-2 ${
+        accent ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
+      }`}
+      onClick={onClick}
+    >
+      <div className="h-5 w-5">{icon}</div>
+      <span className="text-xs font-medium">{label}</span>
+    </Button>
   );
 }
 
 // Componente para listar veículos
 function VehiclesList() {
-  const { data: vehicles = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [currentVehicle, setCurrentVehicle] = useState(null);
+  
+  const { data: vehicles = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: async () => {
       try {
@@ -142,66 +164,159 @@ function VehiclesList() {
     }
   });
   
+  const handleEdit = (vehicle) => {
+    setCurrentVehicle(vehicle);
+    setEditMode(true);
+    // Rola a tela para cima para o usuário ver o formulário
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm("Tem certeza que deseja excluir este veículo?")) return;
+    
+    try {
+      const res = await fetch(`/api/vehicles/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Veículo excluído com sucesso.",
+        });
+        refetch();
+      } else {
+        throw new Error("Erro ao excluir veículo");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      toast({
+        title: "Erro!",
+        description: "Ocorreu um erro ao excluir o veículo.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Veículos Cadastrados</CardTitle>
-        <CardDescription>Lista de veículos disponíveis no sistema</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {vehicles.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum veículo cadastrado.
+    <>
+      {editMode && currentVehicle && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Edit className="h-4 w-4 mr-2" /> Editar Veículo
+              </CardTitle>
+              <CardDescription>Altere os dados do veículo abaixo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <VehicleForm 
+                editingVehicle={currentVehicle} 
+                onSuccess={() => {
+                  setEditMode(false);
+                  setCurrentVehicle(null);
+                  refetch();
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditMode(false);
+                  setCurrentVehicle(null);
+                }}
+              >
+                Cancelar Edição
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Veículos Cadastrados</CardTitle>
+            <CardDescription>
+              {vehicles.length} veículo(s) registrado(s) no sistema
+            </CardDescription>
           </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {vehicles.map((vehicle: any) => (
-              <Card key={vehicle.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold flex items-center">
+          <Badge variant="outline" className="ml-auto">Total: {vehicles.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          {vehicles.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Car className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum veículo cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo veículo.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Placa</TableHead>
+                    <TableHead>Modelo</TableHead>
+                    <TableHead>Ano</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
                           <Car className="h-4 w-4 mr-2" />
                           {vehicle.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{vehicle.plate}</p>
-                        <div className="text-xs mt-2">
-                          <p><span className="font-medium">Modelo:</span> {vehicle.model}</p>
-                          <p><span className="font-medium">Ano:</span> {vehicle.year}</p>
-                          <p><span className="font-medium">Km Inicial:</span> {vehicle.initialKm?.toLocaleString('pt-BR')} km</p>
                         </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => {
-                          // Adicione aqui a lógica de edição
-                          alert(`Editar veículo: ${vehicle.name}`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                      </TableCell>
+                      <TableCell>{vehicle.plate}</TableCell>
+                      <TableCell>{vehicle.model}</TableCell>
+                      <TableCell>{vehicle.year}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(vehicle)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(vehicle.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
 // Componente para listar motoristas
 function DriversList() {
-  const { data: drivers = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [currentDriver, setCurrentDriver] = useState(null);
+  
+  const { data: drivers = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
       try {
@@ -221,64 +336,156 @@ function DriversList() {
     }
   });
   
+  const handleEdit = (driver) => {
+    setCurrentDriver(driver);
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm("Tem certeza que deseja excluir este motorista?")) return;
+    
+    try {
+      const res = await fetch(`/api/drivers/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Motorista excluído com sucesso.",
+        });
+        refetch();
+      } else {
+        throw new Error("Erro ao excluir motorista");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      toast({
+        title: "Erro!",
+        description: "Ocorreu um erro ao excluir o motorista.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Motoristas Cadastrados</CardTitle>
-        <CardDescription>Lista de motoristas disponíveis no sistema</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {drivers.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum motorista cadastrado.
+    <>
+      {editMode && currentDriver && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Edit className="h-4 w-4 mr-2" /> Editar Motorista
+              </CardTitle>
+              <CardDescription>Altere os dados do motorista abaixo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DriverForm 
+                editingDriver={currentDriver} 
+                onSuccess={() => {
+                  setEditMode(false);
+                  setCurrentDriver(null);
+                  refetch();
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditMode(false);
+                  setCurrentDriver(null);
+                }}
+              >
+                Cancelar Edição
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Motoristas Cadastrados</CardTitle>
+            <CardDescription>
+              {drivers.length} motorista(s) registrado(s) no sistema
+            </CardDescription>
           </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {drivers.map((driver: any) => (
-              <Card key={driver.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold flex items-center">
+          <Badge variant="outline" className="ml-auto">Total: {drivers.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          {drivers.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <UserCircle className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum motorista cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo motorista.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>CNH</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drivers.map((driver) => (
+                    <TableRow key={driver.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
                           <UserCircle className="h-4 w-4 mr-2" />
                           {driver.name}
-                        </h3>
-                        <div className="text-xs mt-2">
-                          <p><span className="font-medium">CNH:</span> {driver.license}</p>
-                          <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
                         </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => {
-                          // Adicione aqui a lógica de edição
-                          alert(`Editar motorista: ${driver.name}`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                      </TableCell>
+                      <TableCell>{driver.license}</TableCell>
+                      <TableCell>{driver.phone}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(driver)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(driver.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
 // Componente para listar postos de combustível
 function FuelStationsList() {
-  const { data: stations = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [currentStation, setCurrentStation] = useState(null);
+  
+  const { data: stations = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-stations"],
     queryFn: async () => {
       try {
@@ -298,61 +505,154 @@ function FuelStationsList() {
     }
   });
   
+  const handleEdit = (station) => {
+    setCurrentStation(station);
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm("Tem certeza que deseja excluir este posto?")) return;
+    
+    try {
+      const res = await fetch(`/api/fuel-stations/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Posto excluído com sucesso.",
+        });
+        refetch();
+      } else {
+        throw new Error("Erro ao excluir posto");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      toast({
+        title: "Erro!",
+        description: "Ocorreu um erro ao excluir o posto.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Postos Cadastrados</CardTitle>
-        <CardDescription>Lista de postos de combustível disponíveis</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {stations.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum posto cadastrado.
+    <>
+      {editMode && currentStation && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Edit className="h-4 w-4 mr-2" /> Editar Posto
+              </CardTitle>
+              <CardDescription>Altere os dados do posto abaixo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FuelStationForm 
+                editingStation={currentStation} 
+                onSuccess={() => {
+                  setEditMode(false);
+                  setCurrentStation(null);
+                  refetch();
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditMode(false);
+                  setCurrentStation(null);
+                }}
+              >
+                Cancelar Edição
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Postos Cadastrados</CardTitle>
+            <CardDescription>
+              {stations.length} posto(s) registrado(s) no sistema
+            </CardDescription>
           </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {stations.map((station: any) => (
-              <Card key={station.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-bold flex items-center">
+          <Badge variant="outline" className="ml-auto">Total: {stations.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          {stations.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Fuel className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum posto cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo posto.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Endereço</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stations.map((station) => (
+                    <TableRow key={station.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
                           <Fuel className="h-4 w-4 mr-2" />
                           {station.name}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">{station.address}</p>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => {
-                          // Adicione aqui a lógica de edição
-                          alert(`Editar posto: ${station.name}`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                        </div>
+                      </TableCell>
+                      <TableCell>{station.address}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(station)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(station.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
 // Componente para listar tipos de combustível
 function FuelTypesList() {
-  const { data: types = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [currentType, setCurrentType] = useState(null);
+  
+  const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-types"],
     queryFn: async () => {
       try {
@@ -372,58 +672,152 @@ function FuelTypesList() {
     }
   });
   
+  const handleEdit = (type) => {
+    setCurrentType(type);
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm("Tem certeza que deseja excluir este tipo de combustível?")) return;
+    
+    try {
+      const res = await fetch(`/api/fuel-types/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Tipo de combustível excluído com sucesso.",
+        });
+        refetch();
+      } else {
+        throw new Error("Erro ao excluir tipo de combustível");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      toast({
+        title: "Erro!",
+        description: "Ocorreu um erro ao excluir o tipo de combustível.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tipos de Combustível</CardTitle>
-        <CardDescription>Lista de tipos de combustível disponíveis</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {types.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum tipo de combustível cadastrado.
+    <>
+      {editMode && currentType && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Edit className="h-4 w-4 mr-2" /> Editar Tipo de Combustível
+              </CardTitle>
+              <CardDescription>Altere os dados do tipo de combustível abaixo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FuelTypeForm 
+                editingType={currentType} 
+                onSuccess={() => {
+                  setEditMode(false);
+                  setCurrentType(null);
+                  refetch();
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditMode(false);
+                  setCurrentType(null);
+                }}
+              >
+                Cancelar Edição
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Tipos de Combustível</CardTitle>
+            <CardDescription>
+              {types.length} tipo(s) de combustível registrado(s)
+            </CardDescription>
           </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {types.map((type: any) => (
-              <Card key={type.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-bold flex items-center">
-                        <Droplet className="h-4 w-4 mr-2" />
-                        {type.name}
-                      </h3>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => {
-                          // Adicione aqui a lógica de edição
-                          alert(`Editar tipo de combustível: ${type.name}`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <Badge variant="outline" className="ml-auto">Total: {types.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          {types.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Droplet className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum tipo de combustível cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo tipo.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {types.map((type) => (
+                    <TableRow key={type.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <Droplet className="h-4 w-4 mr-2" />
+                          {type.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(type)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(type.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
 // Componente para listar tipos de manutenção
 function MaintenanceTypesList() {
-  const { data: types = [], isLoading } = useQuery({
+  const { toast } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [currentType, setCurrentType] = useState(null);
+  
+  const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/maintenance-types"],
     queryFn: async () => {
       try {
@@ -443,51 +837,141 @@ function MaintenanceTypesList() {
     }
   });
   
+  const handleEdit = (type) => {
+    setCurrentType(type);
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
+  const handleDelete = async (id) => {
+    if (!confirm("Tem certeza que deseja excluir este tipo de manutenção?")) return;
+    
+    try {
+      const res = await fetch(`/api/maintenance-types/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Tipo de manutenção excluído com sucesso.",
+        });
+        refetch();
+      } else {
+        throw new Error("Erro ao excluir tipo de manutenção");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      toast({
+        title: "Erro!",
+        description: "Ocorreu um erro ao excluir o tipo de manutenção.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Tipos de Manutenção</CardTitle>
-        <CardDescription>Lista de tipos de manutenção disponíveis</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {types.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum tipo de manutenção cadastrado.
+    <>
+      {editMode && currentType && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Edit className="h-4 w-4 mr-2" /> Editar Tipo de Manutenção
+              </CardTitle>
+              <CardDescription>Altere os dados do tipo de manutenção abaixo</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MaintenanceTypeForm 
+                editingType={currentType} 
+                onSuccess={() => {
+                  setEditMode(false);
+                  setCurrentType(null);
+                  refetch();
+                }}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setEditMode(false);
+                  setCurrentType(null);
+                }}
+              >
+                Cancelar Edição
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+    
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Tipos de Manutenção</CardTitle>
+            <CardDescription>
+              {types.length} tipo(s) de manutenção registrado(s)
+            </CardDescription>
           </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {types.map((type: any) => (
-              <Card key={type.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-bold flex items-center">
-                        <Wrench className="h-4 w-4 mr-2" />
-                        {type.name}
-                      </h3>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => {
-                          // Adicione aqui a lógica de edição
-                          alert(`Editar tipo de manutenção: ${type.name}`);
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <Badge variant="outline" className="ml-auto">Total: {types.length}</Badge>
+        </CardHeader>
+        <CardContent>
+          {types.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Wrench className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum tipo de manutenção cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo tipo.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {types.map((type) => (
+                    <TableRow key={type.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <Wrench className="h-4 w-4 mr-2" />
+                          {type.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(type)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(type.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }
