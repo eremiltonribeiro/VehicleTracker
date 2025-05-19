@@ -136,17 +136,10 @@ export function HistoryView() {
   
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Histórico de Movimentações</CardTitle>
-        <CardDescription>
-          Visualize e filtre os registros de movimentações de veículos
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 pt-6">
         {/* Filters */}
         <div className="space-y-4">
-          <h3 className="text-lg font-medium text-gray-700">Filtros</h3>
+          <h3 className="text-xl font-semibold text-blue-900">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="filter-type">Tipo de Registro</Label>
