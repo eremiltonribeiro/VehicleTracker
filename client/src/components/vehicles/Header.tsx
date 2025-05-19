@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Plus, History, Car, BarChart2, Wifi, WifiOff } from "lucide-react";
+import { Plus, History, Car, BarChart2, Wifi, WifiOff, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
