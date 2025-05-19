@@ -24,6 +24,7 @@ import {
   User,
   Filter,
   ArrowDownToLine,
+  FilePdf,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { offlineStorage } from "@/services/offlineStorage";
@@ -34,6 +35,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { jsPDF } from "jspdf";
+import { Logo } from "@/components/ui/logo";
+import { brandColors } from "@/lib/colors";
 
 export function ReportGenerator() {
   // Estado para filtros e configurações do relatório

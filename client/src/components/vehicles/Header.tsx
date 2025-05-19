@@ -1,10 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Plus, History, Car, BarChart2, Wifi, WifiOff, Settings } from "lucide-react";
+import { Plus, History, BarChart2, Wifi, WifiOff, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { offlineStorage } from "@/services/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/ui/logo";
+import { brandColors } from "@/lib/colors";
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -103,11 +105,11 @@ export function Header() {
   };
 
   return (
-    <header className="bg-primary-800 text-white shadow-lg sticky top-0 z-10">
+    <header style={{ backgroundColor: brandColors.navyBlue }} className="text-white shadow-lg sticky top-0 z-10">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Car className="h-6 w-6" />
-          <h1 className="text-xl font-bold">Sistema de Gestão de Frota</h1>
+        <div className="flex items-center gap-3">
+          <Logo width={40} height={40} />
+          <h1 className="text-xl font-bold text-white">Sistema de Gestão de Frota</h1>
         </div>
         <div className="flex items-center space-x-4">
           {/* Connection Status */}
