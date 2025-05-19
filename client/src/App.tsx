@@ -15,8 +15,7 @@ import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
 import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
-import { Navigation } from "@/components/vehicles/Navigation";
-import { Header } from "@/components/vehicles/Header";
+import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
 
 // Context para gerenciar estado de autenticação
@@ -151,23 +150,24 @@ function Router() {
   // Renderização normal para páginas autenticadas
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      {isAuthenticated && <Header />}
-      {isAuthenticated && <Navigation />}
-      <main className="flex-grow container mx-auto px-4 py-4 pb-12">
-        <Switch>
-          <PrivateRoute path="/" component={Welcome} />
-          <PrivateRoute path="/registros" component={Home} permission="registrations" />
-          <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
-          <PrivateRoute path="/registros/history" component={Home} permission="history" />
-          <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
-          <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
-          <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
-          <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
-          <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
-          <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
-          <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
-          <Route component={NotFound} />
-        </Switch>
+      {isAuthenticated && <SideNavigation />}
+      <main className="flex-grow lg:ml-64 px-4 py-6 pb-12">
+        <div className="max-w-6xl mx-auto">
+          <Switch>
+            <PrivateRoute path="/" component={Welcome} />
+            <PrivateRoute path="/registros" component={Home} permission="registrations" />
+            <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
+            <PrivateRoute path="/registros/history" component={Home} permission="history" />
+            <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
+            <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
+            <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
+            <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
+            <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
+            <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
+            <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
       </main>
     </div>
   );
