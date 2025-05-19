@@ -8,7 +8,7 @@ import { DriverForm } from "@/components/vehicles/DriverForm";
 import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
 import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
 import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
-import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, ArrowRight } from "lucide-react";
+import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, ArrowRight, Palette } from "lucide-react";
 import { offlineStorage } from "@/services/offlineStorage";
 import { useLocation } from "wouter";
 
@@ -79,6 +79,14 @@ export default function Settings() {
             >
               <ClipboardCheck className="h-5 w-5" />
               <span className="text-xs font-medium">Templates</span>
+            </Button>
+            
+            <Button 
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white sm:col-span-3"
+              onClick={() => setLocation("/configuracoes/app")}
+            >
+              <Palette className="h-5 w-5" />
+              <span className="text-xs font-medium">Configurações do Aplicativo</span>
             </Button>
           </div>
         </div>

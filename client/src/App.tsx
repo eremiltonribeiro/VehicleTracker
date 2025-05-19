@@ -162,6 +162,7 @@ function Router() {
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
             <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
             <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
+            <PrivateRoute path="/configuracoes/app" component={AppConfig} permission="settings" />
             <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
             <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
             <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
