@@ -259,19 +259,35 @@ export function SideNavigation() {
                 )}
                 
                 {userPermissions.settings && (
-                  <Button
-                    variant="ghost"
-                    className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
-                      isActive("/configuracoes") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
-                    }`}
-                    onClick={() => {
-                      setLocation("/configuracoes");
-                      setIsMobileMenuOpen(false);
-                    }}
-                  >
-                    <Settings className="h-5 w-5" />
-                    <span className="text-sm font-medium">Configurações</span>
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
+                        isActive("/configuracoes") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
+                      }`}
+                      onClick={() => {
+                        setLocation("/configuracoes");
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span className="text-sm font-medium">Configurações</span>
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
+                        isActive("/cadastros") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
+                      }`}
+                      onClick={() => {
+                        setLocation("/cadastros");
+                        setIsMobileMenuOpen(false);
+                      }}
+                    >
+                      <Car className="h-5 w-5" />
+                      <span className="text-sm font-medium">Cadastros</span>
+                    </Button>
+                  </>
                 )}
                 
                 {userPermissions.userManagement && (

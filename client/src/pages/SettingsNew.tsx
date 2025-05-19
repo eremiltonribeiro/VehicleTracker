@@ -47,10 +47,17 @@ export default function SettingsNew() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center py-6">
-            <h3 className="text-lg font-medium mb-2">Configurações de Cadastro</h3>
+            <h3 className="text-lg font-medium mb-2">Central de Cadastros</h3>
             <p className="text-muted-foreground mb-4">
-              A seção de cadastros está sendo atualizada para melhorar a experiência do usuário.
+              Agora você pode acessar todos os cadastros do sistema através do menu "Cadastros".
             </p>
+            <Button 
+              variant="default"
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setLocation("/cadastros")}
+            >
+              Acessar Cadastros
+            </Button>
           </div>
         </CardContent>
       </Card>
