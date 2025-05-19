@@ -27,6 +27,9 @@ const storage_config = multer.diskStorage({
   },
 });
 
+// Configurar middleware para analisar diferentes tipos de corpo de requisição
+import bodyParser from 'body-parser';
+
 const upload = multer({
   storage: storage_config,
   limits: {
@@ -43,6 +46,10 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configurar bodyParser antes de qualquer outra rota
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
+  
   // Configurar autenticação
   await setupAuth(app);
   

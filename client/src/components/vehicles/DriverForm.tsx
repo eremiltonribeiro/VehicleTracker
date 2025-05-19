@@ -108,6 +108,9 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         const response = await fetch(url, {
           method,
           body: formData,
+          headers: {
+            // Não incluir Content-Type porque o FormData define automaticamente com boundary
+          },
         });
         
         if (!response.ok) {
@@ -163,8 +166,13 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
     }
   };
   
-  const onSubmit = (data: DriverFormValues) => {
-    saveDriver.mutate(data);
+  const onSubmit = async (data: DriverFormValues) => {
+    try {
+      console.log("Enviando dados do motorista:", data);
+      saveDriver.mutate(data);
+    } catch (error) {
+      console.error("Erro ao enviar formulário:", error);
+    }
   };
   
   return (
