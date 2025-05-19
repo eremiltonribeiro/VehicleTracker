@@ -152,7 +152,7 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
                 <FormItem>
                   <FormLabel>Endereço*</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Av. Paulista, 1578" {...field} />
+                    <Input placeholder="Ex: Av. Paulista, 1578" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormDescription>
                     Endereço completo ou referência do posto

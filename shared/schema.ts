@@ -34,7 +34,6 @@ export const vehicles = pgTable("vehicles", {
   plate: text("plate").notNull().unique(),
   model: text("model").notNull(),
   year: integer("year").notNull(),
-  initialKm: integer("initial_km").default(0),
 });
 
 export const insertVehicleSchema = createInsertSchema(vehicles).pick({
@@ -42,7 +41,6 @@ export const insertVehicleSchema = createInsertSchema(vehicles).pick({
   plate: true,
   model: true,
   year: true,
-  initialKm: true,
 });
 
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;

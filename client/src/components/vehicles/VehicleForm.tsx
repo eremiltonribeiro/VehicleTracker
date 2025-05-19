@@ -37,7 +37,6 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
     plate: editingVehicle?.plate || "",
     model: editingVehicle?.model || "",
     year: editingVehicle?.year || new Date().getFullYear(),
-    initialKm: editingVehicle?.initialKm || 0,
   };
   
   const form = useForm<VehicleFormValues>({
@@ -229,25 +228,6 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                         placeholder="Ex: 2022" 
                         {...field} 
                         onChange={(e) => field.onChange(parseInt(e.target.value) || "")}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="initialKm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quilometragem Inicial*</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Ex: 0" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
