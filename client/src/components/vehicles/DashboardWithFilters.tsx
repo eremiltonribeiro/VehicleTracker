@@ -6,6 +6,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   PieChart,
@@ -21,7 +22,18 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { Fuel, Wrench, MapPin, Calendar, Search, FilterX, User, Car, CalendarRange } from "lucide-react";
+import { 
+  Fuel, 
+  Wrench, 
+  MapPin, 
+  Calendar, 
+  Search, 
+  FilterX, 
+  User, 
+  Car, 
+  CalendarRange,
+  ChevronDown
+} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { offlineStorage } from "@/services/offlineStorage";
 import { Button } from "@/components/ui/button";
@@ -32,8 +44,13 @@ import { pt } from "date-fns/locale";
 import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
-export function SimpleDashboard() {
+export function DashboardWithFilters() {
   // Estado para filtros
   const [timeFilter, setTimeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("resumo");
@@ -52,8 +69,8 @@ export function SimpleDashboard() {
   });
   const [useCustomDateRange, setUseCustomDateRange] = useState(false);
 
-  // Fetch all registrations with offline support
-  const { data: registrations = [], isLoading } = useQuery({
+  // Buscar registros com suporte offline
+  const { data: registrations = [], isLoading: loadingRegistrations } = useQuery({
     queryKey: ["/api/registrations"],
     queryFn: async () => {
       try {
@@ -66,7 +83,7 @@ export function SimpleDashboard() {
           }
         }
         
-        // Fallback to offline data
+        // Fallback para dados offline
         return await offlineStorage.getRegistrations();
       } catch (error) {
         console.error("Erro ao buscar registros:", error);
@@ -76,7 +93,7 @@ export function SimpleDashboard() {
   });
 
   // Buscar veículos
-  const { data: vehicles = [] } = useQuery({
+  const { data: vehicles = [], isLoading: loadingVehicles } = useQuery({
     queryKey: ["/api/vehicles"],
     queryFn: async () => {
       try {
@@ -98,7 +115,7 @@ export function SimpleDashboard() {
   });
   
   // Buscar motoristas
-  const { data: drivers = [] } = useQuery({
+  const { data: drivers = [], isLoading: loadingDrivers } = useQuery({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
       try {
@@ -119,7 +136,7 @@ export function SimpleDashboard() {
     }
   });
 
-  // Limpeza de filtros
+  // Limpar filtros
   const resetFilters = () => {
     setSelectedVehicleIds([]);
     setSelectedDriverIds([]);
@@ -128,17 +145,17 @@ export function SimpleDashboard() {
     setUseCustomDateRange(false);
   };
 
-  // Função para verificar se um veículo está selecionado
+  // Verificar se um veículo está selecionado
   const isVehicleSelected = (id: number) => {
     return selectedVehicleIds.length === 0 || selectedVehicleIds.includes(id);
   };
 
-  // Função para verificar se um motorista está selecionado
+  // Verificar se um motorista está selecionado
   const isDriverSelected = (id: number) => {
     return selectedDriverIds.length === 0 || selectedDriverIds.includes(id);
   };
 
-  // Função para alternar a seleção de um veículo
+  // Alternar seleção de veículo
   const toggleVehicleSelection = (id: number) => {
     if (selectedVehicleIds.includes(id)) {
       setSelectedVehicleIds(selectedVehicleIds.filter(vehicleId => vehicleId !== id));
@@ -147,7 +164,7 @@ export function SimpleDashboard() {
     }
   };
 
-  // Função para alternar a seleção de um motorista
+  // Alternar seleção de motorista
   const toggleDriverSelection = (id: number) => {
     if (selectedDriverIds.includes(id)) {
       setSelectedDriverIds(selectedDriverIds.filter(driverId => driverId !== id));
@@ -156,7 +173,24 @@ export function SimpleDashboard() {
     }
   };
 
-  // Função para filtrar os registros por período, veículo e motorista
+  // Obter texto informativo do período selecionado
+  const getTimeFilterText = () => {
+    if (useCustomDateRange) {
+      const fromDate = dateRange.from ? format(dateRange.from, 'dd/MM/yyyy') : '';
+      const toDate = dateRange.to ? format(dateRange.to, 'dd/MM/yyyy') : 'hoje';
+      return `${fromDate} até ${toDate}`;
+    }
+    
+    switch (timeFilter) {
+      case "month": return "Último mês";
+      case "3months": return "Últimos 3 meses";
+      case "6months": return "Últimos 6 meses";
+      case "year": return "Último ano";
+      default: return "Todo o período";
+    }
+  };
+
+  // Filtrar registros por período, veículo e motorista
   const filterRegistrations = (regs: any[]) => {
     // Filtrar por veículo
     let filteredRegs = regs;
@@ -218,7 +252,7 @@ export function SimpleDashboard() {
     return filteredRegs;
   };
   
-  // Preparar dados veículo quando os registros ou filtros mudarem
+  // Atualizar dados por veículo quando os registros ou filtros mudarem
   useEffect(() => {
     if (registrations.length && vehicles.length) {
       const filteredRegistrations = filterRegistrations(registrations);
@@ -261,6 +295,8 @@ export function SimpleDashboard() {
       setVehicleData(vehicleStats);
     }
   }, [registrations, vehicles, timeFilter, selectedVehicleIds, selectedDriverIds, dateRange, useCustomDateRange]);
+
+  const isLoading = loadingRegistrations || loadingVehicles || loadingDrivers;
 
   if (isLoading) {
     return (
@@ -364,6 +400,182 @@ export function SimpleDashboard() {
       consumo: parseFloat(v.avgConsumption.toFixed(2))
     }));
 
+  // Componente de filtros avançados
+  const AdvancedFilters = () => (
+    <Collapsible 
+      open={showFilters} 
+      onOpenChange={setShowFilters}
+      className="mt-2"
+    >
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" size="sm" className="flex items-center gap-2 mb-4">
+          <Search className="h-4 w-4" />
+          <span>Filtros avançados</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-6 border p-4 rounded-md bg-slate-50 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Filtro de data */}
+          <div className="space-y-2">
+            <h3 className="font-medium flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>Período</span>
+            </h3>
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox 
+                id="custom-date" 
+                checked={useCustomDateRange}
+                onCheckedChange={(checked) => setUseCustomDateRange(checked === true)}
+              />
+              <Label htmlFor="custom-date">Seleção personalizada</Label>
+            </div>
+            {useCustomDateRange ? (
+              <div className="flex flex-col gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-left font-normal w-full"
+                    >
+                      <CalendarRange className="h-4 w-4 mr-2" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                            {format(dateRange.to, "dd/MM/yyyy")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd/MM/yyyy")
+                        )
+                      ) : (
+                        "Selecione um período"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={setDateRange}
+                      locale={pt}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            ) : (
+              <div className="flex flex-col space-y-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-all" 
+                    checked={timeFilter === 'all'}
+                    onCheckedChange={() => setTimeFilter('all')}
+                  />
+                  <Label htmlFor="period-all">Todo o período</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-month" 
+                    checked={timeFilter === 'month'}
+                    onCheckedChange={() => setTimeFilter('month')}
+                  />
+                  <Label htmlFor="period-month">Último mês</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-3months" 
+                    checked={timeFilter === '3months'}
+                    onCheckedChange={() => setTimeFilter('3months')}
+                  />
+                  <Label htmlFor="period-3months">Últimos 3 meses</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-6months" 
+                    checked={timeFilter === '6months'}
+                    onCheckedChange={() => setTimeFilter('6months')}
+                  />
+                  <Label htmlFor="period-6months">Últimos 6 meses</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-year" 
+                    checked={timeFilter === 'year'}
+                    onCheckedChange={() => setTimeFilter('year')}
+                  />
+                  <Label htmlFor="period-year">Último ano</Label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filtro de veículos */}
+          <div className="space-y-2">
+            <h3 className="font-medium flex items-center gap-1">
+              <Car className="h-4 w-4" />
+              <span>Veículos</span>
+            </h3>
+            <div className="h-48 overflow-y-auto border rounded-md p-2">
+              {vehicles.map((vehicle: any) => (
+                <div key={vehicle.id} className="flex items-center gap-2 mb-1">
+                  <Checkbox 
+                    id={`vehicle-${vehicle.id}`} 
+                    checked={isVehicleSelected(vehicle.id)}
+                    onCheckedChange={() => toggleVehicleSelection(vehicle.id)}
+                  />
+                  <Label htmlFor={`vehicle-${vehicle.id}`} className="text-sm">
+                    {vehicle.name} ({vehicle.plate})
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtro de motoristas */}
+          <div className="space-y-2">
+            <h3 className="font-medium flex items-center gap-1">
+              <User className="h-4 w-4" />
+              <span>Motoristas</span>
+            </h3>
+            <div className="h-48 overflow-y-auto border rounded-md p-2">
+              {drivers.map((driver: any) => (
+                <div key={driver.id} className="flex items-center gap-2 mb-1">
+                  <Checkbox 
+                    id={`driver-${driver.id}`} 
+                    checked={isDriverSelected(driver.id)}
+                    onCheckedChange={() => toggleDriverSelection(driver.id)}
+                  />
+                  <Label htmlFor={`driver-${driver.id}`} className="text-sm">
+                    {driver.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-between">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={resetFilters}
+            className="flex items-center gap-1"
+          >
+            <FilterX className="h-4 w-4" />
+            Limpar filtros
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowFilters(false)}
+          >
+            Aplicar filtros
+          </Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -372,56 +584,17 @@ export function SimpleDashboard() {
             <CardTitle>Dashboard de Frota</CardTitle>
             <CardDescription>Visualização dos dados de movimentação de veículos</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Período:</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                variant={timeFilter === "all" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeFilter("all")}
-                className="text-xs h-8"
-              >
-                Todo
-              </Button>
-              <Button
-                variant={timeFilter === "month" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeFilter("month")}
-                className="text-xs h-8"
-              >
-                1 mês
-              </Button>
-              <Button
-                variant={timeFilter === "3months" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeFilter("3months")}
-                className="text-xs h-8"
-              >
-                3 meses
-              </Button>
-              <Button
-                variant={timeFilter === "6months" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeFilter("6months")}
-                className="text-xs h-8"
-              >
-                6 meses
-              </Button>
-              <Button
-                variant={timeFilter === "year" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTimeFilter("year")}
-                className="text-xs h-8"
-              >
-                1 ano
-              </Button>
+          <div className="flex flex-col items-end">
+            <div className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>Dados para: {getTimeFilterText()}</span>
             </div>
           </div>
         </CardHeader>
       </Card>
+
+      {/* Filtros avançados */}
+      <AdvancedFilters />
 
       {/* Cartões de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
