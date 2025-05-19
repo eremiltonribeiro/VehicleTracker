@@ -175,12 +175,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
+  
+  app.post("/api/fuel-types", async (req, res) => {
+    try {
+      const typeData = req.body;
+      
+      // Validar dados
+      insertFuelTypeSchema.parse(typeData);
+      
+      const fuelType = await storage.createFuelType(typeData);
+      res.status(201).json(fuelType);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao criar tipo de combustível:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   app.get("/api/maintenance-types", async (req, res) => {
     try {
       const maintenanceTypes = await storage.getMaintenanceTypes();
       res.json(maintenanceTypes);
     } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post("/api/maintenance-types", async (req, res) => {
+    try {
+      const typeData = req.body;
+      
+      // Validar dados
+      insertMaintenanceTypeSchema.parse(typeData);
+      
+      const maintenanceType = await storage.createMaintenanceType(typeData);
+      res.status(201).json(maintenanceType);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao criar tipo de manutenção:", error);
       res.status(500).json({ message: error.message });
     }
   });
