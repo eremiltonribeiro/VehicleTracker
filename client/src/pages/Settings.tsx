@@ -82,11 +82,11 @@ export default function Settings() {
             </Button>
             
             <Button 
-              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white sm:col-span-3"
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white"
               onClick={() => setLocation("/configuracoes/app")}
             >
               <Palette className="h-5 w-5" />
-              <span className="text-xs font-medium">Configurações do Aplicativo</span>
+              <span className="text-xs font-medium">Aparência</span>
             </Button>
           </div>
         </div>
