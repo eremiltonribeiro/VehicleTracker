@@ -1,7 +1,4 @@
-
 import { Vehicle, Driver } from "@/shared/schema";
-
-import { Vehicle } from "@/shared/schema";
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
