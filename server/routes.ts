@@ -222,16 +222,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Criar novo motorista
   app.post("/api/drivers", upload.single("image"), async (req, res) => {
     try {
-      const driverData = req.body;
+      console.log("Recebendo request para criar motorista:", req.body);
+      
+      // Criar objeto com apenas os campos válidos do schema
+      const driverData = {
+        name: req.body.name,
+        license: req.body.license,
+        phone: req.body.phone
+      };
       
       // Adicionar URL da imagem, se enviada
       if (req.file) {
         driverData.imageUrl = `/uploads/${req.file.filename}`;
       }
       
+      console.log("Dados a serem salvos:", driverData);
       const driver = await storage.createDriver(driverData);
+      console.log("Motorista criado com sucesso:", driver);
+      
       res.status(201).json(driver);
     } catch (error: any) {
+      console.error("Erro ao criar motorista:", error);
       res.status(500).json({ message: error.message });
     }
   });
