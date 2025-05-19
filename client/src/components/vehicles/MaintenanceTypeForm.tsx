@@ -63,7 +63,7 @@ export function MaintenanceTypeForm({ onSuccess, editingType }: MaintenanceTypeF
         }
         
         // Send data to server
-        const response = await apiRequest('/api/maintenance-types', {
+        const response = await fetch('/api/maintenance-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -71,7 +71,11 @@ export function MaintenanceTypeForm({ onSuccess, editingType }: MaintenanceTypeF
           body: JSON.stringify(data),
         });
         
-        return response;
+        if (!response.ok) {
+          throw new Error('Erro ao salvar tipo de manutenção');
+        }
+        
+        return await response.json();
       } catch (error) {
         console.error("Erro ao criar tipo de manutenção:", error);
         throw error;
