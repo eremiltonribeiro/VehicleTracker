@@ -17,6 +17,7 @@ import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
+import { syncManager } from "./services/syncManager";
 
 // Context para gerenciar estado de autenticação
 export const useAuth = () => {
@@ -174,6 +175,29 @@ function Router() {
 }
 
 function App() {
+  // Inicializar o gerenciador de sincronização quando o aplicativo carrega
+  useEffect(() => {
+    // Inicializa o gerenciador de sincronização para suporte offline
+    syncManager.initialize();
+    
+    // Verificar conexão e mostrar mensagens apropriadas
+    const handleOnlineStatusChange = () => {
+      const isOnline = navigator.onLine;
+      console.log(`Status de conexão alterado: ${isOnline ? 'online' : 'offline'}`);
+    };
+    
+    window.addEventListener('online', handleOnlineStatusChange);
+    window.addEventListener('offline', handleOnlineStatusChange);
+    
+    // Verificar o status inicial
+    handleOnlineStatusChange();
+    
+    return () => {
+      window.removeEventListener('online', handleOnlineStatusChange);
+      window.removeEventListener('offline', handleOnlineStatusChange);
+    };
+  }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
