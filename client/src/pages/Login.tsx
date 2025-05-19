@@ -124,7 +124,7 @@ export default function Login() {
           </div>
           <CardTitle className="text-xl text-center text-blue-900">Sistema de Gestão de Frota</CardTitle>
           <CardDescription className="text-center text-gray-600">
-            Acesse sua conta para gerenciar veículos, registros de abastecimento, manutenções e viagens.
+            Acesse sua conta para gerenciar veículos, registros de abastecimento, manutenções e viagens e teste.
           </CardDescription>
         </CardHeader>
         
