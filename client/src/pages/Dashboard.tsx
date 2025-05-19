@@ -10,35 +10,35 @@ export default function Dashboard() {
   
   const { data: vehicles = [] } = useQuery({
     queryKey: ['/api/vehicles'],
-  });
+  }) as { data: any[] };
   
   const { data: drivers = [] } = useQuery({
     queryKey: ['/api/drivers'],
-  });
+  }) as { data: any[] };
   
   const { data: registrations = [] } = useQuery({
     queryKey: ['/api/registrations'],
-  });
+  }) as { data: any[] };
 
   // Estatísticas para o dashboard
   const stats = [
     {
       title: 'Veículos',
-      value: vehicles.length,
+      value: Array.isArray(vehicles) ? vehicles.length : 0,
       icon: <Car className="h-6 w-6" />,
       description: 'Total da frota',
       color: 'bg-blue-100 text-blue-700'
     },
     {
       title: 'Motoristas',
-      value: drivers.length,
+      value: Array.isArray(drivers) ? drivers.length : 0,
       icon: <User className="h-6 w-6" />,
       description: 'Cadastrados',
       color: 'bg-green-100 text-green-700'
     },
     {
       title: 'Registros',
-      value: registrations.length,
+      value: Array.isArray(registrations) ? registrations.length : 0,
       icon: <CalendarCheck className="h-6 w-6" />,
       description: 'Total de registros',
       color: 'bg-purple-100 text-purple-700'
