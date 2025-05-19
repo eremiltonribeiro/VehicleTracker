@@ -1,4 +1,4 @@
-import { Vehicle, Driver, FuelStation, FuelType, MaintenanceType } from "@/shared/schema";
+import { Vehicle, Driver, FuelStation, FuelType, MaintenanceType } from "@shared/schema";
 // Removida importação duplicada de Vehicle e adicionadas FuelStation, FuelType, MaintenanceType
 
 import { useState } from "react";
