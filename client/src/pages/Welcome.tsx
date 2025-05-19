@@ -37,7 +37,7 @@ export default function Welcome() {
             </p>
             <Button 
               className="w-full" 
-              onClick={() => setLocation("/")}
+              onClick={() => setLocation("/registros")}
               style={{ backgroundColor: '#12305D' }}
             >
               Adicionar Registro
@@ -61,7 +61,7 @@ export default function Welcome() {
             </p>
             <Button 
               className="w-full" 
-              onClick={() => setLocation("/?view=history")}
+              onClick={() => setLocation("/registros/history")}
               style={{ backgroundColor: '#12305D' }}
             >
               Ver Histórico
@@ -85,7 +85,7 @@ export default function Welcome() {
             </p>
             <Button 
               className="w-full" 
-              onClick={() => setLocation("/?view=dashboard")}
+              onClick={() => setLocation("/dashboard")}
               style={{ backgroundColor: '#12305D' }}
             >
               Acessar Dashboard
