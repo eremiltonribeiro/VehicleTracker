@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Plus, History, BarChart2, Wifi, WifiOff, Settings, FileText, Download } from "lucide-react";
+import { Plus, History, BarChart2, Wifi, WifiOff, Settings, FileText, Download, LogOut, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -136,9 +136,25 @@ export function Header() {
             <InstallPWAButton />
           </div>
           
-          {/* Authentication Component */}
-          <div className="mr-1">
+          {/* Authentication and Logout Button */}
+          <div className="flex items-center gap-2">
             <AuthStatus />
+            
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-red-700 hover:text-red-900 hover:bg-red-100"
+              title="Sair"
+              onClick={() => {
+                // Remover dados de autenticação do localStorage
+                localStorage.removeItem("authenticated");
+                localStorage.removeItem("user");
+                // Redirecionar para tela de login
+                window.location.href = "/login";
+              }}
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Navigation Buttons */}

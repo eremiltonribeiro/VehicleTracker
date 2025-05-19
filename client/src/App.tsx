@@ -9,6 +9,7 @@ import Settings from "@/pages/Settings";
 import Welcome from "@/pages/Welcome";
 import Reports from "@/pages/Reports";
 import Login from "@/pages/Login";
+import UserManagement from "@/pages/UserManagement";
 import { Navigation } from "@/components/vehicles/Navigation";
 import { Header } from "@/components/vehicles/Header";
 import { useEffect, useState } from "react";
@@ -94,6 +95,7 @@ function Router() {
           <PrivateRoute path="/registros/:view" component={Home} />
           <PrivateRoute path="/relatorios" component={Reports} />
           <PrivateRoute path="/configuracoes" component={Settings} />
+          <PrivateRoute path="/usuarios" component={UserManagement} />
           <Route component={NotFound} />
         </Switch>
       </main>

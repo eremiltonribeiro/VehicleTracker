@@ -1,9 +1,17 @@
 import { Link, useLocation } from "wouter";
-import { Home, BarChart2, History, Settings, Car, Plus, FileText } from "lucide-react";
+import { Home, BarChart2, History, Settings, Car, Plus, FileText, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 export function Navigation() {
   const [location, setLocation] = useLocation();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Verificar se o usuário é administrador
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    setIsAdmin(userData.role === "admin");
+  }, []);
   
   // Helper function to check if a route is active
   const isActive = (route: string) => {
@@ -13,6 +21,7 @@ export function Navigation() {
     if (route === "/registros" && location === "/registros") return true;
     if (route === "/relatorios" && location.includes("relatorios")) return true;
     if (route === "/configuracoes" && location.includes("configuracoes")) return true;
+    if (route === "/usuarios" && location.includes("usuarios")) return true;
     return false;
   };
   
@@ -73,6 +82,17 @@ export function Navigation() {
             <Settings className="h-4 w-4" />
             <span className="hidden md:inline">Configurações</span>
           </Button>
+          
+          {isAdmin && (
+            <Button
+              variant={isActive("/usuarios") ? "default" : "outline"}
+              className="flex items-center gap-2 rounded-full"
+              onClick={() => setLocation("/usuarios")}
+            >
+              <Users className="h-4 w-4" />
+              <span className="hidden md:inline">Usuários</span>
+            </Button>
+          )}
         </div>
       </div>
     </div>
