@@ -1,114 +1,52 @@
-import { useEffect, useState } from "react";
 import { Button } from "./button";
-import { Avatar, AvatarImage, AvatarFallback } from "./avatar";
-import { LogOut, LogIn, UserCircle } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "./dropdown-menu";
-
-interface User {
-  id: string;
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-  profileImageUrl?: string;
-  role?: string;
-}
+import { LogIn, LogOut, User } from "lucide-react";
+import { useAuth, AuthUser } from "@/hooks/useAuth";
+import { Skeleton } from "./skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
 
 export function AuthStatus() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        const response = await fetch("/api/auth/user");
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error("Erro ao verificar autenticação:", error);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchUser();
-  }, []);
-
-  function handleLogin() {
-    window.location.href = "/api/login";
-  }
-
-  function handleLogout() {
-    window.location.href = "/api/logout";
-  }
+  const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
+    return <Skeleton className="h-9 w-24" />;
+  }
+
+  if (!isAuthenticated) {
     return (
-      <Button variant="ghost" size="sm" disabled>
-        <span className="h-5 w-5 animate-pulse rounded-full bg-muted"></span>
+      <Button 
+        onClick={() => window.location.href = "/api/login"} 
+        variant="outline" 
+        size="sm"
+        className="flex items-center gap-1 text-blue-900 border-blue-900 hover:bg-blue-100"
+      >
+        <LogIn className="w-4 h-4" />
+        <span>Entrar</span>
       </Button>
     );
   }
 
-  // Usuário não está logado
-  if (!user) {
-    return (
-      <Button variant="outline" size="sm" onClick={handleLogin}>
-        <LogIn className="mr-2 h-4 w-4" />
-        Entrar
-      </Button>
-    );
-  }
-
-  // Usuário está logado
-  const displayName = user.firstName || user.email?.split('@')[0] || 'Usuário';
+  const userData = user as AuthUser;
   
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative h-8 rounded-full">
-          <Avatar className="h-8 w-8">
-            {user.profileImageUrl ? (
-              <AvatarImage src={user.profileImageUrl} alt={displayName} />
-            ) : (
-              <AvatarFallback>
-                <UserCircle className="h-6 w-6" />
-              </AvatarFallback>
-            )}
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{displayName}</p>
-            {user.email && (
-              <p className="text-xs leading-none text-muted-foreground">
-                {user.email}
-              </p>
-            )}
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Sair</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center gap-2">
+      <Avatar className="h-8 w-8">
+        {userData.profileImageUrl ? (
+          <AvatarImage src={userData.profileImageUrl} alt={userData.email || ""} />
+        ) : (
+          <AvatarFallback className="bg-blue-800 text-white">
+            {userData.email ? userData.email.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+          </AvatarFallback>
+        )}
+      </Avatar>
+      <Button 
+        onClick={() => window.location.href = "/api/logout"} 
+        variant="outline" 
+        size="sm"
+        className="flex items-center gap-1 text-red-700 border-red-700 hover:bg-red-50"
+      >
+        <LogOut className="w-4 h-4" />
+        <span>Sair</span>
+      </Button>
+    </div>
   );
 }
