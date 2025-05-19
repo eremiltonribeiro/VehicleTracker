@@ -163,7 +163,7 @@ export function Header() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setLocation("/?view=dashboard")}
+              onClick={() => setLocation("/dashboard")}
               className={`text-blue-900 hover:bg-blue-100 rounded-full ${isDashboard ? 'bg-blue-100' : ''}`}
               title="Dashboard"
             >
@@ -175,7 +175,7 @@ export function Header() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setLocation("/")}
+                onClick={() => setLocation("/registros")}
                 className="text-blue-900 hover:bg-blue-100 rounded-full"
                 title="Novo Registro"
               >
@@ -185,7 +185,7 @@ export function Header() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setLocation("/?view=history")}
+                onClick={() => setLocation("/registros/history")}
                 className="text-blue-900 hover:bg-blue-100 rounded-full"
                 title="Histórico"
               >
