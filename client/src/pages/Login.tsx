@@ -55,10 +55,10 @@ export default function Login() {
             <img 
               src="/logo-granduvale.svg" 
               alt="Granduvale Mineração" 
-              className="h-16 mx-auto mb-2"
+              className="h-24 mx-auto mb-2"
             />
           </div>
-          <CardTitle className="text-2xl text-center text-blue-900">Sistema de Gestão de Frota</CardTitle>
+          <CardTitle className="text-xl text-center text-blue-900">Sistema de Gestão de Frota</CardTitle>
           <CardDescription className="text-center text-gray-600">
             Acesse sua conta para gerenciar veículos, registros de abastecimento, manutenções e viagens.
           </CardDescription>

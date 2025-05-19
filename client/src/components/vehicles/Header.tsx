@@ -110,7 +110,7 @@ export function Header() {
     <header className="bg-white shadow-lg sticky top-0 z-10 border-b-2 border-blue-900">
       <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-wrap justify-between items-center">
         <div className="flex items-center gap-2 py-1">
-          <Logo width={36} height={36} showText={false} />
+          <Logo showText={false} />
           <h1 className="text-base sm:text-xl font-bold text-blue-900 break-words">
             <span className="whitespace-normal break-all">Sistema de Gestão de Frota</span>
           </h1>
