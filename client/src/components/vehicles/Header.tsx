@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Plus, History, BarChart2, Wifi, WifiOff, Settings } from "lucide-react";
+import { Plus, History, BarChart2, Wifi, WifiOff, Settings, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -105,22 +105,24 @@ export function Header() {
   };
 
   return (
-    <header style={{ backgroundColor: brandColors.navyBlue }} className="text-white shadow-lg sticky top-0 z-10">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <Logo width={40} height={40} />
-          <h1 className="text-xl font-bold text-white">Sistema de Gestão de Frota</h1>
+    <header className="bg-white shadow-lg sticky top-0 z-10 border-b-2 border-blue-900">
+      <div className="container mx-auto px-2 sm:px-4 py-2 flex flex-wrap justify-between items-center">
+        <div className="flex items-center gap-2 py-1">
+          <Logo width={36} height={36} showText={false} />
+          <h1 className="text-base sm:text-xl font-bold text-blue-900 break-words">
+            <span className="whitespace-normal break-all">Sistema de Gestão de Frota</span>
+          </h1>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Connection Status */}
-          <div className="mr-2">
+          <div className="mr-1 sm:mr-2 hidden sm:block">
             {isOnline ? (
-              <Badge variant="outline" className="bg-green-800 text-white border-0 flex items-center">
+              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 flex items-center">
                 <Wifi className="h-3 w-3 mr-1" />
                 Online
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-red-800 text-white border-0 flex items-center">
+              <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 flex items-center">
                 <WifiOff className="h-3 w-3 mr-1" />
                 Offline
               </Badge>
@@ -128,13 +130,13 @@ export function Header() {
           </div>
 
           {/* Navigation Buttons */}
-          <div className="flex space-x-2">
+          <div className="flex gap-1 sm:gap-2">
             {/* Dashboard Button */}
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => setLocation("/?view=dashboard")}
-              className={`text-white hover:bg-primary-700 rounded-full ${isDashboard ? 'bg-primary-700' : ''}`}
+              className={`text-blue-900 hover:bg-blue-100 rounded-full ${isDashboard ? 'bg-blue-100' : ''}`}
               title="Dashboard"
             >
               <BarChart2 className="h-5 w-5" />
@@ -146,7 +148,7 @@ export function Header() {
                 variant="ghost" 
                 size="icon" 
                 onClick={() => setLocation("/")}
-                className="text-white hover:bg-primary-700 rounded-full"
+                className="text-blue-900 hover:bg-blue-100 rounded-full"
                 title="Novo Registro"
               >
                 <Plus className="h-5 w-5" />
@@ -156,7 +158,7 @@ export function Header() {
                 variant="ghost" 
                 size="icon" 
                 onClick={() => setLocation("/?view=history")}
-                className="text-white hover:bg-primary-700 rounded-full"
+                className="text-blue-900 hover:bg-blue-100 rounded-full"
                 title="Histórico"
               >
                 <History className="h-5 w-5" />
@@ -168,10 +170,21 @@ export function Header() {
               variant="ghost" 
               size="icon" 
               onClick={() => setLocation("/configuracoes")}
-              className="text-white hover:bg-primary-700 rounded-full"
+              className="text-blue-900 hover:bg-blue-100 rounded-full"
               title="Configurações"
             >
               <Settings className="h-5 w-5" />
+            </Button>
+
+            {/* Reports Button */}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setLocation("/relatorios")}
+              className="text-yellow-700 hover:bg-yellow-100 rounded-full"
+              title="Relatórios"
+            >
+              <FileText className="h-5 w-5" />
             </Button>
 
             {/* Sync Button (shown only when there are pending syncs) */}
@@ -181,9 +194,9 @@ export function Header() {
                 size="sm"
                 onClick={syncData}
                 disabled={!isOnline}
-                className="text-white border-white hover:bg-primary-700"
+                className="text-blue-900 border-blue-900 hover:bg-blue-100"
               >
-                Sincronizar ({pendingSyncs})
+                <span className="text-xs">Sincronizar ({pendingSyncs})</span>
               </Button>
             )}
           </div>

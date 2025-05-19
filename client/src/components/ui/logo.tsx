@@ -9,10 +9,10 @@ interface LogoProps {
 export function Logo({ width = 40, height = 40, showText = true }: LogoProps) {
   return (
     <div className="flex items-center gap-2">
-      <div className="relative" style={{ width, height }}>
+      <div className="relative rounded-sm overflow-hidden" style={{ width, height }}>
         {/* Quadrado azul marinho maior */}
         <div 
-          className="absolute" 
+          className="absolute rounded-sm" 
           style={{ 
             width: width * 0.8, 
             height: height * 0.8, 
@@ -24,7 +24,7 @@ export function Logo({ width = 40, height = 40, showText = true }: LogoProps) {
         
         {/* Quadrado dourado */}
         <div 
-          className="absolute" 
+          className="absolute rounded-sm" 
           style={{ 
             width: width * 0.5, 
             height: height * 0.5, 
@@ -36,7 +36,7 @@ export function Logo({ width = 40, height = 40, showText = true }: LogoProps) {
         
         {/* Quadrado azul marinho menor */}
         <div 
-          className="absolute" 
+          className="absolute rounded-sm" 
           style={{ 
             width: width * 0.4, 
             height: height * 0.4, 
@@ -49,10 +49,10 @@ export function Logo({ width = 40, height = 40, showText = true }: LogoProps) {
       
       {showText && (
         <div className="flex flex-col">
-          <span className="font-bold text-sm md:text-lg tracking-wider" style={{ color: brandColors.navyBlue }}>
+          <span className="font-bold text-sm tracking-wider leading-tight" style={{ color: brandColors.navyBlue }}>
             GRANDUVALE
           </span>
-          <span className="text-[10px] md:text-xs tracking-wide" style={{ color: brandColors.gold }}>
+          <span className="text-[9px] tracking-wide leading-tight" style={{ color: brandColors.gold }}>
             MINERAÇÃO
           </span>
         </div>
