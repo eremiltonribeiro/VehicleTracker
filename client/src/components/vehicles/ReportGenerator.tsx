@@ -308,73 +308,86 @@ export function ReportGenerator() {
     link.remove();
   };
 
-  // Gerar relatório em PDF usando jsPDF
+  // Função para gerar relatório PDF
   const generatePDFReport = () => {
-    const doc = new jsPDF();
-    const margin = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const filteredData = prepareReportData();
+    // Mostrar indicador de progresso
+    setIsGenerating(true);
     
-    // Cores Granduvale Mineração
-    const navyBlue = [18, 30, 61]; // rgb(18, 30, 61) em [r,g,b]
-    const gold = [184, 155, 28];   // rgb(184, 155, 28) em [r,g,b]
+    try {
+      // Criar documento PDF
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      // Configurações básicas
+      const margin = 15;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const filteredData = prepareReportData();
+      
+      // Cores da Granduvale
+      const blue = [18, 30, 61]; // RGB
+      const gold = [220, 180, 40]; // RGB
+      
+      // Desenhar cabeçalho
+      doc.setFillColor(blue[0], blue[1], blue[2]);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+      
+      // Título
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('GRANDUVALE MINERAÇÃO', margin, 10);
+      
+      // Subtítulo
+      doc.setTextColor(gold[0], gold[1], gold[2]);
+      doc.setFontSize(10);
+      doc.text('Sistema de Gestão de Frota', margin, 18);
+      
+      // Definir título do relatório
+      const reportTitle = reportType === "fuel" ? "Abastecimentos" : 
+                        reportType === "maintenance" ? "Manutenções" : 
+                        reportType === "trip" ? "Viagens" : "Registros";
+      
+      // Título do relatório
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.text(`Relatório de ${reportTitle}`, margin, 35);
+      
+      // Informações do relatório
+      doc.setFontSize(9);
+      doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 42);
+      doc.text(`Período: Todo o período`, margin, 48);
+      
+      // Linha separadora
+      doc.setDrawColor(gold[0], gold[1], gold[2]);
+      doc.setLineWidth(0.5);
+      doc.line(margin, 52, pageWidth - margin, 52);
+      
+      // Configurações da tabela
+      doc.setFontSize(9);
+      doc.setTextColor(blue[0], blue[1], blue[2]);
     
-    // Adicionar cabeçalho com logo da empresa
-    doc.setFillColor(navyBlue[0], navyBlue[1], navyBlue[2]);
-    doc.rect(0, 0, pageWidth, 30, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GRANDUVALE MINERAÇÃO', margin + 25, 12);
-    
-    doc.setTextColor(gold[0], gold[1], gold[2]);
-    doc.setFontSize(12);
-    doc.text('Sistema de Gestão de Frota', margin + 25, 20);
-    
-    // Título do relatório
-    doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
-    doc.setFontSize(14);
-    doc.text(`Relatório de ${getReportTypeName(reportType)}`, margin, 40);
-    
-    // Data de geração
-    doc.setFontSize(10);
-    doc.text(`Gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, margin, 48);
-    
-    // Informações dos filtros aplicados
-    doc.setFontSize(10);
-    doc.text(`Período: ${dateRange.from 
-      ? `${format(dateRange.from, "dd/MM/yyyy")}${dateRange.to ? ` a ${format(dateRange.to, "dd/MM/yyyy")}` : ""}` 
-      : "Todo o período"}`, margin, 54);
-    
-    // Adicionar linha divisória
-    doc.setDrawColor(gold[0], gold[1], gold[2]);
-    doc.setLineWidth(0.5);
-    doc.line(margin, 58, pageWidth - margin, 58);
-    
-    // Configurar para tabela de dados
-    doc.setFontSize(9);
-    doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
-    
-    // Cabeçalhos da tabela de acordo com o tipo de relatório
-    let headers = [];
-    let startY = 65;
-    const lineHeight = 8;
-    
-    switch (reportType) {
-      case "fuel":
-        headers = ["Data", "Veículo", "Motorista", "Posto", "Combustível", "Litros", "Preço", "Total", "Km"];
-        break;
-      case "maintenance":
-        headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor", "Km"];
-        break;
-      case "trip":
-        headers = ["Data", "Veículo", "Motorista", "Origem", "Destino", "Km Inicial", "Km Final", "Distância"];
-        break;
-      default:
-        headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor"];
-    }
+      // Cabeçalhos da tabela de acordo com o tipo de relatório
+      let headers = [];
+      let startY = 65;
+      const lineHeight = 8;
+      
+      switch (reportType) {
+        case "fuel":
+          headers = ["Data", "Veículo", "Motorista", "Posto", "Combustível", "Litros", "Preço", "Total", "Km"];
+          break;
+        case "maintenance":
+          headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor", "Km"];
+          break;
+        case "trip":
+          headers = ["Data", "Veículo", "Motorista", "Origem", "Destino", "Km Inicial", "Km Final", "Distância"];
+          break;
+        default:
+          headers = ["Data", "Veículo", "Motorista", "Tipo", "Descrição", "Valor"];
+      }
     
     // Desenhar cabeçalhos da tabela
     const colWidth = (pageWidth - 2 * margin) / headers.length;
