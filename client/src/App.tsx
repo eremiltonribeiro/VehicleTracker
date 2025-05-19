@@ -17,6 +17,7 @@ import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import AppConfig from "@/pages/AppConfig";
 import Drivers from "@/pages/Drivers";
+import DriversSimple from "@/pages/DriversSimple";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
 import { syncManager } from "./services/syncManager";
@@ -161,7 +162,7 @@ function Router() {
             <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
-            <PrivateRoute path="/drivers" component={Drivers} permission="driverManagement" />
+            <PrivateRoute path="/drivers" component={DriversSimple} permission="driverManagement" />
             <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
             <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
             <PrivateRoute path="/configuracoes/app" component={AppConfig} permission="settings" />

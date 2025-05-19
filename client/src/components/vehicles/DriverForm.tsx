@@ -60,18 +60,18 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         console.log("Iniciando salvamento do motorista:", data);
         const isEditing = !!editingDriver;
         
-        // Dados para enviar ao servidor
+        // Simplificamos os dados para que não haja problemas no envio
         const driverData = {
-          name: data.name,
-          license: data.license,
-          phone: data.phone
+          name: String(data.name),
+          license: String(data.license),
+          phone: String(data.phone)
         };
         
         const url = isEditing 
           ? `/api/drivers/${editingDriver?.id}` 
           : '/api/drivers';
         
-        console.log("Enviando para URL:", url, "Método:", isEditing ? 'PUT' : 'POST');
+        console.log("Enviando para URL:", url, "Método:", isEditing ? 'PUT' : 'POST', "Dados:", driverData);
         
         const response = await fetch(url, {
           method: isEditing ? 'PUT' : 'POST',
