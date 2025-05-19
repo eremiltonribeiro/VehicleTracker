@@ -1,3 +1,6 @@
+
+import { Vehicle } from "@/shared/schema";
+
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -288,7 +291,7 @@ function VehiclesList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vehicles.map((vehicle) => (
+                  {vehicles.map((vehicle: Vehicle) => (
                     <TableRow key={vehicle.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
