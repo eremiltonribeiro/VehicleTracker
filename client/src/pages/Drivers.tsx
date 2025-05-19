@@ -24,7 +24,7 @@ export default function Drivers() {
   
   const { data: drivers = [], isLoading } = useQuery({
     queryKey: ['/api/drivers'],
-  });
+  }) as { data: any[], isLoading: boolean };
   
   const deleteDriver = useMutation({
     mutationFn: async (driverId: number) => {
@@ -169,8 +169,8 @@ export default function Drivers() {
       </Tabs>
       
       <AlertDialogDelete 
-        open={driverToDelete !== null}
-        onOpenChange={(isOpen) => !isOpen && setDriverToDelete(null)}
+        isOpen={driverToDelete !== null}
+        setIsOpen={(isOpen) => !isOpen && setDriverToDelete(null)}
         title="Excluir Motorista"
         description="Tem certeza que deseja excluir este motorista? Esta ação não pode ser desfeita."
         onConfirm={confirmDelete}

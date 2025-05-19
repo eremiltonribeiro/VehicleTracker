@@ -161,6 +161,7 @@ function Router() {
             <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
+            <PrivateRoute path="/drivers" component={Drivers} permission="driverManagement" />
             <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
             <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
             <PrivateRoute path="/configuracoes/app" component={AppConfig} permission="settings" />
