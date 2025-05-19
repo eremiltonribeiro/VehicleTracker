@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
-import Settings from "@/pages/Settings";
+import Settings from "@/pages/SettingsNew";
 import Welcome from "@/pages/Welcome";
 import Reports from "@/pages/Reports";
 import Login from "@/pages/Login";
