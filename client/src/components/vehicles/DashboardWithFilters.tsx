@@ -578,20 +578,18 @@ export function DashboardWithFilters() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle>Dashboard de Frota</CardTitle>
-            <CardDescription>Visualização dos dados de movimentação de veículos</CardDescription>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2">
+        <div className="text-xl font-semibold text-blue-900 mb-2 sm:mb-0">
+          <div className="flex items-center gap-2">
+            <Car className="h-5 w-5 text-blue-700" />
+            <span>Painel de Controle</span>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>Dados para: {getTimeFilterText()}</span>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+        </div>
+        <div className="text-sm text-gray-600 flex items-center gap-1 mb-2 sm:mb-0">
+          <Calendar className="h-4 w-4" />
+          <span>Dados para: {getTimeFilterText()}</span>
+        </div>
+      </div>
 
       {/* Filtros avançados */}
       <AdvancedFilters />
