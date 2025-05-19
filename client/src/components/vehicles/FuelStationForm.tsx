@@ -2,7 +2,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 import { insertFuelStationSchema } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -45,8 +44,8 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
           // Generate a temporary id (negative to avoid collisions with server ids)
           const tempId = -(Date.now());
           
-          // Create station object
-          const station = {
+          // Create fuelStation object
+          const fuelStation = {
             ...data,
             id: tempId,
           };
@@ -54,16 +53,16 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
           // Get current stations
           const stations = await offlineStorage.getFuelStations();
           
-          // Add new station
-          stations.push(station);
+          // Add new fuelStation
+          stations.push(fuelStation);
           
           // Save to local storage
           await offlineStorage.saveFuelStations(stations);
           
-          return station;
+          return fuelStation;
         }
         
-        // Send data to server
+        // Send data to server using fetch directly
         const response = await fetch('/api/fuel-stations', {
           method: 'POST',
           headers: {
@@ -78,7 +77,7 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
         
         return await response.json();
       } catch (error) {
-        console.error("Erro ao criar posto de combustível:", error);
+        console.error("Erro ao criar posto:", error);
         throw error;
       }
     },
@@ -117,12 +116,12 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Fuel className="h-5 w-5" />
-          {editingStation ? "Editar Posto de Combustível" : "Novo Posto de Combustível"}
+          {editingStation ? "Editar Posto" : "Novo Posto"}
         </CardTitle>
         <CardDescription>
           {editingStation 
             ? "Altere os dados do posto conforme necessário" 
-            : "Cadastre um novo posto de combustível para abastecimentos"}
+            : "Preencha os dados para cadastrar um novo posto de combustível"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -135,10 +134,14 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
                 <FormItem>
                   <FormLabel>Nome do Posto*</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Posto Ipiranga" {...field} />
+                    <Input 
+                      placeholder="Ex: Posto Ipiranga" 
+                      {...field} 
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Nome completo do posto de combustível
+                    Nome da empresa ou posto de combustível
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -152,7 +155,11 @@ export function FuelStationForm({ onSuccess, editingStation }: FuelStationFormPr
                 <FormItem>
                   <FormLabel>Endereço*</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Av. Paulista, 1578" {...field} value={field.value || ""} />
+                    <Input 
+                      placeholder="Ex: Av. Paulista, 1578" 
+                      {...field} 
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormDescription>
                     Endereço completo ou referência do posto

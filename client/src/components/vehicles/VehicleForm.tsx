@@ -9,8 +9,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Save, Car, AlertCircle } from "lucide-react";
+import { Loader2, Save, Car } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { offlineStorage } from "@/services/offlineStorage";
 
@@ -28,7 +27,6 @@ interface VehicleFormProps {
 
 export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -91,49 +89,42 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
           formData.append('image', data.image);
         }
         
-        // Send data to server
+        // Send data to server using fetch directly
         const response = await fetch('/api/vehicles', {
-          method: editingVehicle ? 'PUT' : 'POST',
+          method: 'POST',
           body: formData,
         });
         
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Erro ao salvar veículo');
+          throw new Error('Erro ao salvar veículo');
         }
         
         return await response.json();
-      } catch (error: any) {
+      } catch (error) {
         console.error("Erro ao criar veículo:", error);
-        setSubmissionError(error.message || "Ocorreu um erro ao salvar o veículo");
         throw error;
       }
     },
     onSuccess: () => {
       toast({
         title: "Sucesso!",
-        description: `Veículo ${editingVehicle ? 'atualizado' : 'cadastrado'} com sucesso.`,
+        description: "Veículo cadastrado com sucesso.",
       });
       
       // Reset form
-      if (!editingVehicle) {
-        form.reset();
-        setImagePreview(null);
-      }
+      form.reset();
+      setImagePreview(null);
       
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/vehicles'] });
       
-      // Clear any submission errors
-      setSubmissionError(null);
-      
       // Call success callback if provided
       if (onSuccess) onSuccess();
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Erro!",
-        description: "Ocorreu um erro ao processar a requisição. Verifique os dados e tente novamente.",
+        description: "Ocorreu um erro ao cadastrar o veículo. Tente novamente.",
         variant: "destructive",
       });
       
@@ -154,7 +145,6 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
   };
   
   const onSubmit = (data: VehicleFormValues) => {
-    setSubmissionError(null);
     createVehicle.mutate(data);
   };
   
@@ -172,14 +162,6 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {submissionError && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Erro</AlertTitle>
-            <AlertDescription>{submissionError}</AlertDescription>
-          </Alert>
-        )}
-        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -190,11 +172,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                   <FormItem>
                     <FormLabel>Nome do Veículo*</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Ex: Ford Ranger" 
-                        {...field} 
-                        value={field.value || ""} 
-                      />
+                      <Input placeholder="Ex: Ford Ranger" {...field} />
                     </FormControl>
                     <FormDescription>
                       Identifique o veículo de forma clara
@@ -211,11 +189,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                   <FormItem>
                     <FormLabel>Placa*</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Ex: ABC-1234" 
-                        {...field} 
-                        value={field.value || ""} 
-                      />
+                      <Input placeholder="Ex: ABC-1234" {...field} />
                     </FormControl>
                     <FormDescription>
                       Placa do veículo
@@ -234,11 +208,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                   <FormItem>
                     <FormLabel>Modelo*</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Ex: Ranger XLT" 
-                        {...field} 
-                        value={field.value || ""} 
-                      />
+                      <Input placeholder="Ex: Ranger XLT" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -255,8 +225,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                       <Input 
                         type="number" 
                         placeholder="Ex: 2022" 
-                        {...field} 
-                        value={field.value?.toString() || ""}
+                        {...field}
                         onChange={(e) => field.onChange(parseInt(e.target.value) || "")}
                       />
                     </FormControl>
@@ -306,7 +275,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    {editingVehicle ? "Atualizar Veículo" : "Salvar Veículo"}
+                    Salvar Veículo
                   </>
                 )}
               </Button>

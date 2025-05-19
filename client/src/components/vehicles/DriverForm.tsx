@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 import { insertDriverSchema } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,7 +25,6 @@ interface DriverFormProps {
 }
 
 export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -66,33 +63,16 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
           // Save to local storage
           await offlineStorage.saveDrivers(drivers);
           
-          // Save image if provided
-          if (data.image && imagePreview) {
-            await offlineStorage.saveImage(`driver_${tempId}`, imagePreview);
-          }
-          
           return driver;
         }
         
-        // Online state - create FormData for file upload
-        const formData = new FormData();
-        
-        // Add all fields to form data
-        Object.entries(data).forEach(([key, value]) => {
-          if (key !== 'image') {
-            formData.append(key, String(value));
-          }
-        });
-        
-        // Add image if available
-        if (data.image) {
-          formData.append('image', data.image);
-        }
-        
-        // Send data to server
+        // Send data to server using fetch directly
         const response = await fetch('/api/drivers', {
           method: 'POST',
-          body: formData,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
         });
         
         if (!response.ok) {
@@ -113,7 +93,6 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
       
       // Reset form
       form.reset();
-      setImagePreview(null);
       
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
@@ -131,18 +110,6 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
       console.error("Erro na mutação:", error);
     },
   });
-  
-  const handleImageChange = (file: File | null) => {
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setImagePreview(null);
-    }
-  };
   
   const onSubmit = (data: DriverFormValues) => {
     createDriver.mutate(data);
@@ -164,35 +131,18 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome Completo*</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: João Silva" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Nome completo do motorista
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="license"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>CNH*</FormLabel>
+                    <FormLabel>Nome do Motorista*</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: 12345678901" {...field} />
+                      <Input placeholder="Ex: João da Silva" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Número da Carteira Nacional de Habilitação
+                      Nome completo do motorista
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -201,15 +151,15 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
               
               <FormField
                 control={form.control}
-                name="phone"
+                name="license"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telefone*</FormLabel>
+                    <FormLabel>CNH*</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex: (11) 98765-4321" {...field} />
+                      <Input placeholder="Ex: 12345678900" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Número de contato do motorista
+                      Número da Carteira Nacional de Habilitação
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -219,24 +169,15 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
             
             <FormField
               control={form.control}
-              name="image"
-              render={({ field: { value, onChange, ...field } }) => (
+              name="phone"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Foto do Motorista</FormLabel>
+                  <FormLabel>Telefone*</FormLabel>
                   <FormControl>
-                    <FileInput
-                      {...field}
-                      accept={['image/jpeg', 'image/png', 'image/jpg']}
-                      maxSize={5} // 5MB
-                      onFileChange={(file) => {
-                        onChange(file);
-                        handleImageChange(file);
-                      }}
-                      defaultPreview={imagePreview || undefined}
-                    />
+                    <Input placeholder="Ex: (11) 98765-4321" {...field} />
                   </FormControl>
                   <FormDescription>
-                    Adicione uma foto do motorista (opcional)
+                    Número para contato com o motorista
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

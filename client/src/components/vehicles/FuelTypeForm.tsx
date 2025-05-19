@@ -2,7 +2,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
 import { insertFuelTypeSchema } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -44,7 +43,7 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
           // Generate a temporary id (negative to avoid collisions with server ids)
           const tempId = -(Date.now());
           
-          // Create type object
+          // Create fuelType object
           const fuelType = {
             ...data,
             id: tempId,
@@ -53,7 +52,7 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
           // Get current types
           const types = await offlineStorage.getFuelTypes();
           
-          // Add new type
+          // Add new fuelType
           types.push(fuelType);
           
           // Save to local storage
@@ -62,7 +61,7 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
           return fuelType;
         }
         
-        // Send data to server
+        // Send data to server using fetch directly
         const response = await fetch('/api/fuel-types', {
           method: 'POST',
           headers: {
@@ -134,10 +133,14 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
                 <FormItem>
                   <FormLabel>Nome do Combustível*</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Gasolina Comum" {...field} />
+                    <Input 
+                      placeholder="Ex: Gasolina Comum" 
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Nome do tipo de combustível
+                    Nome do tipo de combustível para abastecimento
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -158,7 +161,7 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    Salvar Tipo
+                    Salvar Combustível
                   </>
                 )}
               </Button>
