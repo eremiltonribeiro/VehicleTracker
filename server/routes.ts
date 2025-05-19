@@ -85,26 +85,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (vehicleData.year) {
         vehicleData.year = parseInt(vehicleData.year);
       }
-      if (vehicleData.initialKm) {
-        vehicleData.initialKm = parseInt(vehicleData.initialKm);
+      
+      // Log dos dados recebidos para debug
+      console.log("Dados do veículo recebidos:", vehicleData);
+      
+      try {
+        // Validar dados
+        insertVehicleSchema.parse(vehicleData);
+        
+        // Se houver imagem, adicionar URL à informação do veículo
+        if (req.file) {
+          vehicleData.imageUrl = `/uploads/${req.file.filename}`;
+        }
+        
+        const vehicle = await storage.createVehicle(vehicleData);
+        res.status(201).json(vehicle);
+      } catch (validationError: any) {
+        if (validationError instanceof z.ZodError) {
+          console.error("Erro de validação:", validationError.errors);
+          return res.status(400).json({ 
+            message: "Erro de validação", 
+            errors: validationError.errors.map(e => e.message) 
+          });
+        }
+        throw validationError;
       }
-      
-      // Validar dados
-      insertVehicleSchema.parse(vehicleData);
-      
-      // Se houver imagem, adicionar URL à informação do veículo
-      if (req.file) {
-        vehicleData.imageUrl = `/uploads/${req.file.filename}`;
-      }
-      
-      const vehicle = await storage.createVehicle(vehicleData);
-      res.status(201).json(vehicle);
     } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
       console.error("Erro ao criar veículo:", error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ message: "Ocorreu um erro ao cadastrar o veículo. Tente novamente." });
     }
   });
 
