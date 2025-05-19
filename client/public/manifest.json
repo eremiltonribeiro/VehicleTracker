@@ -1,0 +1,23 @@
+{
+  "name": "Granduvale - Sistema de Gestão de Frota",
+  "short_name": "Gestão Frota",
+  "description": "Sistema para controle de abastecimento, manutenção e viagens de veículos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
