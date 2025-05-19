@@ -1,8 +1,9 @@
-import { Vehicle, Driver } from "../../shared/schema";
+import { Vehicle, Driver, FuelStation, FuelType, MaintenanceType } from "@/shared/schema";
+// Removida importação duplicada de Vehicle e adicionadas FuelStation, FuelType, MaintenanceType
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Removidas Tabs, TabsContent, TabsList, TabsTrigger, Input pois não são usadas diretamente aqui
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/VehicleForm";
@@ -10,10 +11,9 @@ import { DriverForm } from "@/components/vehicles/DriverForm";
 import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
 import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
 import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, Palette, Edit, Trash, Plus, FileText } from "lucide-react";
+import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, Palette, Edit, Trash, FileText } from "lucide-react"; // Removido Plus não utilizado
 import { offlineStorage } from "@/services/offlineStorage";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -32,55 +32,55 @@ export default function Settings() {
       </Card>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        <ConfigButton 
-          icon={<Car />} 
-          label="Veículos" 
-          isActive={activeTab === "vehicles"} 
-          onClick={() => setActiveTab("vehicles")} 
+        <ConfigButton
+          icon={<Car />}
+          label="Veículos"
+          isActive={activeTab === "vehicles"}
+          onClick={() => setActiveTab("vehicles")}
         />
-        <ConfigButton 
-          icon={<UserCircle />} 
-          label="Motoristas" 
-          isActive={activeTab === "drivers"} 
-          onClick={() => setActiveTab("drivers")} 
+        <ConfigButton
+          icon={<UserCircle />}
+          label="Motoristas"
+          isActive={activeTab === "drivers"}
+          onClick={() => setActiveTab("drivers")}
         />
-        <ConfigButton 
-          icon={<Fuel />} 
-          label="Postos" 
-          isActive={activeTab === "fuel-stations"} 
-          onClick={() => setActiveTab("fuel-stations")} 
+        <ConfigButton
+          icon={<Fuel />}
+          label="Postos"
+          isActive={activeTab === "fuel-stations"}
+          onClick={() => setActiveTab("fuel-stations")}
         />
-        <ConfigButton 
-          icon={<Droplet />} 
-          label="Combustíveis" 
-          isActive={activeTab === "fuel-types"} 
-          onClick={() => setActiveTab("fuel-types")} 
+        <ConfigButton
+          icon={<Droplet />}
+          label="Combustíveis"
+          isActive={activeTab === "fuel-types"}
+          onClick={() => setActiveTab("fuel-types")}
         />
-        <ConfigButton 
-          icon={<Wrench />} 
-          label="Manutenções" 
-          isActive={activeTab === "maintenance-types"} 
-          onClick={() => setActiveTab("maintenance-types")} 
+        <ConfigButton
+          icon={<Wrench />}
+          label="Manutenções"
+          isActive={activeTab === "maintenance-types"}
+          onClick={() => setActiveTab("maintenance-types")}
         />
-        <ConfigButton 
-          icon={<ClipboardCheck />} 
-          label="Templates" 
+        <ConfigButton
+          icon={<ClipboardCheck />}
+          label="Templates"
           isActive={false}
-          onClick={() => setLocation("/checklist-templates")} 
+          onClick={() => setLocation("/checklist-templates")}
           accent={true}
         />
-        <ConfigButton 
-          icon={<Palette />} 
-          label="Aparência" 
+        <ConfigButton
+          icon={<Palette />}
+          label="Aparência"
           isActive={false}
-          onClick={() => setLocation("/configuracoes/app")} 
+          onClick={() => setLocation("/configuracoes/app")}
           accent={true}
         />
-        <ConfigButton 
-          icon={<FileText />} 
-          label="Relatórios" 
+        <ConfigButton
+          icon={<FileText />}
+          label="Relatórios"
           isActive={false}
-          onClick={() => setLocation("/relatorios")} 
+          onClick={() => setLocation("/relatorios")}
           accent={true}
         />
       </div>
@@ -135,7 +135,7 @@ interface ConfigButtonProps {
 
 function ConfigButton({ icon, label, isActive, onClick, accent = false }: ConfigButtonProps) {
   return (
-    <Button 
+    <Button
       variant={isActive ? "default" : accent ? "default" : "outline"}
       className={`h-20 w-full flex flex-col items-center justify-center gap-1 p-2 ${
         accent ? "bg-blue-600 hover:bg-blue-700 text-white" : ""
@@ -152,17 +152,11 @@ function ConfigButton({ icon, label, isActive, onClick, accent = false }: Config
 function VehiclesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentVehicle, setCurrentVehicle] = useState<{
-    id: number;
-    name: string;
-    plate: string;
-    model: string;
-    year: number;
-  } | null>(null);
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null); // Usando o tipo Vehicle importado
 
   const { data: vehicles = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/vehicles"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Vehicle[]> => { // Especificando o tipo de retorno
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/vehicles");
@@ -180,16 +174,9 @@ function VehiclesList() {
     }
   });
 
-  const handleEdit = (vehicle: {
-    id: number;
-    name: string;
-    plate: string;
-    model: string;
-    year: number;
-  }) => {
+  const handleEdit = (vehicle: Vehicle) => { // Usando o tipo Vehicle importado
     setCurrentVehicle(vehicle);
     setEditMode(true);
-    // Rola a tela para cima para o usuário ver o formulário
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -236,8 +223,8 @@ function VehiclesList() {
               <CardDescription>Altere os dados do veículo abaixo</CardDescription>
             </CardHeader>
             <CardContent>
-              <VehicleForm 
-                editingVehicle={currentVehicle} 
+              <VehicleForm
+                editingVehicle={currentVehicle}
                 onSuccess={() => {
                   setEditMode(false);
                   setCurrentVehicle(null);
@@ -246,8 +233,8 @@ function VehiclesList() {
               />
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setEditMode(false);
                   setCurrentVehicle(null);
@@ -290,7 +277,7 @@ function VehiclesList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vehicles.map((vehicle: Vehicle) => (
+                  {vehicles.map((vehicle: Vehicle) => ( // Usando o tipo Vehicle importado
                     <TableRow key={vehicle.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
@@ -336,16 +323,11 @@ function VehiclesList() {
 function DriversList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentDriver, setCurrentDriver] = useState<{
-    id: number;
-    name: string;
-    license: string;
-    phone: string;
-  } | null>(null);
+  const [currentDriver, setCurrentDriver] = useState<Driver | null>(null); // Usando o tipo Driver importado
 
   const { data: drivers = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/drivers"],
-    queryFn: async () => {
+    queryFn: async (): Promise<Driver[]> => { // Especificando o tipo de retorno
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/drivers");
@@ -363,12 +345,7 @@ function DriversList() {
     }
   });
 
-  const handleEdit = (driver: {
-    id: number;
-    name: string;
-    license: string;
-    phone: string;
-  }) => {
+  const handleEdit = (driver: Driver) => { // Usando o tipo Driver importado
     setCurrentDriver(driver);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -417,8 +394,8 @@ function DriversList() {
               <CardDescription>Altere os dados do motorista abaixo</CardDescription>
             </CardHeader>
             <CardContent>
-              <DriverForm 
-                editingDriver={currentDriver} 
+              <DriverForm
+                editingDriver={currentDriver}
                 onSuccess={() => {
                   setEditMode(false);
                   setCurrentDriver(null);
@@ -427,8 +404,8 @@ function DriversList() {
               />
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setEditMode(false);
                   setCurrentDriver(null);
@@ -470,7 +447,7 @@ function DriversList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {drivers.map((driver: Driver) => (
+                  {drivers.map((driver: Driver) => ( // Usando o tipo Driver importado
                     <TableRow key={driver.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
@@ -515,11 +492,11 @@ function DriversList() {
 function FuelStationsList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentStation, setCurrentStation] = useState(null);
+  const [currentStation, setCurrentStation] = useState<FuelStation | null>(null); // Tipagem adicionada
 
   const { data: stations = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-stations"],
-    queryFn: async () => {
+    queryFn: async (): Promise<FuelStation[]> => { // Especificando o tipo de retorno
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/fuel-stations");
@@ -537,13 +514,13 @@ function FuelStationsList() {
     }
   });
 
-  const handleEdit = (station) => {
+  const handleEdit = (station: FuelStation) => { // Tipagem adicionada
     setCurrentStation(station);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => { // Tipagem adicionada
     if (!confirm("Tem certeza que deseja excluir este posto?")) return;
 
     try {
@@ -586,8 +563,8 @@ function FuelStationsList() {
               <CardDescription>Altere os dados do posto abaixo</CardDescription>
             </CardHeader>
             <CardContent>
-              <FuelStationForm 
-                editingStation={currentStation} 
+              <FuelStationForm
+                editingStation={currentStation}
                 onSuccess={() => {
                   setEditMode(false);
                   setCurrentStation(null);
@@ -596,8 +573,8 @@ function FuelStationsList() {
               />
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setEditMode(false);
                   setCurrentStation(null);
@@ -638,7 +615,7 @@ function FuelStationsList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stations.map((station) => (
+                  {stations.map((station: FuelStation) => ( // Tipagem adicionada
                     <TableRow key={station.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
@@ -682,11 +659,11 @@ function FuelStationsList() {
 function FuelTypesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentType, setCurrentType] = useState(null);
+  const [currentType, setCurrentType] = useState<FuelType | null>(null); // Tipagem adicionada
 
   const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/fuel-types"],
-    queryFn: async () => {
+    queryFn: async (): Promise<FuelType[]> => { // Especificando o tipo de retorno
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/fuel-types");
@@ -704,13 +681,13 @@ function FuelTypesList() {
     }
   });
 
-  const handleEdit = (type) => {
+  const handleEdit = (type: FuelType) => { // Tipagem adicionada
     setCurrentType(type);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => { // Tipagem adicionada
     if (!confirm("Tem certeza que deseja excluir este tipo de combustível?")) return;
 
     try {
@@ -753,8 +730,8 @@ function FuelTypesList() {
               <CardDescription>Altere os dados do tipo de combustível abaixo</CardDescription>
             </CardHeader>
             <CardContent>
-              <FuelTypeForm 
-                editingType={currentType} 
+              <FuelTypeForm
+                editingType={currentType}
                 onSuccess={() => {
                   setEditMode(false);
                   setCurrentType(null);
@@ -763,8 +740,8 @@ function FuelTypesList() {
               />
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setEditMode(false);
                   setCurrentType(null);
@@ -804,7 +781,7 @@ function FuelTypesList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {types.map((type) => (
+                  {types.map((type: FuelType) => ( // Tipagem adicionada
                     <TableRow key={type.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
@@ -847,11 +824,11 @@ function FuelTypesList() {
 function MaintenanceTypesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentType, setCurrentType] = useState(null);
+  const [currentType, setCurrentType] = useState<MaintenanceType | null>(null); // Tipagem adicionada
 
   const { data: types = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/maintenance-types"],
-    queryFn: async () => {
+    queryFn: async (): Promise<MaintenanceType[]> => { // Especificando o tipo de retorno
       try {
         if (navigator.onLine) {
           const res = await fetch("/api/maintenance-types");
@@ -869,13 +846,13 @@ function MaintenanceTypesList() {
     }
   });
 
-  const handleEdit = (type) => {
+  const handleEdit = (type: MaintenanceType) => { // Tipagem adicionada
     setCurrentType(type);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => { // Tipagem adicionada
     if (!confirm("Tem certeza que deseja excluir este tipo de manutenção?")) return;
 
     try {
@@ -918,8 +895,8 @@ function MaintenanceTypesList() {
               <CardDescription>Altere os dados do tipo de manutenção abaixo</CardDescription>
             </CardHeader>
             <CardContent>
-              <MaintenanceTypeForm 
-                editingType={currentType} 
+              <MaintenanceTypeForm
+                editingType={currentType}
                 onSuccess={() => {
                   setEditMode(false);
                   setCurrentType(null);
@@ -928,8 +905,8 @@ function MaintenanceTypesList() {
               />
             </CardContent>
             <CardFooter className="flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setEditMode(false);
                   setCurrentType(null);
@@ -969,7 +946,7 @@ function MaintenanceTypesList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {types.map((type) => (
+                  {types.map((type: MaintenanceType) => ( // Tipagem adicionada
                     <TableRow key={type.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
