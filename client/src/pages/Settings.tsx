@@ -20,28 +20,27 @@ export default function Settings() {
     <div className="space-y-6">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex justify-between items-center">
-            <span>Configurações</span>
-            <Button 
-              onClick={() => setLocation("/checklist-templates")}
-              className="bg-blue-700 hover:bg-blue-800 text-sm flex items-center gap-2"
-            >
-              <ClipboardCheck className="h-4 w-4" />
-              <span>Gerenciar Templates de Checklist</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </CardTitle>
+          <CardTitle>Configurações</CardTitle>
           <CardDescription>Cadastre e gerencie os dados do sistema</CardDescription>
         </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={() => setLocation("/checklist-templates")}
+            className="bg-blue-700 hover:bg-blue-800 w-full flex items-center justify-center gap-2 py-6"
+          >
+            <ClipboardCheck className="h-5 w-5" />
+            <span className="font-medium">Gerenciar Templates de Checklist</span>
+          </Button>
+        </CardContent>
       </Card>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="vehicles">Veículos</TabsTrigger>
-          <TabsTrigger value="drivers">Motoristas</TabsTrigger>
-          <TabsTrigger value="fuel-stations">Postos</TabsTrigger>
-          <TabsTrigger value="fuel-types">Combustíveis</TabsTrigger>
-          <TabsTrigger value="maintenance-types">Manutenções</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1">
+          <TabsTrigger value="vehicles" className="text-xs md:text-sm">Veículos</TabsTrigger>
+          <TabsTrigger value="drivers" className="text-xs md:text-sm">Motoristas</TabsTrigger>
+          <TabsTrigger value="fuel-stations" className="text-xs md:text-sm">Postos</TabsTrigger>
+          <TabsTrigger value="fuel-types" className="text-xs md:text-sm">Combustíveis</TabsTrigger>
+          <TabsTrigger value="maintenance-types" className="text-xs md:text-sm">Manutenções</TabsTrigger>
         </TabsList>
         
         <TabsContent value="vehicles" className="space-y-4">
