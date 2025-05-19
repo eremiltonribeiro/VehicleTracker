@@ -1,3 +1,6 @@
+
+import { Vehicle, Driver } from "@/shared/schema";
+
 import { Vehicle } from "@/shared/schema";
 
 import { useState } from "react";
@@ -470,7 +473,7 @@ function DriversList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {drivers.map((driver) => (
+                  {drivers.map((driver: Driver) => (
                     <TableRow key={driver.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
