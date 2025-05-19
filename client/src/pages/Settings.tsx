@@ -1,25 +1,9 @@
-import { Vehicle, Driver, FuelStation, FuelType, MaintenanceType } from "@shared/schema";
-// Removida importação duplicada de Vehicle e adicionadas FuelStation, FuelType, MaintenanceType
-
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-// Removidas Tabs, TabsContent, TabsList, TabsTrigger, Input pois não são usadas diretamente aqui
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { VehicleForm } from "@/components/vehicles/VehicleForm";
-import { DriverForm } from "@/components/vehicles/DriverForm";
-import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
-import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
-import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, Palette, Edit, Trash, FileText } from "lucide-react"; // Removido Plus não utilizado
-import { offlineStorage } from "@/services/offlineStorage";
 import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ClipboardCheck, Palette, FileText } from "lucide-react";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("vehicles");
   const [, setLocation] = useLocation();
 
   return (
@@ -27,100 +11,49 @@ export default function Settings() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle>Configurações</CardTitle>
-          <CardDescription>Cadastre e gerencie os dados do sistema</CardDescription>
+          <CardDescription>Gerencie os dados do sistema</CardDescription>
         </CardHeader>
       </Card>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        <ConfigButton
-          icon={<Car />}
-          label="Veículos"
-          isActive={activeTab === "vehicles"}
-          onClick={() => setActiveTab("vehicles")}
-        />
-        <ConfigButton
-          icon={<UserCircle />}
-          label="Motoristas"
-          isActive={activeTab === "drivers"}
-          onClick={() => setActiveTab("drivers")}
-        />
-        <ConfigButton
-          icon={<Fuel />}
-          label="Postos"
-          isActive={activeTab === "fuel-stations"}
-          onClick={() => setActiveTab("fuel-stations")}
-        />
-        <ConfigButton
-          icon={<Droplet />}
-          label="Combustíveis"
-          isActive={activeTab === "fuel-types"}
-          onClick={() => setActiveTab("fuel-types")}
-        />
-        <ConfigButton
-          icon={<Wrench />}
-          label="Manutenções"
-          isActive={activeTab === "maintenance-types"}
-          onClick={() => setActiveTab("maintenance-types")}
-        />
-        <ConfigButton
-          icon={<ClipboardCheck />}
-          label="Templates"
-          isActive={false}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Button
+          variant="default"
+          className="h-28 w-full flex flex-col items-center justify-center gap-2 p-4 bg-blue-600 hover:bg-blue-700 text-white"
           onClick={() => setLocation("/checklist-templates")}
-          accent={true}
-        />
-        <ConfigButton
-          icon={<Palette />}
-          label="Aparência"
-          isActive={false}
+        >
+          <ClipboardCheck className="h-8 w-8" />
+          <span className="text-sm font-medium">Templates de Checklist</span>
+        </Button>
+        
+        <Button
+          variant="default"
+          className="h-28 w-full flex flex-col items-center justify-center gap-2 p-4 bg-blue-600 hover:bg-blue-700 text-white"
           onClick={() => setLocation("/configuracoes/app")}
-          accent={true}
-        />
-        <ConfigButton
-          icon={<FileText />}
-          label="Relatórios"
-          isActive={false}
+        >
+          <Palette className="h-8 w-8" />
+          <span className="text-sm font-medium">Aparência do Sistema</span>
+        </Button>
+        
+        <Button
+          variant="default"
+          className="h-28 w-full flex flex-col items-center justify-center gap-2 p-4 bg-blue-600 hover:bg-blue-700 text-white"
           onClick={() => setLocation("/relatorios")}
-          accent={true}
-        />
+        >
+          <FileText className="h-8 w-8" />
+          <span className="text-sm font-medium">Relatórios</span>
+        </Button>
       </div>
 
-      <div className="space-y-6">
-        {activeTab === "vehicles" && (
-          <>
-            <VehicleForm />
-            <VehiclesList />
-          </>
-        )}
-
-        {activeTab === "drivers" && (
-          <>
-            <DriverForm />
-            <DriversList />
-          </>
-        )}
-
-        {activeTab === "fuel-stations" && (
-          <>
-            <FuelStationForm />
-            <FuelStationsList />
-          </>
-        )}
-
-        {activeTab === "fuel-types" && (
-          <>
-            <FuelTypeForm />
-            <FuelTypesList />
-          </>
-        )}
-
-        {activeTab === "maintenance-types" && (
-          <>
-            <MaintenanceTypeForm />
-            <MaintenanceTypesList />
-          </>
-        )}
-      </div>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-6">
+            <h3 className="text-lg font-medium mb-2">Configurações de Cadastro</h3>
+            <p className="text-muted-foreground mb-4">
+              A seção de cadastros está sendo atualizada para melhorar a experiência do usuário.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
