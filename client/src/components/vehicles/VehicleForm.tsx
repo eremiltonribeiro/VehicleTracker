@@ -17,6 +17,7 @@ import { offlineStorage } from "@/services/offlineStorage";
 // Extend schema for validation
 const vehicleFormSchema = insertVehicleSchema.extend({
   image: z.instanceof(File).optional(),
+  initialKm: z.number().default(0),
 });
 
 type VehicleFormValues = z.infer<typeof vehicleFormSchema>;
@@ -45,32 +46,41 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
     defaultValues,
   });
   
-  const createVehicle = useMutation({
+  const saveVehicle = useMutation({
     mutationFn: async (data: VehicleFormValues) => {
       try {
+        // Determine if creating or updating
+        const isEditing = !!editingVehicle;
+        
         // Handle offline state
         if (!navigator.onLine) {
-          // Generate a temporary id (negative to avoid collisions with server ids)
-          const tempId = -(Date.now());
+          // Generate a temporary id if needed (negative to avoid collisions with server ids)
+          const id = isEditing ? editingVehicle.id : -(Date.now());
           
           // Create vehicle object
           const vehicle = {
             ...data,
-            id: tempId,
+            id,
           };
           
           // Get current vehicles
           const vehicles = await offlineStorage.getVehicles();
           
-          // Add new vehicle
-          vehicles.push(vehicle);
-          
-          // Save to local storage
-          await offlineStorage.saveVehicles(vehicles);
+          if (isEditing) {
+            // Update existing vehicle
+            const updatedVehicles = vehicles.map((v: any) => 
+              v.id === editingVehicle.id ? vehicle : v
+            );
+            await offlineStorage.saveVehicles(updatedVehicles);
+          } else {
+            // Add new vehicle
+            vehicles.push(vehicle);
+            await offlineStorage.saveVehicles(vehicles);
+          }
           
           // Save image if provided
           if (data.image && imagePreview) {
-            await offlineStorage.saveImage(`vehicle_${tempId}`, imagePreview);
+            await offlineStorage.saveImage(`vehicle_${id}`, imagePreview);
           }
           
           return vehicle;
@@ -92,26 +102,42 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         }
         
         // Send data to server
-        const response = await apiRequest('/api/vehicles', {
-          method: 'POST',
+        const url = isEditing 
+          ? `/api/vehicles/${editingVehicle.id}` 
+          : '/api/vehicles';
+          
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
           body: formData,
         });
         
+        if (!response.ok) {
+          throw new Error('Falha ao salvar veículo');
+        }
+        
+        return await response.json();
+        
         return response;
       } catch (error) {
-        console.error("Erro ao criar veículo:", error);
+        console.error("Erro ao salvar veículo:", error);
         throw error;
       }
     },
     onSuccess: () => {
       toast({
         title: "Sucesso!",
-        description: "Veículo cadastrado com sucesso.",
+        description: editingVehicle 
+          ? "Veículo atualizado com sucesso." 
+          : "Veículo cadastrado com sucesso.",
       });
       
-      // Reset form
-      form.reset();
-      setImagePreview(null);
+      // Reset form if not editing
+      if (!editingVehicle) {
+        form.reset();
+        setImagePreview(null);
+      }
       
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/vehicles'] });
@@ -122,7 +148,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: "Ocorreu um erro ao cadastrar o veículo. Tente novamente.",
+        description: `Ocorreu um erro ao ${editingVehicle ? 'atualizar' : 'cadastrar'} o veículo. Tente novamente.`,
         variant: "destructive",
       });
       
@@ -143,7 +169,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
   };
   
   const onSubmit = (data: VehicleFormValues) => {
-    createVehicle.mutate(data);
+    saveVehicle.mutate(data);
   };
   
   return (
@@ -281,10 +307,10 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 
-                disabled={createVehicle.isPending}
+                disabled={saveVehicle.isPending}
                 className="flex items-center gap-1"
               >
-                {createVehicle.isPending ? (
+                {saveVehicle.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...
