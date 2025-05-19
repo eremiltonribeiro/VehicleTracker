@@ -29,22 +29,35 @@ export default function Login() {
     setError("");
 
     // Autenticação simples - em produção, seria feita via API
-    setTimeout(() => {
+    try {
       // Usuário e senha padrão para demonstração
       if (username === "admin" && password === "admin") {
-        // Autenticar usando o hook de autenticação
-        login({
-          name: "Administrador",
-          role: "admin"
-        });
+        console.log("Autenticando usuário admin...");
         
-        // Redirecionar para a página principal
-        setLocation("/");
+        // Criar objeto de usuário
+        const userData = {
+          id: "1",
+          name: "Administrador",
+          username: "admin",
+          role: "admin"
+        };
+        
+        // Autenticar usando o hook de autenticação
+        login(userData);
+        
+        console.log("Login realizado com sucesso!");
+        
+        // Redirecionar para a página principal após um pequeno delay
+        setTimeout(() => setLocation("/"), 100);
       } else {
         setError("Usuário ou senha incorretos");
       }
+    } catch (err) {
+      console.error("Erro ao fazer login:", err);
+      setError("Erro ao realizar login. Tente novamente.");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
