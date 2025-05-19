@@ -106,8 +106,8 @@ export function HistoryView() {
     setFilters({
       type: "",
       vehicleId: "",
-      startDate: null,
-      endDate: null,
+      startDate: undefined,
+      endDate: undefined,
     });
   };
   
@@ -177,7 +177,7 @@ export function HistoryView() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">Todos os veículos</SelectItem>
-                  {vehicles && vehicles.map((vehicle: any) => (
+                  {Array.isArray(vehicles) && vehicles.map((vehicle: any) => (
                     <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
                       {vehicle.name} - {vehicle.plate}
                     </SelectItem>
@@ -208,7 +208,7 @@ export function HistoryView() {
                   <PopoverContent className="w-auto p-0" align="start">
                     <CalendarComponent
                       mode="single"
-                      selected={filters.startDate || undefined}
+                      selected={filters.startDate}
                       onSelect={(date) => setFilters({ ...filters, startDate: date })}
                       disabled={(date) =>
                         (filters.endDate ? date > filters.endDate : false) ||
@@ -239,7 +239,7 @@ export function HistoryView() {
                   <PopoverContent className="w-auto p-0" align="start">
                     <CalendarComponent
                       mode="single"
-                      selected={filters.endDate || undefined}
+                      selected={filters.endDate}
                       onSelect={(date) => setFilters({ ...filters, endDate: date })}
                       disabled={(date) =>
                         (filters.startDate ? date < filters.startDate : false) ||

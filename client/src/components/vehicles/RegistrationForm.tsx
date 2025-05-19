@@ -270,7 +270,7 @@ export function RegistrationForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {vehicles && vehicles.map((vehicle: any) => (
+                        {Array.isArray(vehicles) && vehicles.map((vehicle: any) => (
                           <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
                             {vehicle.name} - {vehicle.plate}
                           </SelectItem>
@@ -298,7 +298,7 @@ export function RegistrationForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {drivers && drivers.map((driver: any) => (
+                        {Array.isArray(drivers) && drivers.map((driver: any) => (
                           <SelectItem key={driver.id} value={driver.id.toString()}>
                             {driver.name}
                           </SelectItem>
@@ -419,7 +419,7 @@ export function RegistrationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {fuelStations && fuelStations.map((station: any) => (
+                          {Array.isArray(fuelStations) && fuelStations.map((station: any) => (
                             <SelectItem key={station.id} value={station.id.toString()}>
                               {station.name}
                             </SelectItem>
@@ -447,7 +447,7 @@ export function RegistrationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {fuelTypes && fuelTypes.map((type: any) => (
+                          {Array.isArray(fuelTypes) && fuelTypes.map((type: any) => (
                             <SelectItem key={type.id} value={type.id.toString()}>
                               {type.name}
                             </SelectItem>
@@ -589,7 +589,7 @@ export function RegistrationForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {maintenanceTypes && maintenanceTypes.map((type: any) => (
+                          {Array.isArray(maintenanceTypes) && maintenanceTypes.map((type: any) => (
                             <SelectItem key={type.id} value={type.id.toString()}>
                               {type.name}
                             </SelectItem>
