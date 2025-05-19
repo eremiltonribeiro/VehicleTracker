@@ -522,12 +522,12 @@ export function ReportGenerator() {
 
   return (
     <Card className="w-full">
-      <CardHeader style={{ backgroundColor: brandColors.navyBlue, color: 'white' }}>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Gerador de Relatórios
+      <CardHeader className="rounded-t-lg" style={{ backgroundColor: brandColors.navyBlue }}>
+        <CardTitle className="flex items-center gap-2 text-white break-words">
+          <FileText className="h-5 w-5 flex-shrink-0" />
+          <span className="break-words">Gerador de Relatórios</span>
         </CardTitle>
-        <CardDescription style={{ color: brandColors.lightGold }}>
+        <CardDescription className="text-yellow-300 break-words">
           Configure e exporte relatórios personalizados para análise de dados
         </CardDescription>
       </CardHeader>
@@ -571,30 +571,33 @@ export function ReportGenerator() {
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-left"
+                  className="w-full justify-start text-left overflow-hidden text-ellipsis"
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  {dateRange.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "dd/MM/yyyy")} -{" "}
-                        {format(dateRange.to, "dd/MM/yyyy")}
-                      </>
+                  <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">
+                    {dateRange.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                          {format(dateRange.to, "dd/MM/yyyy")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "dd/MM/yyyy")
+                      )
                     ) : (
-                      format(dateRange.from, "dd/MM/yyyy")
-                    )
-                  ) : (
-                    "Selecione o período"
-                  )}
+                      "Selecione o período"
+                    )}
+                  </span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 max-w-[95vw]" align="start">
                 <CalendarComponent
                   mode="range"
                   selected={dateRange}
                   onSelect={setDateRange as any}
                   locale={pt}
                   initialFocus
+                  className="rounded-md"
                 />
               </PopoverContent>
             </Popover>
@@ -660,34 +663,36 @@ export function ReportGenerator() {
         
         {/* Visualização prévia */}
         <div>
-          <h3 className="text-lg font-medium mb-2">Resumo do Relatório</h3>
-          <div className="bg-gray-50 p-4 rounded-md border">
-            <p><strong>Tipo:</strong> {getReportTypeName(reportType)}</p>
-            <p><strong>Formato:</strong> {fileFormat.toUpperCase()}</p>
-            <p>
-              <strong>Período:</strong>{' '}
-              {dateRange.from
-                ? `${format(dateRange.from, "dd/MM/yyyy")}${
-                    dateRange.to ? ` a ${format(dateRange.to, "dd/MM/yyyy")}` : ""
-                  }`
-                : "Todo o período"}
-            </p>
-            <p>
-              <strong>Veículos:</strong>{' '}
-              {selectedVehicleIds.length === 0
-                ? "Todos"
-                : selectedVehicleIds.length}
-            </p>
-            <p>
-              <strong>Motoristas:</strong>{' '}
-              {selectedDriverIds.length === 0
-                ? "Todos"
-                : selectedDriverIds.length}
-            </p>
-            <p>
-              <strong>Total de registros:</strong>{' '}
-              {getFilteredRegistrations().length}
-            </p>
+          <h3 className="text-lg font-medium mb-2 text-blue-900" style={{ color: brandColors.navyBlue }}>Resumo do Relatório</h3>
+          <div className="bg-gray-50 p-4 rounded-md border shadow-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+              <p className="text-sm"><strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Tipo:</strong> {getReportTypeName(reportType)}</p>
+              <p className="text-sm"><strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Formato:</strong> {fileFormat.toUpperCase()}</p>
+              <p className="text-sm col-span-1 sm:col-span-2">
+                <strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Período:</strong>{' '}
+                {dateRange.from
+                  ? `${format(dateRange.from, "dd/MM/yyyy")}${
+                      dateRange.to ? ` a ${format(dateRange.to, "dd/MM/yyyy")}` : ""
+                    }`
+                  : "Todo o período"}
+              </p>
+              <p className="text-sm">
+                <strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Veículos:</strong>{' '}
+                {selectedVehicleIds.length === 0
+                  ? "Todos"
+                  : selectedVehicleIds.length}
+              </p>
+              <p className="text-sm">
+                <strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Motoristas:</strong>{' '}
+                {selectedDriverIds.length === 0
+                  ? "Todos"
+                  : selectedDriverIds.length}
+              </p>
+              <p className="text-sm col-span-1 sm:col-span-2">
+                <strong className="text-blue-900" style={{ color: brandColors.navyBlue }}>Total de registros:</strong>{' '}
+                <span className="font-semibold">{getFilteredRegistrations().length}</span>
+              </p>
+            </div>
           </div>
         </div>
       </CardContent>
