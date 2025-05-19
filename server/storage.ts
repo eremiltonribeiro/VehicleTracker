@@ -1,6 +1,6 @@
 import {
   User,
-  InsertUser,
+  UpsertUser,
   users,
   Vehicle,
   InsertVehicle,
@@ -18,7 +18,7 @@ import {
 
 // Extend the storage interface with CRUD methods
 export interface IStorage {
-  // Métodos de usuário atualizados para Replit Auth
+  // Métodos de usuário para Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
 

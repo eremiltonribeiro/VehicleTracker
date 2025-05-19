@@ -1,33 +1,32 @@
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
+  User,
+  UpsertUser,
   users,
+  Vehicle,
   vehicles,
+  InsertVehicle,
+  Driver,
   drivers,
+  InsertDriver,
+  FuelStation,
   fuelStations,
+  InsertFuelStation,
+  FuelType,
   fuelTypes,
+  InsertFuelType,
+  MaintenanceType,
   maintenanceTypes,
+  InsertMaintenanceType,
+  VehicleRegistration,
   vehicleRegistrations,
-  type User,
-  type UpsertUser,
-  type Vehicle,
-  type InsertVehicle,
-  type Driver,
-  type InsertDriver,
-  type FuelStation,
-  type InsertFuelStation,
-  type FuelType,
-  type InsertFuelType,
-  type MaintenanceType,
-  type InsertMaintenanceType,
-  type VehicleRegistration,
-  type InsertRegistration,
+  InsertRegistration,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
-// Implementação de armazenamento usando banco de dados PostgreSQL
 export class DatabaseStorage implements IStorage {
-  // Métodos de usuário
+  // User methods for Replit Auth
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -36,17 +35,11 @@ export class DatabaseStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        updatedAt: new Date(),
-      })
+      .values(userData)
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          profileImageUrl: userData.profileImageUrl,
+          ...userData,
           updatedAt: new Date(),
         },
       })
@@ -54,9 +47,9 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  // Métodos de veículos
+  // Vehicle methods
   async getVehicles(): Promise<Vehicle[]> {
-    return await db.select().from(vehicles);
+    return db.select().from(vehicles);
   }
 
   async getVehicle(id: number): Promise<Vehicle | undefined> {
@@ -69,9 +62,9 @@ export class DatabaseStorage implements IStorage {
     return vehicle;
   }
 
-  // Métodos de motoristas
+  // Driver methods
   async getDrivers(): Promise<Driver[]> {
-    return await db.select().from(drivers);
+    return db.select().from(drivers);
   }
 
   async getDriver(id: number): Promise<Driver | undefined> {
@@ -84,9 +77,9 @@ export class DatabaseStorage implements IStorage {
     return driver;
   }
 
-  // Métodos de postos de combustível
+  // Fuel station methods
   async getFuelStations(): Promise<FuelStation[]> {
-    return await db.select().from(fuelStations);
+    return db.select().from(fuelStations);
   }
 
   async getFuelStation(id: number): Promise<FuelStation | undefined> {
@@ -99,37 +92,37 @@ export class DatabaseStorage implements IStorage {
     return station;
   }
 
-  // Métodos de tipos de combustível
+  // Fuel type methods
   async getFuelTypes(): Promise<FuelType[]> {
-    return await db.select().from(fuelTypes);
+    return db.select().from(fuelTypes);
   }
 
   async getFuelType(id: number): Promise<FuelType | undefined> {
-    const [fuelType] = await db.select().from(fuelTypes).where(eq(fuelTypes.id, id));
-    return fuelType;
+    const [type] = await db.select().from(fuelTypes).where(eq(fuelTypes.id, id));
+    return type;
   }
 
   async createFuelType(typeData: InsertFuelType): Promise<FuelType> {
-    const [fuelType] = await db.insert(fuelTypes).values(typeData).returning();
-    return fuelType;
+    const [type] = await db.insert(fuelTypes).values(typeData).returning();
+    return type;
   }
 
-  // Métodos de tipos de manutenção
+  // Maintenance type methods
   async getMaintenanceTypes(): Promise<MaintenanceType[]> {
-    return await db.select().from(maintenanceTypes);
+    return db.select().from(maintenanceTypes);
   }
 
   async getMaintenanceType(id: number): Promise<MaintenanceType | undefined> {
-    const [maintenanceType] = await db.select().from(maintenanceTypes).where(eq(maintenanceTypes.id, id));
-    return maintenanceType;
+    const [type] = await db.select().from(maintenanceTypes).where(eq(maintenanceTypes.id, id));
+    return type;
   }
 
   async createMaintenanceType(typeData: InsertMaintenanceType): Promise<MaintenanceType> {
-    const [maintenanceType] = await db.insert(maintenanceTypes).values(typeData).returning();
-    return maintenanceType;
+    const [type] = await db.insert(maintenanceTypes).values(typeData).returning();
+    return type;
   }
 
-  // Métodos de registros de veículos
+  // Vehicle registration methods
   async getRegistrations(filters?: {
     type?: string;
     vehicleId?: number;
@@ -137,30 +130,33 @@ export class DatabaseStorage implements IStorage {
     endDate?: Date;
   }): Promise<VehicleRegistration[]> {
     let query = db.select().from(vehicleRegistrations);
-    
+
     if (filters) {
       if (filters.type) {
         query = query.where(eq(vehicleRegistrations.type, filters.type));
       }
-      
       if (filters.vehicleId) {
         query = query.where(eq(vehicleRegistrations.vehicleId, filters.vehicleId));
       }
-      
-      // Filtros de data podem ser adicionados usando o operador correto
-      // para o banco de dados PostgreSQL
+      // Data filters would be implemented similarly with date comparison operators
     }
-    
-    return await query;
+
+    return query;
   }
 
   async getRegistration(id: number): Promise<VehicleRegistration | undefined> {
-    const [registration] = await db.select().from(vehicleRegistrations).where(eq(vehicleRegistrations.id, id));
+    const [registration] = await db
+      .select()
+      .from(vehicleRegistrations)
+      .where(eq(vehicleRegistrations.id, id));
     return registration;
   }
 
   async createRegistration(registrationData: InsertRegistration): Promise<VehicleRegistration> {
-    const [registration] = await db.insert(vehicleRegistrations).values(registrationData).returning();
+    const [registration] = await db
+      .insert(vehicleRegistrations)
+      .values(registrationData)
+      .returning();
     return registration;
   }
 }
