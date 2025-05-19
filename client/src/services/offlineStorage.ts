@@ -37,10 +37,24 @@ export const offlineStorage = {
 
   /**
    * Salva um único registro de veículo
+   * Se estiver offline, marca o registro para sincronização futura
    */
-  async saveRegistration(registration: any): Promise<void> {
+  async saveRegistration(registration: any): Promise<{success: boolean, offline: boolean, id: number}> {
     try {
       const existingRegistrations = await this.getRegistrations();
+      
+      // Gerar um ID temporário para novos registros offline
+      if (!registration.id) {
+        registration.id = Date.now(); // ID temporário baseado em timestamp
+      }
+      
+      // Marcar o registro como offline se não houver conexão
+      const isOffline = !navigator.onLine;
+      if (isOffline) {
+        registration.offlineCreated = true;
+        registration.offlinePending = true;
+        registration.offlineTimestamp = new Date().toISOString();
+      }
       
       // Verificar se o registro já existe
       const existingIndex = existingRegistrations.findIndex(
@@ -55,9 +69,98 @@ export const offlineStorage = {
         existingRegistrations.push(registration);
       }
       
+      // Salvar todos os registros
       await this.saveRegistrations(existingRegistrations);
+      
+      // Se tiver offline e service worker estiver disponível, agendar sincronização
+      if (isOffline && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        try {
+          // Comunicar com o Service Worker para registrar sincronização
+          this.notifyServiceWorkerAboutPendingRegistration(registration);
+        } catch (swError) {
+          console.error('Erro ao agendar sincronização com Service Worker:', swError);
+        }
+      }
+      
+      return {
+        success: true,
+        offline: isOffline,
+        id: registration.id
+      };
     } catch (error) {
       console.error('Erro ao salvar registro individual:', error);
+      return {
+        success: false,
+        offline: !navigator.onLine,
+        id: registration.id || 0
+      };
+    }
+  },
+  
+  /**
+   * Notifica o Service Worker sobre um registro pendente
+   */
+  notifyServiceWorkerAboutPendingRegistration(registration: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      // Criar canal de mensagem para comunicação bidirecional
+      const messageChannel = new MessageChannel();
+      
+      // Configurar o handler de mensagem de resposta
+      messageChannel.port1.onmessage = (event) => {
+        if (event.data && event.data.status === 'success') {
+          resolve(event.data);
+        } else {
+          reject(new Error('Falha ao registrar sincronização'));
+        }
+      };
+      
+      // Enviar mensagem para o Service Worker (verificando se o controller existe)
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'STORE_OFFLINE_REGISTRATION',
+          registration
+        }, [messageChannel.port2]);
+      } else {
+        reject(new Error('Service Worker não está controlando a página'));
+      }
+      
+      // Timeout para evitar bloqueio indefinido
+      setTimeout(() => reject(new Error('Timeout ao comunicar com Service Worker')), 3000);
+    });
+  },
+  
+  /**
+   * Obtém registros pendentes que foram criados offline
+   */
+  async getPendingRegistrations(): Promise<any[]> {
+    try {
+      const allRegistrations = await this.getRegistrations();
+      return allRegistrations.filter(reg => reg.offlinePending === true);
+    } catch (error) {
+      console.error('Erro ao obter registros pendentes:', error);
+      return [];
+    }
+  },
+  
+  /**
+   * Remove a marcação de pendente de um registro específico
+   */
+  async markRegistrationSynced(id: number): Promise<boolean> {
+    try {
+      const allRegistrations = await this.getRegistrations();
+      const index = allRegistrations.findIndex(reg => reg.id === id);
+      
+      if (index >= 0) {
+        allRegistrations[index].offlinePending = false;
+        allRegistrations[index].syncedAt = new Date().toISOString();
+        await this.saveRegistrations(allRegistrations);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Erro ao marcar registro como sincronizado:', error);
+      return false;
     }
   },
 
@@ -184,20 +287,97 @@ export const offlineStorage = {
   /**
    * Sincroniza os dados do armazenamento local com o servidor quando online
    */
-  async syncWithServer(): Promise<boolean> {
-    // Esta função será implementada para enviar dados armazenados offline
-    // ao servidor quando a conexão for restabelecida
+  async syncWithServer(): Promise<{success: boolean, syncedCount: number, errors: any[]}> {
+    // Se estiver offline, não podemos sincronizar
     if (!navigator.onLine) {
-      return false;
+      return {
+        success: false,
+        syncedCount: 0,
+        errors: [{message: 'Dispositivo está offline. Não é possível sincronizar.'}]
+      };
     }
     
     try {
-      // Aqui seria implementada a lógica real de sincronização com o servidor
-      // Envio de dados armazenados localmente para API
-      return true;
+      // Buscar todos os registros pendentes
+      const pendingRegistrations = await this.getPendingRegistrations();
+      
+      if (pendingRegistrations.length === 0) {
+        return {
+          success: true,
+          syncedCount: 0,
+          errors: []
+        };
+      }
+      
+      console.log(`Iniciando sincronização de ${pendingRegistrations.length} registros pendentes`);
+      
+      // Sincronizar cada registro pendente
+      const syncResults = await Promise.allSettled(pendingRegistrations.map(async (reg) => {
+        try {
+          // Enviar para API
+          const response = await fetch('/api/registrations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...reg,
+              // Remover propriedades específicas do modo offline
+              offlineCreated: undefined,
+              offlinePending: undefined,
+              offlineTimestamp: undefined
+            })
+          });
+          
+          if (response.ok) {
+            // Se a sincronização for bem-sucedida, atualizar status no armazenamento local
+            await this.markRegistrationSynced(reg.id);
+            return {
+              success: true,
+              id: reg.id
+            };
+          } else {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+              success: false,
+              id: reg.id,
+              error: errorData.message || 'Erro ao sincronizar com o servidor'
+            };
+          }
+        } catch (error) {
+          console.error(`Erro ao sincronizar registro ${reg.id}:`, error);
+          return {
+            success: false,
+            id: reg.id,
+            error: error instanceof Error ? error.message : 'Erro desconhecido'
+          };
+        }
+      }));
+      
+      // Registrar os sucessos e falhas
+      const successfulSyncs = syncResults.filter(r => r.status === 'fulfilled' && (r.value as any).success);
+      const failedSyncs = syncResults.filter(r => r.status === 'rejected' || !(r.value as any).success);
+      
+      const errors = failedSyncs.map(r => {
+        if (r.status === 'rejected') {
+          return r.reason;
+        } else {
+          return (r.value as any).error;
+        }
+      });
+      
+      return {
+        success: errors.length === 0,
+        syncedCount: successfulSyncs.length,
+        errors
+      };
     } catch (error) {
       console.error('Erro ao sincronizar com servidor:', error);
-      return false;
+      return {
+        success: false,
+        syncedCount: 0,
+        errors: [error]
+      };
     }
   },
 

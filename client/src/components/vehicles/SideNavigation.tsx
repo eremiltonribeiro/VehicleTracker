@@ -120,7 +120,7 @@ export function SideNavigation() {
       <div className="lg:hidden bg-blue-800 text-white shadow-md w-full">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center">
-            <img src="/src/assets/logo.png" alt="Logo" className="w-8 h-8 mr-3" />
+            <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3" />
             <h1 className="text-lg font-bold">Sistema de Gestão de Frota</h1>
           </div>
           <Button
@@ -281,7 +281,7 @@ export function SideNavigation() {
       {/* Sidebar for desktop */}
       <div className="hidden lg:flex h-screen fixed left-0 top-0 bg-blue-800 text-white w-64 shadow-lg flex-col">
         <div className="p-4 flex items-center border-b border-blue-700">
-          <img src="/src/assets/logo.png" alt="Logo" className="w-8 h-8 mr-3" />
+          <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3" />
           <h1 className="text-xl font-bold">Sistema de Gestão de Frota</h1>
         </div>
         
