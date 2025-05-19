@@ -15,6 +15,7 @@ import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
 import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
+import AppConfig from "@/pages/AppConfig";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
 import { syncManager } from "./services/syncManager";
