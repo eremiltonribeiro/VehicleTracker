@@ -25,18 +25,15 @@ export default function Login() {
     }
   }, [isAuthenticated, setLocation]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Autenticação simples - em produção, seria feita via API
     try {
-      // Usuário e senha padrão para demonstração
+      // Verificação simplificada para demonstração
       if (username === "admin" && password === "admin") {
-        console.log("Autenticando usuário admin...");
-        
-        // Criar objeto de usuário
+        // Dados do usuário admin
         const userData = {
           id: "1",
           name: "Administrador",
@@ -44,19 +41,39 @@ export default function Login() {
           role: "admin"
         };
         
-        // Autenticar usando o hook de autenticação
+        // Mostrar toast de sucesso
+        toast({
+          title: "Login realizado com sucesso",
+          description: "Bem-vindo ao sistema de gestão de frota!",
+          variant: "default",
+        });
+        
+        // Autenticar e redirecionar (com um pequeno atraso para garantir que o estado seja atualizado)
         login(userData);
         
-        console.log("Login realizado com sucesso!");
+        // Forçar a atualização direta do localStorage
+        window.localStorage.setItem("authenticated", "true");
+        window.localStorage.setItem("user", JSON.stringify(userData));
         
-        // Redirecionar para a página principal após um pequeno delay
-        setTimeout(() => setLocation("/"), 100);
+        // Redirecionar para a página inicial
+        window.location.href = "/";
+        return;
       } else {
         setError("Usuário ou senha incorretos");
+        toast({
+          title: "Falha no login",
+          description: "Usuário ou senha incorretos. Tente novamente.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("Erro ao fazer login:", err);
       setError("Erro ao realizar login. Tente novamente.");
+      toast({
+        title: "Erro no sistema",
+        description: "Ocorreu um erro ao processar o login. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
