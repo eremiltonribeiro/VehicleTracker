@@ -1,21 +1,51 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Separator } from "@/components/ui/separator";
+import { ArrowLeft, ArrowRight, Save, CheckCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ChevronRight, CheckSquare, Camera, Upload, ArrowLeft } from "lucide-react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-// Tipos para o componente
+// Interfaces para os dados
 interface Vehicle {
   id: number;
   name: string;
@@ -43,35 +73,37 @@ interface ChecklistItem {
   order: number;
 }
 
-// Schema para validação do formulário de checklist
-const checklistFormSchema = z.object({
-  vehicleId: z.string().min(1, "Veículo é obrigatório"),
-  driverId: z.string().min(1, "Motorista é obrigatório"),
-  templateId: z.string().min(1, "Modelo de checklist é obrigatório"),
-  odometer: z.string().min(1, "Hodômetro é obrigatório"),
+// Esquema de validação para o formulário básico
+const baseFormSchema = z.object({
+  vehicleId: z.string().min(1, "Selecione um veículo"),
+  driverId: z.string().min(1, "Selecione um motorista"),
+  templateId: z.string().min(1, "Selecione um modelo de checklist"),
+  odometer: z.string().min(1, "Informe a quilometragem"),
   observations: z.string().optional(),
-  // Itens do checklist serão gerenciados separadamente
 });
-
-type ChecklistFormValues = z.infer<typeof checklistFormSchema>;
 
 // Componente principal
 export default function NewChecklist() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
-  const [itemResults, setItemResults] = useState<Record<number, { status: string; observation: string | null; photo: File | null }>>({});
-  const [step, setStep] = useState(1);
+  const [items, setItems] = useState<ChecklistItem[]>([]);
+  const [selectedTab, setSelectedTab] = useState<"info" | "items">("info");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [results, setResults] = useState<{ [key: number]: { status: string; observation: string | null; photoUrl: string | null } }>({});
+  const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
+  const [baseFormComplete, setBaseFormComplete] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [issueObservation, setIssueObservation] = useState("");
   
-  // Configuração do formulário
-  const form = useForm<ChecklistFormValues>({
-    resolver: zodResolver(checklistFormSchema),
+  // Inicializar o formulário
+  const form = useForm<z.infer<typeof baseFormSchema>>({
+    resolver: zodResolver(baseFormSchema),
     defaultValues: {
       vehicleId: "",
       driverId: "",
@@ -81,36 +113,44 @@ export default function NewChecklist() {
     },
   });
   
+  // Carregar dados iniciais
   useEffect(() => {
-    // Carregar dados iniciais
-    loadData();
+    loadInitialData();
   }, []);
   
-  // Carregamento de dados (veículos, motoristas, templates)
-  const loadData = () => {
+  // Carregar dados quando o template muda
+  useEffect(() => {
+    const templateId = form.watch("templateId");
+    if (templateId) {
+      loadTemplateItems(parseInt(templateId));
+    }
+  }, [form.watch("templateId")]);
+  
+  // Função para carregar os dados iniciais
+  const loadInitialData = () => {
     setIsLoading(true);
     
-    // Simulação de carga de dados (em produção isso viria do servidor)
+    // Simulação de carregamento de dados
     setTimeout(() => {
-      // Veículos
+      // Veículos simulados
       const mockVehicles: Vehicle[] = [
         { id: 1, name: "Caminhão 01", plate: "ABC1234" },
-        { id: 2, name: "Caminhão 02", plate: "DEF5678" },
-        { id: 3, name: "Caminhão 03", plate: "GHI9012" },
+        { id: 2, name: "Caminhão 02", plate: "XYZ5678" },
+        { id: 3, name: "Caminhão 03", plate: "DEF9012" },
       ];
       
-      // Motoristas
+      // Motoristas simulados
       const mockDrivers: Driver[] = [
         { id: 1, name: "João Silva" },
-        { id: 2, name: "Carlos Santos" },
-        { id: 3, name: "Maria Oliveira" },
+        { id: 2, name: "Maria Oliveira" },
+        { id: 3, name: "Carlos Santos" },
       ];
       
-      // Templates de checklist
+      // Templates simulados
       const mockTemplates: ChecklistTemplate[] = [
-        { id: 1, name: "Checklist Diário", description: "Verificação básica de segurança" },
-        { id: 2, name: "Checklist Semanal", description: "Verificação completa do veículo" },
-        { id: 3, name: "Checklist de Viagem", description: "Verificação para viagens longas" },
+        { id: 1, name: "Checklist Diário", description: "Verificação diária básica do veículo" },
+        { id: 2, name: "Checklist Semanal", description: "Verificação semanal detalhada do veículo" },
+        { id: 3, name: "Checklist Mensal", description: "Verificação mensal completa do veículo" },
       ];
       
       setVehicles(mockVehicles);
@@ -120,174 +160,149 @@ export default function NewChecklist() {
     }, 500);
   };
   
-  // Carregar itens do template selecionado
-  const loadTemplateItems = (templateId: string) => {
-    if (!templateId) return;
-    
-    setIsLoading(true);
-    
-    // Simular carregamento de itens do template (em produção isso viria do servidor)
+  // Função para carregar os itens do template selecionado
+  const loadTemplateItems = (templateId: number) => {
+    // Simulação de carregamento de itens do template
     setTimeout(() => {
+      // Itens simulados
       const mockItems: ChecklistItem[] = [
-        // Itens para o template diário (ID 1)
-        ...(templateId === "1" ? [
-          { id: 1, templateId: 1, name: "Verificação do óleo do motor", description: "Verificar nível do óleo", isRequired: true, category: "Motor", order: 1 },
-          { id: 2, templateId: 1, name: "Verificação do líquido de arrefecimento", description: "Verificar nível do radiador", isRequired: true, category: "Motor", order: 2 },
-          { id: 3, templateId: 1, name: "Verificação dos freios", description: "Verificar funcionamento e nível do fluido", isRequired: true, category: "Segurança", order: 3 },
-          { id: 4, templateId: 1, name: "Verificação das luzes", description: "Testar faróis, lanternas e setas", isRequired: true, category: "Segurança", order: 4 },
-          { id: 5, templateId: 1, name: "Verificação da pressão dos pneus", description: "Verificar pressão conforme manual", isRequired: true, category: "Pneus", order: 5 },
-        ] : []),
-        
-        // Itens para o template semanal (ID 2)
-        ...(templateId === "2" ? [
-          { id: 6, templateId: 2, name: "Verificação do óleo do motor", description: "Verificar nível e condição do óleo", isRequired: true, category: "Motor", order: 1 },
-          { id: 7, templateId: 2, name: "Verificação do líquido de arrefecimento", description: "Verificar nível e condição do líquido", isRequired: true, category: "Motor", order: 2 },
-          { id: 8, templateId: 2, name: "Verificação dos freios", description: "Verificar funcionamento, nível do fluido e desgaste das pastilhas", isRequired: true, category: "Segurança", order: 3 },
-          { id: 9, templateId: 2, name: "Verificação das luzes", description: "Testar faróis, lanternas, setas e luzes internas", isRequired: true, category: "Segurança", order: 4 },
-          { id: 10, templateId: 2, name: "Verificação da pressão dos pneus", description: "Verificar pressão e desgaste dos pneus", isRequired: true, category: "Pneus", order: 5 },
-          { id: 11, templateId: 2, name: "Verificação da suspensão", description: "Verificar amortecedores e molas", isRequired: true, category: "Suspensão", order: 6 },
-          { id: 12, templateId: 2, name: "Verificação do sistema elétrico", description: "Verificar bateria e alternador", isRequired: true, category: "Elétrica", order: 7 },
-          { id: 13, templateId: 2, name: "Verificação dos filtros", description: "Verificar filtro de ar e combustível", isRequired: false, category: "Motor", order: 8 },
-        ] : []),
-        
-        // Itens para o template de viagem (ID 3)
-        ...(templateId === "3" ? [
-          { id: 14, templateId: 3, name: "Verificação do óleo do motor", description: "Verificar nível do óleo", isRequired: true, category: "Motor", order: 1 },
-          { id: 15, templateId: 3, name: "Verificação do líquido de arrefecimento", description: "Verificar nível do radiador", isRequired: true, category: "Motor", order: 2 },
-          { id: 16, templateId: 3, name: "Verificação dos freios", description: "Verificar funcionamento e nível do fluido", isRequired: true, category: "Segurança", order: 3 },
-          { id: 17, templateId: 3, name: "Verificação das luzes", description: "Testar faróis, lanternas e setas", isRequired: true, category: "Segurança", order: 4 },
-          { id: 18, templateId: 3, name: "Verificação da pressão dos pneus", description: "Verificar pressão conforme manual", isRequired: true, category: "Pneus", order: 5 },
-          { id: 19, templateId: 3, name: "Verificação do estepe", description: "Verificar condição e pressão do estepe", isRequired: true, category: "Pneus", order: 6 },
-          { id: 20, templateId: 3, name: "Verificação dos documentos", description: "Verificar CRLV e demais documentos obrigatórios", isRequired: true, category: "Documentação", order: 7 },
-          { id: 21, templateId: 3, name: "Verificação de equipamentos obrigatórios", description: "Verificar triangulo, macaco e chave de roda", isRequired: true, category: "Equipamentos", order: 8 },
-          { id: 22, templateId: 3, name: "Verificação do combustível", description: "Verificar nível de combustível", isRequired: true, category: "Combustível", order: 9 },
-        ] : []),
+        { id: 1, templateId, name: "Verificação do óleo do motor", description: "Verificar nível do óleo", isRequired: true, category: "Motor", order: 1 },
+        { id: 2, templateId, name: "Verificação do líquido de arrefecimento", description: "Verificar nível do radiador", isRequired: true, category: "Motor", order: 2 },
+        { id: 3, templateId, name: "Verificação dos freios", description: "Verificar funcionamento e nível do fluido", isRequired: true, category: "Segurança", order: 3 },
+        { id: 4, templateId, name: "Verificação das luzes", description: "Testar faróis, lanternas e setas", isRequired: true, category: "Segurança", order: 4 },
+        { id: 5, templateId, name: "Verificação da pressão dos pneus", description: "Verificar pressão conforme manual", isRequired: true, category: "Pneus", order: 5 },
       ];
       
-      setChecklistItems(mockItems);
+      setItems(mockItems);
       
-      // Inicializar o estado de resultados para cada item
-      const initialResults: Record<number, { status: string; observation: string | null; photo: File | null }> = {};
+      // Inicializar resultados como vazios
+      const initialResults: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
       mockItems.forEach(item => {
-        initialResults[item.id] = { status: "ok", observation: null, photo: null };
+        initialResults[item.id] = { status: "", observation: null, photoUrl: null };
       });
-      setItemResults(initialResults);
       
-      setIsLoading(false);
+      setResults(initialResults);
     }, 300);
   };
   
-  // Lidar com a mudança de template
-  const handleTemplateChange = (value: string) => {
-    setSelectedTemplate(value);
-    form.setValue("templateId", value);
-    loadTemplateItems(value);
-  };
-  
-  // Atualizar status de um item do checklist
-  const updateItemStatus = (itemId: number, status: string) => {
-    setItemResults(prev => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], status },
-    }));
-  };
-  
-  // Atualizar observação de um item do checklist
-  const updateItemObservation = (itemId: number, observation: string) => {
-    setItemResults(prev => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], observation },
-    }));
-  };
-  
-  // Atualizar foto de um item do checklist
-  const handlePhotoUpload = (itemId: number, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setItemResults(prev => ({
-        ...prev,
-        [itemId]: { ...prev[itemId], photo: file },
-      }));
-    }
-  };
-  
-  // Avançar para o próximo passo
-  const handleNext = async () => {
-    if (step === 1) {
-      // Validar o primeiro passo
-      const isValid = await form.trigger(["vehicleId", "driverId", "templateId", "odometer"]);
-      if (!isValid) return;
-      
-      setStep(2);
-    } else {
-      // Salvar o checklist completo
-      handleSave();
-    }
-  };
-  
-  // Voltar para o passo anterior
+  // Voltar para a página de checklists
   const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    } else {
-      // Voltar para a lista de checklists
-      setLocation("/checklists");
-    }
+    setLocation("/checklists");
   };
   
-  // Salvar o checklist
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      
-      // Verificar se todos os itens obrigatórios foram preenchidos
-      const requiredItems = checklistItems.filter(item => item.isRequired);
-      
-      let hasErrors = false;
-      for (const item of requiredItems) {
-        const result = itemResults[item.id];
-        if (result.status === "issue" && !result.observation) {
-          toast({
-            title: "Erro",
-            description: `O item "${item.name}" apresenta problema e precisa de uma observação`,
-            variant: "destructive",
-          });
-          hasErrors = true;
-          break;
-        }
-      }
-      
-      if (hasErrors) {
-        setIsSaving(false);
-        return;
-      }
-      
-      // Simulando salvamento (em produção seria uma chamada à API)
-      setTimeout(() => {
-        toast({
-          title: "Sucesso",
-          description: "Checklist registrado com sucesso!",
-        });
-        
-        setIsSaving(false);
-        setLocation("/checklists");
-      }, 1000);
-    } catch (error) {
-      console.error("Erro ao salvar checklist:", error);
+  // Enviar o formulário
+  const onSubmit = (data: z.infer<typeof baseFormSchema>) => {
+    // Se estivermos na primeira etapa, avançar para a segunda
+    if (selectedTab === "info") {
+      setBaseFormComplete(true);
+      setSelectedTab("items");
+      return;
+    }
+    
+    // Verificar se todos os itens obrigatórios foram avaliados
+    const requiredItems = items.filter(item => item.isRequired);
+    const missingItems = requiredItems.filter(item => !results[item.id].status);
+    
+    if (missingItems.length > 0) {
       toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar o checklist. Tente novamente.",
+        title: "Checklist incompleto",
+        description: `Existem ${missingItems.length} itens obrigatórios não avaliados.`,
         variant: "destructive",
       });
-      setIsSaving(false);
+      return;
     }
+    
+    // Se todos os itens obrigatórios foram avaliados, enviar o checklist
+    setIsSubmitting(true);
+    
+    // Simulação de envio
+    setTimeout(() => {
+      // Criar objeto com os dados do checklist
+      const checklistData = {
+        vehicleId: parseInt(data.vehicleId),
+        driverId: parseInt(data.driverId),
+        templateId: parseInt(data.templateId),
+        odometer: parseInt(data.odometer),
+        observations: data.observations || null,
+        date: new Date(),
+        results: Object.entries(results).map(([itemId, result]) => ({
+          itemId: parseInt(itemId),
+          status: result.status || "not_applicable",
+          observation: result.observation,
+          photoUrl: result.photoUrl,
+        })),
+      };
+      
+      console.log("Enviando checklist:", checklistData);
+      
+      // Simulação de sucesso
+      toast({
+        title: "Checklist salvo com sucesso!",
+        description: "O checklist foi registrado no sistema.",
+      });
+      
+      setIsSubmitting(false);
+      setLocation("/checklists");
+    }, 1000);
   };
   
-  // Obter itens agrupados por categoria
+  // Atualizar o status de um item
+  const updateItemStatus = (itemId: number, status: string) => {
+    setResults(prev => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        status,
+      },
+    }));
+  };
+  
+  // Abrir o diálogo para reportar um problema
+  const openIssueDialog = (item: ChecklistItem) => {
+    setSelectedItem(item);
+    setIssueObservation("");
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoDialogOpen(true);
+  };
+  
+  // Salvar os detalhes do problema
+  const saveIssueDetails = () => {
+    if (!selectedItem) return;
+    
+    setResults(prev => ({
+      ...prev,
+      [selectedItem.id]: {
+        ...prev[selectedItem.id],
+        status: "issue",
+        observation: issueObservation || null,
+        photoUrl: photoPreview,
+      },
+    }));
+    
+    setPhotoDialogOpen(false);
+  };
+  
+  // Manipular o upload de foto
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setPhotoFile(file);
+    
+    // Criar preview da imagem
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  // Agrupar itens por categoria
   const getItemsByCategory = () => {
     const categories: Record<string, ChecklistItem[]> = {};
     
-    checklistItems.forEach(item => {
+    items.forEach(item => {
       const category = item.category || "Sem categoria";
       if (!categories[category]) {
         categories[category] = [];
@@ -298,306 +313,399 @@ export default function NewChecklist() {
     return categories;
   };
   
+  // Verificar se todos os itens foram avaliados
+  const allItemsChecked = () => {
+    const requiredItems = items.filter(item => item.isRequired);
+    return requiredItems.every(item => results[item.id]?.status);
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-10">
+        <div className="text-center">
+          <div className="mb-4">Carregando...</div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleBack}
-            className="h-8 w-8 text-blue-700"
+            className="h-8 w-8 text-blue-700 mr-2"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-2xl font-bold text-blue-900">Novo Checklist</h2>
         </div>
-        <div className="text-sm font-medium text-gray-500">
-          Passo {step} de 2
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={selectedTab === "info" ? "default" : "outline"}
+            onClick={() => setSelectedTab("info")}
+            className={selectedTab === "info" ? "bg-blue-700" : "text-blue-700 border-blue-700"}
+          >
+            1. Informações Básicas
+          </Button>
+          <Button
+            variant={selectedTab === "items" ? "default" : "outline"}
+            onClick={() => baseFormComplete && setSelectedTab("items")}
+            disabled={!baseFormComplete}
+            className={selectedTab === "items" ? "bg-blue-700" : "text-blue-700 border-blue-700"}
+          >
+            2. Itens do Checklist
+          </Button>
         </div>
       </div>
       
-      {step === 1 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações Básicas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-4">Carregando...</div>
-            ) : (
-              <Form {...form}>
-                <form className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                      control={form.control}
-                      name="vehicleId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Veículo</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o veículo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {vehicles.map(vehicle => (
-                                <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                                  {vehicle.name} ({vehicle.plate})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="driverId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Motorista</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o motorista" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {drivers.map(driver => (
-                                <SelectItem key={driver.id} value={driver.id.toString()}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="templateId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Modelo de Checklist</FormLabel>
-                          <Select 
-                            onValueChange={handleTemplateChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecione o modelo" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {templates.map(template => (
-                                <SelectItem key={template.id} value={template.id.toString()}>
-                                  {template.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="odometer"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Hodômetro (km)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="Hodômetro atual" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {selectedTab === "info" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-medium">Informações do Checklist</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="observations"
+                    name="vehicleId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Observações Gerais (opcional)</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Observações adicionais sobre o veículo" 
-                            {...field} 
-                          />
-                        </FormControl>
+                        <FormLabel>Veículo</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um veículo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {vehicles.map((vehicle) => (
+                              <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
+                                {vehicle.name} ({vehicle.plate})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </form>
-              </Form>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5 text-blue-700" />
-              Itens do Checklist
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="text-center py-4">Carregando itens do checklist...</div>
-            ) : (
-              <div className="space-y-8">
-                {Object.entries(getItemsByCategory()).map(([category, items]) => (
-                  <div key={category} className="space-y-4">
-                    <h3 className="font-medium text-blue-900 text-lg">{category}</h3>
-                    <div className="space-y-6">
-                      {items.map(item => (
-                        <div key={item.id} className="border rounded-lg p-4 space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div>
-                              <h4 className="font-medium">{item.name}</h4>
-                              {item.description && (
-                                <p className="text-sm text-gray-600">{item.description}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center space-x-2">
-                                <Checkbox 
-                                  id={`item-${item.id}-ok`} 
-                                  checked={itemResults[item.id]?.status === "ok"}
-                                  onCheckedChange={() => updateItemStatus(item.id, "ok")}
-                                  className="data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
-                                />
-                                <label
-                                  htmlFor={`item-${item.id}-ok`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                  OK
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Checkbox 
-                                  id={`item-${item.id}-issue`} 
-                                  checked={itemResults[item.id]?.status === "issue"}
-                                  onCheckedChange={() => updateItemStatus(item.id, "issue")}
-                                  className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
-                                />
-                                <label
-                                  htmlFor={`item-${item.id}-issue`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                  Problema
-                                </label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Checkbox 
-                                  id={`item-${item.id}-na`} 
-                                  checked={itemResults[item.id]?.status === "not_applicable"}
-                                  onCheckedChange={() => updateItemStatus(item.id, "not_applicable")}
-                                  className="data-[state=checked]:bg-gray-500 data-[state=checked]:border-gray-500"
-                                />
-                                <label
-                                  htmlFor={`item-${item.id}-na`}
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                  N/A
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {itemResults[item.id]?.status === "issue" && (
-                            <div className="space-y-3">
-                              <Textarea 
-                                placeholder="Descreva o problema encontrado" 
-                                value={itemResults[item.id]?.observation || ""}
-                                onChange={(e) => updateItemObservation(item.id, e.target.value)}
-                                className="h-20"
-                              />
-                              <div>
-                                <Label htmlFor={`photo-${item.id}`} className="mb-2 block">
-                                  Foto (opcional)
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    id={`photo-${item.id}`}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => handlePhotoUpload(item.id, e)}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => document.getElementById(`photo-${item.id}`)?.click()}
-                                    className="text-blue-700"
-                                  >
-                                    <Camera className="h-4 w-4 mr-2" />
-                                    {itemResults[item.id]?.photo ? "Alterar Foto" : "Adicionar Foto"}
-                                  </Button>
-                                  {itemResults[item.id]?.photo && (
-                                    <span className="text-sm text-green-600">
-                                      Foto selecionada: {itemResults[item.id]?.photo?.name}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-      
-      <div className="flex justify-end gap-2">
-        <Button 
-          variant="outline" 
-          onClick={handleBack}
-        >
-          {step === 1 ? "Cancelar" : "Voltar"}
-        </Button>
-        <Button 
-          onClick={handleNext}
-          className="bg-blue-800 hover:bg-blue-700"
-          disabled={isLoading || isSaving}
-        >
-          {isSaving ? (
-            "Salvando..."
-          ) : step === 1 ? (
-            <>
-              Próximo
-              <ChevronRight className="ml-2 h-4 w-4" />
-            </>
-          ) : (
-            "Finalizar Checklist"
+                  
+                  <FormField
+                    control={form.control}
+                    name="driverId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Motorista</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um motorista" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {drivers.map((driver) => (
+                              <SelectItem key={driver.id} value={driver.id.toString()}>
+                                {driver.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="templateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modelo de Checklist</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione um modelo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {templates.map((template) => (
+                            <SelectItem key={template.id} value={template.id.toString()}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="odometer"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hodômetro (km)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="Ex: 12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="observations"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações Gerais</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Observações adicionais sobre o veículo ou checklist" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
           )}
-        </Button>
-      </div>
+          
+          {selectedTab === "items" && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-medium">Itens do Checklist</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {items.length === 0 ? (
+                  <div className="text-center py-6 text-gray-500">
+                    Nenhum item encontrado para este modelo de checklist.
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(getItemsByCategory()).map(([category, categoryItems]) => (
+                      <div key={category} className="space-y-3">
+                        <h3 className="font-medium text-blue-900">{category}</h3>
+                        <div className="overflow-auto rounded-lg border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-gray-50">
+                                <TableHead className="font-medium">Item</TableHead>
+                                <TableHead className="font-medium">Obrigatório</TableHead>
+                                <TableHead className="font-medium">Status</TableHead>
+                                <TableHead className="font-medium">Ações</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {categoryItems.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>
+                                    <div>
+                                      <p className="font-medium">{item.name}</p>
+                                      {item.description && (
+                                        <p className="text-sm text-gray-500">{item.description}</p>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    {item.isRequired ? "Sim" : "Não"}
+                                  </TableCell>
+                                  <TableCell>
+                                    <RadioGroup
+                                      value={results[item.id]?.status || ""}
+                                      onValueChange={(value) => updateItemStatus(item.id, value)}
+                                      className="flex space-x-4"
+                                    >
+                                      <div className="flex items-center space-x-1">
+                                        <RadioGroupItem 
+                                          value="ok" 
+                                          id={`ok-${item.id}`} 
+                                          className="text-green-600" 
+                                        />
+                                        <label 
+                                          htmlFor={`ok-${item.id}`}
+                                          className="text-sm cursor-pointer"
+                                        >
+                                          OK
+                                        </label>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <RadioGroupItem 
+                                          value="issue" 
+                                          id={`issue-${item.id}`} 
+                                          className="text-red-600"
+                                        />
+                                        <label
+                                          htmlFor={`issue-${item.id}`}
+                                          className="text-sm cursor-pointer"
+                                        >
+                                          Problema
+                                        </label>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <RadioGroupItem 
+                                          value="not_applicable" 
+                                          id={`na-${item.id}`}
+                                          className="text-yellow-600"
+                                        />
+                                        <label
+                                          htmlFor={`na-${item.id}`}
+                                          className="text-sm cursor-pointer"
+                                        >
+                                          N/A
+                                        </label>
+                                      </div>
+                                    </RadioGroup>
+                                  </TableCell>
+                                  <TableCell>
+                                    {results[item.id]?.status === "issue" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openIssueDialog(item)}
+                                        className="text-red-600 border-red-600"
+                                      >
+                                        Detalhar Problema
+                                      </Button>
+                                    )}
+                                    {results[item.id]?.status === "issue" && results[item.id]?.observation && (
+                                      <div className="mt-1 text-xs text-red-600">
+                                        {results[item.id]?.observation}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+              disabled={isSubmitting}
+              className="text-blue-700 border-blue-700"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Cancelar
+            </Button>
+            
+            {selectedTab === "info" ? (
+              <Button 
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-blue-700 hover:bg-blue-800"
+              >
+                Próximo
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button 
+                type="submit"
+                disabled={isSubmitting || !allItemsChecked()}
+                className="bg-blue-700 hover:bg-blue-800"
+              >
+                {isSubmitting ? "Salvando..." : "Salvar Checklist"}
+                {isSubmitting ? null : <Save className="ml-2 h-4 w-4" />}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Form>
+      
+      {/* Diálogo para reportar um problema */}
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Detalhar Problema</DialogTitle>
+            <DialogDescription>
+              Adicione uma descrição e foto do problema encontrado.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="observation" className="text-sm font-medium">
+                Descrição do Problema
+              </label>
+              <Textarea
+                id="observation"
+                placeholder="Descreva o problema encontrado..."
+                value={issueObservation}
+                onChange={(e) => setIssueObservation(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="photo" className="text-sm font-medium">
+                Foto do Problema (opcional)
+              </label>
+              <Input
+                id="photo"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+              />
+              
+              {photoPreview && (
+                <div className="mt-2">
+                  <p className="text-sm mb-1">Preview:</p>
+                  <div className="relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                    <img
+                      src={photoPreview}
+                      alt="Preview"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => setPhotoDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={saveIssueDetails}
+              className="bg-blue-700 hover:bg-blue-800"
+            >
+              Salvar Detalhes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
