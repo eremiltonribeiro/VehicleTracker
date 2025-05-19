@@ -14,6 +14,7 @@ import UserManagement from "@/pages/UserManagement";
 import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
 import ChecklistDetails from "@/pages/ChecklistDetails";
+import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import { Navigation } from "@/components/vehicles/Navigation";
 import { Header } from "@/components/vehicles/Header";
 import { useEffect, useState } from "react";
@@ -164,6 +165,7 @@ function Router() {
           <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
           <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
           <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
+          <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
           <Route component={NotFound} />
         </Switch>
       </main>

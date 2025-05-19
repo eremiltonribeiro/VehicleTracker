@@ -2,22 +2,35 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { VehicleForm } from "@/components/vehicles/VehicleForm";
 import { DriverForm } from "@/components/vehicles/DriverForm";
 import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
 import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
 import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
-import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench } from "lucide-react";
+import { Loader2, Car, UserCircle, Fuel, Droplet, Wrench, ClipboardCheck, ArrowRight } from "lucide-react";
 import { offlineStorage } from "@/services/offlineStorage";
+import { useLocation } from "wouter";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("vehicles");
+  const [, setLocation] = useLocation();
   
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Configurações</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex justify-between items-center">
+            <span>Configurações</span>
+            <Button 
+              onClick={() => setLocation("/checklist-templates")}
+              className="bg-blue-700 hover:bg-blue-800 text-sm flex items-center gap-2"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Gerenciar Templates de Checklist</span>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </CardTitle>
           <CardDescription>Cadastre e gerencie os dados do sistema</CardDescription>
         </CardHeader>
       </Card>
