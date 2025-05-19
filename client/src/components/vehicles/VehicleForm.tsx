@@ -92,12 +92,16 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         }
         
         // Send data to server
-        const response = await apiRequest('/api/vehicles', {
+        const response = await fetch('/api/vehicles', {
           method: 'POST',
           body: formData,
         });
         
-        return response;
+        if (!response.ok) {
+          throw new Error('Erro ao salvar veículo');
+        }
+        
+        return await response.json();
       } catch (error) {
         console.error("Erro ao criar veículo:", error);
         throw error;

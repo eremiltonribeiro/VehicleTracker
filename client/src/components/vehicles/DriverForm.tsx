@@ -90,12 +90,16 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         }
         
         // Send data to server
-        const response = await apiRequest('/api/drivers', {
+        const response = await fetch('/api/drivers', {
           method: 'POST',
           body: formData,
         });
         
-        return response;
+        if (!response.ok) {
+          throw new Error('Erro ao salvar motorista');
+        }
+        
+        return await response.json();
       } catch (error) {
         console.error("Erro ao criar motorista:", error);
         throw error;
