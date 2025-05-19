@@ -50,8 +50,8 @@ import { Label } from "@/components/ui/label";
 export function HistoryView() {
   // Filter state
   const [filters, setFilters] = useState({
-    type: "",
-    vehicleId: "",
+    type: "all",
+    vehicleId: "all",
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
   });
@@ -74,8 +74,8 @@ export function HistoryView() {
       let url = "/api/registrations";
       const params = new URLSearchParams();
       
-      if (type) params.append("type", type as string);
-      if (vehicleId) params.append("vehicleId", vehicleId as string);
+      if (type && type !== "all") params.append("type", type as string);
+      if (vehicleId && vehicleId !== "all") params.append("vehicleId", vehicleId as string);
       if (startDate) params.append("startDate", (startDate as Date).toISOString());
       if (endDate) params.append("endDate", (endDate as Date).toISOString());
       
@@ -158,7 +158,7 @@ export function HistoryView() {
                   <SelectValue placeholder="Todos os tipos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os tipos</SelectItem>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
                   <SelectItem value="fuel">Abastecimento</SelectItem>
                   <SelectItem value="maintenance">Manutenção</SelectItem>
                   <SelectItem value="trip">Viagem</SelectItem>
@@ -176,7 +176,7 @@ export function HistoryView() {
                   <SelectValue placeholder="Todos os veículos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os veículos</SelectItem>
+                  <SelectItem value="all">Todos os veículos</SelectItem>
                   {Array.isArray(vehicles) && vehicles.map((vehicle: any) => (
                     <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
                       {vehicle.name} - {vehicle.plate}
