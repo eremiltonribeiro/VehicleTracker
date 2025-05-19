@@ -18,6 +18,7 @@ import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import AppConfig from "@/pages/AppConfig";
 import Drivers from "@/pages/Drivers";
 import DriversSimple from "@/pages/DriversSimple";
+import Dashboard from "@/pages/Dashboard";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
 import { syncManager } from "./services/syncManager";
@@ -159,6 +160,7 @@ function Router() {
         <div className="max-w-6xl mx-auto">
           <Switch>
             <PrivateRoute path="/" component={Welcome} />
+            <PrivateRoute path="/dashboard" component={Dashboard} permission="dashboard" />
             <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
