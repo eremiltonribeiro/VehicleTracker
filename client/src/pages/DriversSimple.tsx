@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Plus, Pencil, Trash2 } from "lucide-react";
-import { SimpleDriverForm } from "@/components/vehicles/SimpleDriverForm";
+import { DriverForm } from "@/components/vehicles/DriverForm";
 import { AlertDialogDelete } from "@/components/ui/alert-dialog-delete";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -148,7 +148,7 @@ export default function DriversSimple() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <SimpleDriverForm 
+              <DriverForm 
                 onSuccess={handleFormSuccess}
                 editingDriver={editingDriver}
               />
