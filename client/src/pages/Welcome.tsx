@@ -130,7 +130,7 @@ export default function Welcome() {
             <Button 
               className="w-full" 
               variant="outline"
-              onClick={() => setLocation("/?view=dashboard")}
+              onClick={() => setLocation("/relatorios")}
             >
               Gerar Relatórios
             </Button>
