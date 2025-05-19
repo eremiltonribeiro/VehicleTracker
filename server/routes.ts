@@ -189,35 +189,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/fuel-types", async (req, res) => {
     try {
-      // Verificar e extrair o nome do combustível
-      console.log("Dados recebidos do formulário:", req.body);
+      const typeData = { name: req.body.name };
       
-      const fuelTypeName = req.body.name;
-      
-      if (!fuelTypeName || fuelTypeName.trim() === '') {
-        return res.status(400).json({ message: "Nome do combustível é obrigatório" });
-      }
-      
-      // Criar objeto de dados para inserção
-      const typeData = {
-        name: fuelTypeName.trim()
-      };
-      
-      // Tentar criar o tipo de combustível
+      // Validar dados usando o schema
       try {
-        // Usar o storage para criar o tipo de combustível
-        const fuelType = await storage.createFuelType(typeData);
-        console.log("Tipo de combustível criado com sucesso:", fuelType);
-        return res.status(201).json(fuelType);
-      } catch (storageError) {
-        console.error("Erro ao salvar no armazenamento:", storageError);
-        return res.status(500).json({ 
-          message: "Não foi possível salvar o tipo de combustível" 
+        insertFuelTypeSchema.parse(typeData);
+      } catch (validationError: any) {
+        return res.status(400).json({ 
+          message: "Erro de validação", 
+          errors: validationError.errors 
         });
       }
-    } catch (error) {
-      console.error("Erro ao processar requisição:", error);
-      return res.status(500).json({ message: "Erro interno do servidor" });
+      
+      const fuelType = await storage.createFuelType(typeData);
+      res.status(201).json(fuelType);
+    } catch (error: any) {
+      console.error("Erro ao criar tipo de combustível:", error);
+      res.status(500).json({ 
+        message: "Ocorreu um erro ao cadastrar o tipo de combustível"
+      });
     }
   });
 
