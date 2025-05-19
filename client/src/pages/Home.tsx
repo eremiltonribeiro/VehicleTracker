@@ -109,7 +109,7 @@ export default function Home() {
       
       {!navigator.onLine && (
         <div className="bg-yellow-100 px-4 py-1">
-          <Alert variant="warning" className="border-yellow-500 bg-yellow-50">
+          <Alert className="border-yellow-500 bg-yellow-50">
             <WifiOff className="h-4 w-4 text-yellow-600 mr-2" />
             <AlertTitle>Modo Offline</AlertTitle>
             <AlertDescription>

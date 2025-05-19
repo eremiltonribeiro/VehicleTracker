@@ -25,6 +25,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Fuel, Wrench, MapPin, Droplet, Car, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { offlineStorage } from "@/services/offlineStorage";
 
 export function Dashboard() {
   const [dateRange, setDateRange] = useState("month");
