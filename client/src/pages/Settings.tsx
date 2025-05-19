@@ -227,13 +227,28 @@ function DriversList() {
               <Card key={driver.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-4">
-                    <h3 className="font-bold flex items-center">
-                      <UserCircle className="h-4 w-4 mr-2" />
-                      {driver.name}
-                    </h3>
-                    <div className="text-xs mt-2">
-                      <p><span className="font-medium">CNH:</span> {driver.license}</p>
-                      <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold flex items-center">
+                          <UserCircle className="h-4 w-4 mr-2" />
+                          {driver.name}
+                        </h3>
+                        <div className="text-xs mt-2">
+                          <p><span className="font-medium">CNH:</span> {driver.license}</p>
+                          <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-500 hover:text-blue-600"
+                        onClick={() => {
+                          // Adicione aqui a lógica de edição
+                          alert(`Editar motorista: ${driver.name}`);
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -289,11 +304,26 @@ function FuelStationsList() {
               <Card key={station.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-4">
-                    <h3 className="font-bold flex items-center">
-                      <Fuel className="h-4 w-4 mr-2" />
-                      {station.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">{station.address}</p>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-bold flex items-center">
+                          <Fuel className="h-4 w-4 mr-2" />
+                          {station.name}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">{station.address}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-500 hover:text-blue-600"
+                        onClick={() => {
+                          // Adicione aqui a lógica de edição
+                          alert(`Editar posto: ${station.name}`);
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -348,10 +378,23 @@ function FuelTypesList() {
               <Card key={type.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-4">
-                    <h3 className="font-bold flex items-center">
-                      <Droplet className="h-4 w-4 mr-2" />
-                      {type.name}
-                    </h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold flex items-center">
+                        <Droplet className="h-4 w-4 mr-2" />
+                        {type.name}
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-500 hover:text-blue-600"
+                        onClick={() => {
+                          // Adicione aqui a lógica de edição
+                          alert(`Editar tipo de combustível: ${type.name}`);
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -406,10 +449,23 @@ function MaintenanceTypesList() {
               <Card key={type.id} className="overflow-hidden">
                 <CardContent className="p-0">
                   <div className="p-4">
-                    <h3 className="font-bold flex items-center">
-                      <Wrench className="h-4 w-4 mr-2" />
-                      {type.name}
-                    </h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-bold flex items-center">
+                        <Wrench className="h-4 w-4 mr-2" />
+                        {type.name}
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-gray-500 hover:text-blue-600"
+                        onClick={() => {
+                          // Adicione aqui a lógica de edição
+                          alert(`Editar tipo de manutenção: ${type.name}`);
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
