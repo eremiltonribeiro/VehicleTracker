@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserCircle, Plus, Pencil, Trash2 } from "lucide-react";
-import { DriverForm } from "@/components/vehicles/DriverForm";
+import { DriverForm } from "@/components/vehicles/DriverFormFinal";
 import { AlertDialogDelete } from "@/components/ui/alert-dialog-delete";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
