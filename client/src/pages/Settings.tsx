@@ -359,7 +359,12 @@ function DriversList() {
     }
   });
 
-  const handleEdit = (driver) => {
+  const handleEdit = (driver: {
+    id: number;
+    name: string;
+    license: string;
+    phone: string;
+  }) => {
     setCurrentDriver(driver);
     setEditMode(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
