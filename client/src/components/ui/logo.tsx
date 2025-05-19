@@ -1,62 +1,40 @@
 import { brandColors } from "@/lib/colors";
 
-interface LogoProps {
-  width?: number;
-  height?: number;
-  showText?: boolean;
-}
-
-export function Logo({ width = 40, height = 40, showText = true }: LogoProps) {
+export function Logo() {
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative rounded-sm overflow-hidden" style={{ width, height }}>
-        {/* Quadrado azul marinho maior */}
-        <div 
-          className="absolute rounded-sm" 
-          style={{ 
-            width: width * 0.8, 
-            height: height * 0.8, 
-            backgroundColor: brandColors.navyBlue,
-            bottom: 0,
-            left: 0
-          }}
+    <div className="flex items-center justify-center">
+      <svg
+        width="240"
+        height="60"
+        viewBox="0 0 240 60"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 10H40V20H30V50H20V10Z"
+          fill={brandColors.navyBlue}
         />
-        
-        {/* Quadrado dourado */}
-        <div 
-          className="absolute rounded-sm" 
-          style={{ 
-            width: width * 0.5, 
-            height: height * 0.5, 
-            backgroundColor: brandColors.gold,
-            top: 0,
-            right: width * 0.2
-          }}
+        <path
+          d="M45 10H70C75 10 80 15 80 20V40C80 45 75 50 70 50H45V10ZM55 20V40H65C67.5 40 70 37.5 70 35V25C70 22.5 67.5 20 65 20H55Z"
+          fill={brandColors.navyBlue}
         />
-        
-        {/* Quadrado azul marinho menor */}
-        <div 
-          className="absolute rounded-sm" 
-          style={{ 
-            width: width * 0.4, 
-            height: height * 0.4, 
-            backgroundColor: brandColors.navyBlue,
-            bottom: height * 0.1,
-            right: 0
-          }}
+        <path
+          d="M85 10H95L105 30L115 10H125V50H115V25L105 45L95 25V50H85V10Z"
+          fill={brandColors.navyBlue}
         />
-      </div>
-      
-      {showText && (
-        <div className="flex flex-col">
-          <span className="font-bold text-sm tracking-wider leading-tight" style={{ color: brandColors.navyBlue }}>
-            GRANDUVALE
-          </span>
-          <span className="text-[9px] tracking-wide leading-tight" style={{ color: brandColors.gold }}>
-            MINERAÇÃO
-          </span>
-        </div>
-      )}
+        <path
+          d="M130 10H145C150 10 155 15 155 20V40C155 45 150 50 145 50H130V10ZM140 20V40H145C147.5 40 145 37.5 145 35V25C145 22.5 147.5 20 145 20H140Z"
+          fill={brandColors.gold}
+        />
+        <path
+          d="M160 10H185V20H170V25H180V35H170V40H185V50H160V10Z"
+          fill={brandColors.gold}
+        />
+        <path
+          d="M190 10H200L213 35V10H223V50H213L200 25V50H190V10Z"
+          fill={brandColors.gold}
+        />
+      </svg>
     </div>
   );
 }

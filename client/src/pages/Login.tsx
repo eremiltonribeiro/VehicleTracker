@@ -1,18 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { brandColors } from "@/lib/colors";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter";
+import { useAuth } from "@/App";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
+  const { isAuthenticated, login } = useAuth();
+  
+  // Redirecionar para a página principal se já estiver autenticado
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLocation("/");
+    }
+  }, [isAuthenticated, setLocation]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,15 +32,14 @@ export default function Login() {
     setTimeout(() => {
       // Usuário e senha padrão para demonstração
       if (username === "admin" && password === "admin") {
-        // Salvar estado de autenticação no localStorage
-        localStorage.setItem("authenticated", "true");
-        localStorage.setItem("user", JSON.stringify({
+        // Autenticar usando o hook de autenticação
+        login({
           name: "Administrador",
           role: "admin"
-        }));
+        });
         
         // Redirecionar para a página principal
-        navigate("/");
+        setLocation("/");
       } else {
         setError("Usuário ou senha incorretos");
       }
@@ -45,7 +53,7 @@ export default function Login() {
         <CardHeader className="space-y-3">
           <div className="mx-auto text-center">
             <img 
-              src="/logo-granduvale.png" 
+              src="/logo-granduvale.svg" 
               alt="Granduvale Mineração" 
               className="h-16 mx-auto mb-2"
             />
