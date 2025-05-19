@@ -7,6 +7,7 @@ import { offlineStorage } from "@/services/offlineStorage";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/ui/logo";
 import { brandColors } from "@/lib/colors";
+import { AuthStatus } from "@/components/ui/auth-status";
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -127,6 +128,11 @@ export function Header() {
                 Offline
               </Badge>
             )}
+          </div>
+          
+          {/* Authentication Component */}
+          <div className="mr-1">
+            <AuthStatus />
           </div>
 
           {/* Navigation Buttons */}

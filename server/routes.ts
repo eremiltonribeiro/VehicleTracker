@@ -43,6 +43,20 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configurar autenticação
+  await setupAuth(app);
+  
+  // Endpoint para obter usuário atual
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Erro ao buscar usuário:", error);
+      res.status(500).json({ message: "Falha ao buscar usuário" });
+    }
+  });
   // API routes for vehicle management
   app.get("/api/vehicles", async (req, res) => {
     try {
