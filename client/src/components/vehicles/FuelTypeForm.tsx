@@ -62,12 +62,13 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
         }
         
         // Send data to server using fetch directly
+        console.log("Enviando para o servidor:", JSON.stringify({name: data.name}));
         const response = await fetch('/api/fuel-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify({name: data.name}),
         });
         
         if (!response.ok) {
@@ -107,6 +108,16 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
   });
   
   const onSubmit = (data: FuelTypeFormValues) => {
+    // Verifique se o campo name não está vazio
+    if (!data.name || data.name.trim() === "") {
+      form.setError("name", {
+        type: "manual",
+        message: "O nome do combustível é obrigatório"
+      });
+      return;
+    }
+    
+    console.log("Enviando dados para servidor:", data);
     createFuelType.mutate(data);
   };
   

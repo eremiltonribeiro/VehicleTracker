@@ -189,20 +189,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/fuel-types", async (req, res) => {
     try {
+      // Log dos dados recebidos
+      console.log("Dados recebidos (corpo completo):", req.body);
+      
       const typeData = {
         name: req.body.name
       };
       
       // Log para debug
-      console.log("Dados recebidos:", typeData);
+      console.log("Dados processados:", typeData);
+      
+      if (!typeData.name) {
+        return res.status(400).json({
+          message: "Nome do combustível é obrigatório"
+        });
+      }
       
       // Validar dados
       insertFuelTypeSchema.parse(typeData);
       
       const fuelType = await storage.createFuelType(typeData);
+      console.log("Tipo de combustível criado:", fuelType);
       res.status(201).json(fuelType);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
+        console.error("Erro de validação Zod:", error.errors);
         return res.status(400).json({ 
           message: "Erro de validação", 
           errors: error.errors.map(e => e.message)
