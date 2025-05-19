@@ -247,6 +247,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Excluir motorista
+  app.delete("/api/drivers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      console.log("Excluindo motorista ID:", id);
+      
+      // Verificar se o motorista existe
+      const existingDriver = await storage.getDriver(id);
+      if (!existingDriver) {
+        return res.status(404).json({ message: "Motorista não encontrado" });
+      }
+      
+      // Excluir motorista
+      const deleted = await storage.deleteDriver(id);
+      if (deleted) {
+        console.log("Motorista excluído com sucesso");
+        return res.status(200).json({ success: true });
+      } else {
+        return res.status(500).json({ message: "Falha ao excluir motorista" });
+      }
+    } catch (error: any) {
+      console.error("Erro ao excluir motorista:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
   // Atualizar motorista
   app.put("/api/drivers/:id", upload.single("image"), async (req, res) => {
     try {

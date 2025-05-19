@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,13 +43,24 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
     defaultValues,
   });
   
+  // Usar useEffect para preencher o formulário ao editar motorista
+  useEffect(() => {
+    if (editingDriver) {
+      form.reset({
+        name: editingDriver.name,
+        license: editingDriver.license,
+        phone: editingDriver.phone
+      });
+    }
+  }, [editingDriver, form]);
+
   const saveDriver = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       try {
         console.log("Iniciando salvamento do motorista:", data);
         const isEditing = !!editingDriver;
         
-        // Simplificar para JSON API comum para depuração
+        // Dados para enviar ao servidor
         const driverData = {
           name: data.name,
           license: data.license,
@@ -60,7 +71,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
           ? `/api/drivers/${editingDriver?.id}` 
           : '/api/drivers';
         
-        console.log("Enviando para URL:", url);
+        console.log("Enviando para URL:", url, "Método:", isEditing ? 'PUT' : 'POST');
         
         const response = await fetch(url, {
           method: isEditing ? 'PUT' : 'POST',
@@ -128,12 +139,17 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
   };
   
   const onSubmit = async (data: DriverFormValues) => {
-    try {
-      console.log("Enviando dados do motorista:", data);
-      saveDriver.mutate(data);
-    } catch (error) {
-      console.error("Erro ao enviar formulário:", error);
-    }
+    console.log("Enviando dados do motorista:", data);
+    
+    // Simplificar os dados para garantir compatibilidade com a API
+    const driverData = {
+      name: data.name,
+      license: data.license,
+      phone: data.phone,
+      image: data.image
+    };
+    
+    saveDriver.mutate(driverData);
   };
   
   return (
