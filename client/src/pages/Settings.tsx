@@ -26,36 +26,62 @@ export default function Settings() {
       </Card>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="flex flex-wrap w-full gap-2 mb-4 pb-2 overflow-x-auto">
-          <TabsTrigger value="vehicles" className="flex-1 min-w-[110px] px-2 py-2">
-            <Car className="h-4 w-4 mr-1" />
-            <span>Veículos</span>
-          </TabsTrigger>
-          <TabsTrigger value="drivers" className="flex-1 min-w-[110px] px-2 py-2">
-            <UserCircle className="h-4 w-4 mr-1" />
-            <span>Motoristas</span>
-          </TabsTrigger>
-          <TabsTrigger value="fuel-stations" className="flex-1 min-w-[110px] px-2 py-2">
-            <Fuel className="h-4 w-4 mr-1" />
-            <span>Postos</span>
-          </TabsTrigger>
-          <TabsTrigger value="fuel-types" className="flex-1 min-w-[110px] px-2 py-2">
-            <Droplet className="h-4 w-4 mr-1" />
-            <span>Combustíveis</span>
-          </TabsTrigger>
-          <TabsTrigger value="maintenance-types" className="flex-1 min-w-[110px] px-2 py-2">
-            <Wrench className="h-4 w-4 mr-1" />
-            <span>Manutenções</span>
-          </TabsTrigger>
-          <TabsTrigger 
-            value="checklist-templates" 
-            className="flex-1 min-w-[110px] px-2 py-2 bg-blue-700 text-white hover:bg-blue-800 data-[state=active]:bg-blue-900"
-            onClick={() => setLocation("/checklist-templates")}
-          >
-            <ClipboardCheck className="h-4 w-4 mr-1" />
-            <span>Templates</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+            <Button 
+              variant={activeTab === "vehicles" ? "default" : "outline"}
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
+              onClick={() => setActiveTab("vehicles")}
+            >
+              <Car className="h-5 w-5" />
+              <span className="text-xs font-medium">Veículos</span>
+            </Button>
+            
+            <Button 
+              variant={activeTab === "drivers" ? "default" : "outline"}
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
+              onClick={() => setActiveTab("drivers")}
+            >
+              <UserCircle className="h-5 w-5" />
+              <span className="text-xs font-medium">Motoristas</span>
+            </Button>
+            
+            <Button 
+              variant={activeTab === "fuel-stations" ? "default" : "outline"}
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
+              onClick={() => setActiveTab("fuel-stations")}
+            >
+              <Fuel className="h-5 w-5" />
+              <span className="text-xs font-medium">Postos</span>
+            </Button>
+            
+            <Button 
+              variant={activeTab === "fuel-types" ? "default" : "outline"}
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
+              onClick={() => setActiveTab("fuel-types")}
+            >
+              <Droplet className="h-5 w-5" />
+              <span className="text-xs font-medium">Combustíveis</span>
+            </Button>
+            
+            <Button 
+              variant={activeTab === "maintenance-types" ? "default" : "outline"}
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2"
+              onClick={() => setActiveTab("maintenance-types")}
+            >
+              <Wrench className="h-5 w-5" />
+              <span className="text-xs font-medium">Manutenções</span>
+            </Button>
+            
+            <Button 
+              className="h-16 w-full flex flex-col items-center justify-center gap-1 p-2 bg-blue-700 hover:bg-blue-800 text-white"
+              onClick={() => setLocation("/checklist-templates")}
+            >
+              <ClipboardCheck className="h-5 w-5" />
+              <span className="text-xs font-medium">Templates</span>
+            </Button>
+          </div>
+        </div>
         
         <TabsContent value="vehicles" className="space-y-4">
           <VehicleForm />
