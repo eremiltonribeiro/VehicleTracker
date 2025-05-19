@@ -104,8 +104,8 @@ export default function Home() {
   });
   
   return (
-    <div id="app-container" className="min-h-screen flex flex-col bg-gray-100">
-      <Header />
+    <div id="app-container" className="flex flex-col">
+      {/* Removido o Header duplicado */}
       
       {!navigator.onLine && (
         <div className="bg-yellow-100 px-4 py-1">
