@@ -53,6 +53,9 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Configurar middleware para parsing de JSON
+  app.use(express.json());
+  
   // Configurar autenticação
   await setupAuth(app);
   
@@ -186,7 +189,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/fuel-types", async (req, res) => {
     try {
-      const typeData = req.body;
+      const typeData = {
+        name: req.body.name
+      };
+      
+      // Log para debug
+      console.log("Dados recebidos:", typeData);
       
       // Validar dados
       insertFuelTypeSchema.parse(typeData);
@@ -195,10 +203,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(fuelType);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        return res.status(400).json({ 
+          message: "Erro de validação", 
+          errors: error.errors.map(e => e.message)
+        });
       }
       console.error("Erro ao criar tipo de combustível:", error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ 
+        message: "Erro ao criar tipo de combustível", 
+        error: error.message 
+      });
     }
   });
 
