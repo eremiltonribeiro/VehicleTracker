@@ -172,7 +172,13 @@ function VehiclesList() {
     }
   });
   
-  const handleEdit = (vehicle) => {
+  const handleEdit = (vehicle: {
+    id: number;
+    name: string;
+    plate: string;
+    model: string;
+    year: number;
+  }) => {
     setCurrentVehicle(vehicle);
     setEditMode(true);
     // Rola a tela para cima para o usuário ver o formulário
