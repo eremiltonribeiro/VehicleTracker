@@ -12,6 +12,7 @@ import Login from "@/pages/Login";
 import UserManagement from "@/pages/UserManagement";
 import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
+import ChecklistDetails from "@/pages/ChecklistDetails";
 import { Navigation } from "@/components/vehicles/Navigation";
 import { Header } from "@/components/vehicles/Header";
 import { useEffect, useState } from "react";
