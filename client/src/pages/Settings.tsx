@@ -150,7 +150,13 @@ function ConfigButton({ icon, label, isActive, onClick, accent = false }: Config
 function VehiclesList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentVehicle, setCurrentVehicle] = useState(null);
+  const [currentVehicle, setCurrentVehicle] = useState<{
+    id: number;
+    name: string;
+    plate: string;
+    model: string;
+    year: number;
+  } | null>(null);
   
   const { data: vehicles = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/vehicles"],
