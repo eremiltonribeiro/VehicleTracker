@@ -23,24 +23,38 @@ export default function Settings() {
           <CardTitle>Configurações</CardTitle>
           <CardDescription>Cadastre e gerencie os dados do sistema</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button 
-            onClick={() => setLocation("/checklist-templates")}
-            className="bg-blue-700 hover:bg-blue-800 w-full flex items-center justify-center gap-2 py-6"
-          >
-            <ClipboardCheck className="h-5 w-5" />
-            <span className="font-medium">Gerenciar Templates de Checklist</span>
-          </Button>
-        </CardContent>
       </Card>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1">
-          <TabsTrigger value="vehicles" className="text-xs md:text-sm">Veículos</TabsTrigger>
-          <TabsTrigger value="drivers" className="text-xs md:text-sm">Motoristas</TabsTrigger>
-          <TabsTrigger value="fuel-stations" className="text-xs md:text-sm">Postos</TabsTrigger>
-          <TabsTrigger value="fuel-types" className="text-xs md:text-sm">Combustíveis</TabsTrigger>
-          <TabsTrigger value="maintenance-types" className="text-xs md:text-sm">Manutenções</TabsTrigger>
+        <TabsList className="flex flex-wrap w-full gap-2 mb-4 pb-2 overflow-x-auto">
+          <TabsTrigger value="vehicles" className="flex-1 min-w-[110px] px-2 py-2">
+            <Car className="h-4 w-4 mr-1" />
+            <span>Veículos</span>
+          </TabsTrigger>
+          <TabsTrigger value="drivers" className="flex-1 min-w-[110px] px-2 py-2">
+            <UserCircle className="h-4 w-4 mr-1" />
+            <span>Motoristas</span>
+          </TabsTrigger>
+          <TabsTrigger value="fuel-stations" className="flex-1 min-w-[110px] px-2 py-2">
+            <Fuel className="h-4 w-4 mr-1" />
+            <span>Postos</span>
+          </TabsTrigger>
+          <TabsTrigger value="fuel-types" className="flex-1 min-w-[110px] px-2 py-2">
+            <Droplet className="h-4 w-4 mr-1" />
+            <span>Combustíveis</span>
+          </TabsTrigger>
+          <TabsTrigger value="maintenance-types" className="flex-1 min-w-[110px] px-2 py-2">
+            <Wrench className="h-4 w-4 mr-1" />
+            <span>Manutenções</span>
+          </TabsTrigger>
+          <TabsTrigger 
+            value="checklist-templates" 
+            className="flex-1 min-w-[110px] px-2 py-2 bg-blue-700 text-white hover:bg-blue-800 data-[state=active]:bg-blue-900"
+            onClick={() => setLocation("/checklist-templates")}
+          >
+            <ClipboardCheck className="h-4 w-4 mr-1" />
+            <span>Templates</span>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="vehicles" className="space-y-4">
