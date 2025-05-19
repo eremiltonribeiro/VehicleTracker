@@ -61,21 +61,28 @@ export function FuelTypeForm({ onSuccess, editingType }: FuelTypeFormProps) {
           return fuelType;
         }
         
-        // Send data to server using fetch directly
-        console.log("Enviando para o servidor:", JSON.stringify({name: data.name}));
+        // Simplificando ao máximo o envio de dados
+        const simplifiedData = { name: data.name.trim() };
+        console.log("Enviando dados simplificados:", simplifiedData);
+        
+        // Enviar dados diretamente ao servidor
         const response = await fetch('/api/fuel-types', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({name: data.name}),
+          body: JSON.stringify(simplifiedData),
         });
         
         if (!response.ok) {
-          throw new Error('Erro ao salvar tipo de combustível');
+          const errorData = await response.json();
+          console.error("Resposta de erro do servidor:", errorData);
+          throw new Error(errorData.message || 'Erro ao salvar tipo de combustível');
         }
         
-        return await response.json();
+        const result = await response.json();
+        console.log("Resultado do servidor:", result);
+        return result;
       } catch (error) {
         console.error("Erro ao criar tipo de combustível:", error);
         throw error;

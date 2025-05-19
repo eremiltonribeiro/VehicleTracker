@@ -189,40 +189,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/fuel-types", async (req, res) => {
     try {
-      // Log dos dados recebidos
-      console.log("Dados recebidos (corpo completo):", req.body);
+      // Mostrar dados recebidos para diagnóstico
+      console.log("Recebido no servidor - Dados brutos:", req.body);
+      console.log("Headers:", req.headers);
       
-      const typeData = {
-        name: req.body.name
-      };
+      // Obter nome do combustível
+      const nome = req.body && req.body.name ? req.body.name.trim() : '';
       
-      // Log para debug
-      console.log("Dados processados:", typeData);
-      
-      if (!typeData.name) {
+      // Validação direta sem Zod
+      if (!nome) {
+        console.log("Erro: Nome não fornecido");
         return res.status(400).json({
           message: "Nome do combustível é obrigatório"
         });
       }
       
-      // Validar dados
-      insertFuelTypeSchema.parse(typeData);
+      console.log("Inserindo no banco:", { name: nome });
       
-      const fuelType = await storage.createFuelType(typeData);
-      console.log("Tipo de combustível criado:", fuelType);
-      res.status(201).json(fuelType);
-    } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        console.error("Erro de validação Zod:", error.errors);
-        return res.status(400).json({ 
-          message: "Erro de validação", 
-          errors: error.errors.map(e => e.message)
+      try {
+        // Inserção direta no banco de dados
+        const [novoTipo] = await db.insert(fuelTypes)
+          .values({ name: nome })
+          .returning();
+          
+        console.log("Tipo criado com sucesso:", novoTipo);
+        return res.status(201).json(novoTipo);
+      } catch (dbError) {
+        console.error("Erro ao inserir no banco:", dbError);
+        return res.status(500).json({
+          message: "Erro ao inserir no banco de dados",
+          error: String(dbError)
         });
       }
-      console.error("Erro ao criar tipo de combustível:", error);
+    } catch (error: any) {
+      console.error("Erro geral no endpoint:", error);
       res.status(500).json({ 
         message: "Erro ao criar tipo de combustível", 
-        error: error.message 
+        error: String(error)
       });
     }
   });
