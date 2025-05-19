@@ -300,7 +300,11 @@ function VehiclesList() {
 
 // Componente para listar motoristas
 function DriversList() {
-  const { data: drivers = [], isLoading } = useQuery({
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const { data: drivers = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
       try {
@@ -320,43 +324,143 @@ function DriversList() {
     }
   });
   
+  const handleEdit = (driver: any) => {
+    setSelectedDriver(driver);
+    setIsEditing(true);
+  };
+  
+  const handleDelete = (driver: any) => {
+    setSelectedDriver(driver);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = async () => {
+    try {
+      if (selectedDriver) {
+        const response = await fetch(`/api/drivers/${selectedDriver.id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Atualizar o armazenamento offline após a exclusão
+          const updatedDrivers = drivers.filter((d: any) => d.id !== selectedDriver.id);
+          await offlineStorage.saveDrivers(updatedDrivers);
+          
+          // Fechar diálogo e recarregar dados
+          setIsDeleteDialogOpen(false);
+          refetch();
+        } else {
+          console.error('Erro ao excluir motorista');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao excluir motorista:', error);
+    }
+  };
+  
+  const cancelEdit = () => {
+    setSelectedDriver(null);
+    setIsEditing(false);
+  };
+  
   if (isLoading) {
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
+  if (isEditing && selectedDriver) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Editar Motorista</h2>
+          <Button variant="outline" onClick={cancelEdit}>Cancelar</Button>
+        </div>
+        <DriverForm editingDriver={selectedDriver} onSuccess={() => {
+          setIsEditing(false);
+          setSelectedDriver(null);
+          refetch();
+        }} />
+      </div>
+    );
+  }
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Motoristas Cadastrados</CardTitle>
-        <CardDescription>Lista de motoristas disponíveis no sistema</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {drivers.length === 0 ? (
-          <div className="text-center p-4 text-muted-foreground">
-            Nenhum motorista cadastrado.
-          </div>
-        ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {drivers.map((driver: any) => (
-              <Card key={driver.id} className="overflow-hidden">
-                <CardContent className="p-0">
-                  <div className="p-4">
-                    <h3 className="font-bold flex items-center">
-                      <UserCircle className="h-4 w-4 mr-2" />
-                      {driver.name}
-                    </h3>
-                    <div className="text-xs mt-2">
-                      <p><span className="font-medium">CNH:</span> {driver.license}</p>
-                      <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Motoristas Cadastrados</CardTitle>
+          <CardDescription>Lista de motoristas disponíveis no sistema</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {drivers.length === 0 ? (
+            <div className="text-center p-4 text-muted-foreground">
+              Nenhum motorista cadastrado.
+            </div>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {drivers.map((driver: any) => (
+                <Card key={driver.id} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="p-4">
+                      <h3 className="font-bold flex items-center">
+                        <UserCircle className="h-4 w-4 mr-2" />
+                        {driver.name}
+                      </h3>
+                      <div className="text-xs mt-2">
+                        <p><span className="font-medium">CNH:</span> {driver.license}</p>
+                        <p><span className="font-medium">Telefone:</span> {driver.phone}</p>
+                      </div>
+                      
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => handleEdit(driver)}
+                        >
+                          Editar
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                          className="h-8 px-2 text-xs"
+                          onClick={() => handleDelete(driver)}
+                        >
+                          Excluir
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Diálogo de confirmação para exclusão */}
+      {isDeleteDialogOpen && selectedDriver && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={() => setIsDeleteDialogOpen(false)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir o motorista <strong>{selectedDriver.name}</strong>? 
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </>
   );
 }
 

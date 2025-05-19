@@ -118,8 +118,6 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         }
         
         return await response.json();
-        
-        return response;
       } catch (error) {
         console.error("Erro ao salvar veículo:", error);
         throw error;

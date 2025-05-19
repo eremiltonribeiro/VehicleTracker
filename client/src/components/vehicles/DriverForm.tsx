@@ -43,32 +43,41 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
     defaultValues,
   });
   
-  const createDriver = useMutation({
+  const saveDriver = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       try {
+        // Determine if creating or updating
+        const isEditing = !!editingDriver;
+        
         // Handle offline state
         if (!navigator.onLine) {
-          // Generate a temporary id (negative to avoid collisions with server ids)
-          const tempId = -(Date.now());
+          // Generate a temporary id if needed (negative to avoid collisions with server ids)
+          const id = isEditing ? editingDriver.id : -(Date.now());
           
           // Create driver object
           const driver = {
             ...data,
-            id: tempId,
+            id,
           };
           
           // Get current drivers
           const drivers = await offlineStorage.getDrivers();
           
-          // Add new driver
-          drivers.push(driver);
-          
-          // Save to local storage
-          await offlineStorage.saveDrivers(drivers);
+          if (isEditing) {
+            // Update existing driver
+            const updatedDrivers = drivers.map((d: any) => 
+              d.id === editingDriver.id ? driver : d
+            );
+            await offlineStorage.saveDrivers(updatedDrivers);
+          } else {
+            // Add new driver
+            drivers.push(driver);
+            await offlineStorage.saveDrivers(drivers);
+          }
           
           // Save image if provided
           if (data.image && imagePreview) {
-            await offlineStorage.saveImage(`driver_${tempId}`, imagePreview);
+            await offlineStorage.saveImage(`driver_${id}`, imagePreview);
           }
           
           return driver;
@@ -90,26 +99,40 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         }
         
         // Send data to server
-        const response = await apiRequest('/api/drivers', {
-          method: 'POST',
+        const url = isEditing 
+          ? `/api/drivers/${editingDriver.id}` 
+          : '/api/drivers';
+          
+        const method = isEditing ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+          method,
           body: formData,
         });
         
-        return response;
+        if (!response.ok) {
+          throw new Error('Falha ao salvar motorista');
+        }
+        
+        return await response.json();
       } catch (error) {
-        console.error("Erro ao criar motorista:", error);
+        console.error("Erro ao salvar motorista:", error);
         throw error;
       }
     },
     onSuccess: () => {
       toast({
         title: "Sucesso!",
-        description: "Motorista cadastrado com sucesso.",
+        description: editingDriver 
+          ? "Motorista atualizado com sucesso." 
+          : "Motorista cadastrado com sucesso.",
       });
       
-      // Reset form
-      form.reset();
-      setImagePreview(null);
+      // Reset form if not editing
+      if (!editingDriver) {
+        form.reset();
+        setImagePreview(null);
+      }
       
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
@@ -120,7 +143,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: "Ocorreu um erro ao cadastrar o motorista. Tente novamente.",
+        description: `Ocorreu um erro ao ${editingDriver ? 'atualizar' : 'cadastrar'} o motorista. Tente novamente.`,
         variant: "destructive",
       });
       
@@ -141,7 +164,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
   };
   
   const onSubmit = (data: DriverFormValues) => {
-    createDriver.mutate(data);
+    saveDriver.mutate(data);
   };
   
   return (
@@ -242,10 +265,10 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 
-                disabled={createDriver.isPending}
+                disabled={saveDriver.isPending}
                 className="flex items-center gap-1"
               >
-                {createDriver.isPending ? (
+                {saveDriver.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Salvando...
