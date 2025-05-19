@@ -137,9 +137,12 @@ export function HistoryView() {
   return (
     <Card className="w-full">
       <CardContent className="space-y-6 pt-6">
-        {/* Filters */}
+        {/* Conteúdo principal sem o título duplicado */}
         <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-blue-900">Filtros</h3>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-blue-900">Histórico de Registros</h2>
+          </div>
+          <h3 className="text-lg font-medium text-blue-800">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="filter-type">Tipo de Registro</Label>
