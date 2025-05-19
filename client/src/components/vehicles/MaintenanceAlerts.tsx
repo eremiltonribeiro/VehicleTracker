@@ -87,7 +87,9 @@ export function MaintenanceAlerts() {
       // Filtrar registros deste veículo e deste tipo de manutenção
       const typeRecords = maintenanceRecords.filter((rec: any) => 
         rec.vehicleId === vehicle.id && 
-        rec.maintenanceType?.toLowerCase().includes(maintenance.type.toLowerCase())
+        (typeof rec.maintenanceType === 'string' 
+          ? rec.maintenanceType.toLowerCase().includes(maintenance.type.toLowerCase())
+          : rec.maintenanceType?.name?.toLowerCase().includes(maintenance.type.toLowerCase()))
       );
       
       // Ordenar por data (mais recente primeiro)
