@@ -10,7 +10,7 @@ import Settings from "@/pages/Settings";
 import Welcome from "@/pages/Welcome";
 import Reports from "@/pages/Reports";
 import Login from "@/pages/Login";
-import UserManagement from "@/pages/UserManagement";
+import UserManagement from "@/pages/UserManagementV2";
 import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
 import ChecklistDetails from "@/pages/ChecklistDetails";
