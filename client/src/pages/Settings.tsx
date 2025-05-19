@@ -337,7 +337,12 @@ function VehiclesList() {
 function DriversList() {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
-  const [currentDriver, setCurrentDriver] = useState(null);
+  const [currentDriver, setCurrentDriver] = useState<{
+    id: number;
+    name: string;
+    license: string;
+    phone: string;
+  } | null>(null);
 
   const { data: drivers = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/drivers"],
