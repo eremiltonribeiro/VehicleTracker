@@ -46,11 +46,13 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
   const saveDriver = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       try {
+        console.log("Iniciando salvamento do motorista...");
         // Determine if creating or updating
         const isEditing = !!editingDriver;
         
         // Handle offline state
         if (!navigator.onLine) {
+          console.log("Salvando offline...");
           // Generate a temporary id if needed (negative to avoid collisions with server ids)
           const id = isEditing ? editingDriver.id : -(Date.now());
           
@@ -83,24 +85,66 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
           return driver;
         }
         
-        // Online state - create FormData for file upload
+        console.log("Salvando online...");
+        
+        if (isEditing) {
+          console.log("Modo edição - usando PUT");
+        } else {
+          console.log("Modo criação - usando POST");
+        }
+        
+        // Online state - método 1 - Usar JSON para dados simples sem arquivos
+        if (!data.image) {
+          console.log("Enviando como JSON (sem imagem)");
+          const jsonData = {
+            name: data.name,
+            license: data.license,
+            phone: data.phone
+          };
+          
+          const url = isEditing 
+            ? `/api/drivers/${editingDriver?.id}` 
+            : '/api/drivers';
+            
+          const method = isEditing ? 'PUT' : 'POST';
+          
+          const response = await fetch(url, {
+            method,
+            body: JSON.stringify(jsonData),
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            console.error("Erro na resposta do servidor:", await response.text());
+            throw new Error('Falha ao salvar motorista - resposta não ok');
+          }
+          
+          return await response.json();
+        }
+        
+        // Online state - método 2 - Usar FormData para envio com arquivos
+        console.log("Enviando como FormData (com imagem)");
         const formData = new FormData();
         
         // Add all fields to form data
         Object.entries(data).forEach(([key, value]) => {
           if (key !== 'image') {
             formData.append(key, String(value));
+            console.log(`Adicionando campo ${key} = ${value}`);
           }
         });
         
         // Add image if available
         if (data.image) {
           formData.append('image', data.image);
+          console.log("Imagem adicionada ao FormData");
         }
         
         // Send data to server
         const url = isEditing 
-          ? `/api/drivers/${editingDriver.id}` 
+          ? `/api/drivers/${editingDriver?.id}` 
           : '/api/drivers';
           
         const method = isEditing ? 'PUT' : 'POST';
@@ -108,13 +152,11 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         const response = await fetch(url, {
           method,
           body: formData,
-          headers: {
-            // Não incluir Content-Type porque o FormData define automaticamente com boundary
-          },
         });
         
         if (!response.ok) {
-          throw new Error('Falha ao salvar motorista');
+          console.error("Erro na resposta do servidor:", await response.text());
+          throw new Error('Falha ao salvar motorista - resposta não ok');
         }
         
         return await response.json();
