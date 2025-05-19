@@ -31,7 +31,7 @@ export default function Login() {
     setError("");
 
     try {
-      // Verificação simplificada para demonstração
+      // Verificar se é o usuário admin padrão
       if (username === "admin" && password === "admin") {
         // Dados do usuário admin
         const userData = {
@@ -48,7 +48,39 @@ export default function Login() {
           variant: "default",
         });
         
-        // Autenticar e redirecionar (com um pequeno atraso para garantir que o estado seja atualizado)
+        // Autenticar e redirecionar 
+        login(userData);
+        
+        // Forçar a atualização direta do localStorage
+        window.localStorage.setItem("authenticated", "true");
+        window.localStorage.setItem("user", JSON.stringify(userData));
+        
+        // Redirecionar para a página inicial
+        window.location.href = "/";
+        return;
+      } 
+      
+      // Verificar se é um usuário armazenado localmente
+      const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
+      const userInfo = storedUsers[username];
+      
+      if (userInfo && userInfo.password === password) {
+        // Criar objeto de usuário
+        const userData = {
+          id: userInfo.id,
+          name: userInfo.name,
+          username: username,
+          role: userInfo.role
+        };
+        
+        // Mostrar toast de sucesso
+        toast({
+          title: "Login realizado com sucesso",
+          description: "Bem-vindo ao sistema de gestão de frota!",
+          variant: "default",
+        });
+        
+        // Autenticar e redirecionar
         login(userData);
         
         // Forçar a atualização direta do localStorage

@@ -105,6 +105,16 @@ export default function UserManagement() {
         name,
         role,
       };
+      
+      // Armazenar as credenciais do usuário (em produção seria no servidor)
+      const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
+      storedUsers[username] = {
+        id: newUser.id,
+        password: password,
+        name: name,
+        role: role
+      };
+      localStorage.setItem("appUsers", JSON.stringify(storedUsers));
       setUsers([...users, newUser]);
       toast({
         title: "Sucesso",
