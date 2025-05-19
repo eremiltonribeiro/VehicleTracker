@@ -109,7 +109,7 @@ export default function Welcome() {
             </p>
             <Button 
               className="w-full" 
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation("/registros/dashboard")}
               style={{ backgroundColor: '#12305D' }}
             >
               Acessar Dashboard

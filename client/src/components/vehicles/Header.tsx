@@ -163,7 +163,7 @@ export function Header() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => setLocation("/dashboard")}
+              onClick={() => setLocation("/registros/dashboard")}
               className={`text-blue-900 hover:bg-blue-100 rounded-full ${isDashboard ? 'bg-blue-100' : ''}`}
               title="Dashboard"
             >
