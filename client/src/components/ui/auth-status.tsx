@@ -12,17 +12,7 @@ export function AuthStatus() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <Button 
-        onClick={() => window.location.href = "/api/login"} 
-        variant="outline" 
-        size="sm"
-        className="flex items-center gap-1 text-blue-900 border-blue-900 hover:bg-blue-100"
-      >
-        <LogIn className="w-4 h-4" />
-        <span>Entrar</span>
-      </Button>
-    );
+    return null; // Não mostra o botão de login quando não autenticado
   }
 
   const userData = user as AuthUser;
