@@ -269,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Atualizar motorista
-  app.put("/api/drivers/:id", upload.single("image"), async (req, res) => {
+  app.put("/api/drivers/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const driverData = req.body;
@@ -278,11 +278,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingDriver = await storage.getDriver(id);
       if (!existingDriver) {
         return res.status(404).json({ message: "Motorista não encontrado" });
-      }
-      
-      // Adicionar URL da imagem, se enviada
-      if (req.file) {
-        driverData.imageUrl = `/uploads/${req.file.filename}`;
       }
       
       // Verificar se storage tem função de atualização
