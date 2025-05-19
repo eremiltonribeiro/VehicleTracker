@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { RegistrationForm } from "@/components/vehicles/RegistrationForm";
 import { HistoryView } from "@/components/vehicles/HistoryView";
 import { Dashboard } from "@/components/vehicles/Dashboard";
+import { SimpleDashboard } from "@/components/vehicles/SimpleDashboard";
 import { Header } from "@/components/vehicles/Header";
 import { useLocation } from "wouter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -123,7 +124,7 @@ export default function Home() {
         {showHistory ? (
           <HistoryView />
         ) : showDashboard ? (
-          <Dashboard />
+          <SimpleDashboard />
         ) : (
           <RegistrationForm />
         )}
