@@ -1,4 +1,3 @@
-
 import { Vehicle } from "@/shared/schema";
 
 import { useState } from "react";
@@ -375,7 +374,7 @@ function DriversList() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este motorista?")) return;
 
     try {
