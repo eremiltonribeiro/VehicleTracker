@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Car, BarChart2, Settings, History, Plus, FileText } from "lucide-react";
+import { Car, BarChart2, Settings, History, Plus, FileText, CheckSquare } from "lucide-react";
 
 export default function Welcome() {
   const [_, setLocation] = useLocation();
@@ -41,6 +41,30 @@ export default function Welcome() {
               style={{ backgroundColor: '#12305D' }}
             >
               Adicionar Registro
+            </Button>
+          </CardContent>
+        </Card>
+        
+        <Card className="overflow-hidden border-2 hover:border-blue-700 transition-all h-full">
+          <CardHeader className="bg-blue-50 pb-2">
+            <CardTitle className="text-xl font-semibold flex flex-wrap items-center gap-2 break-words">
+              <CheckSquare className="h-5 w-5 text-blue-700 flex-shrink-0" />
+              <span className="break-words">Checklist de Veículos</span>
+            </CardTitle>
+            <CardDescription className="text-blue-700/80 break-words">
+              Inspeção e verificação de segurança
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <p className="text-sm text-gray-700 mb-4">
+              Realize verificações periódicas de segurança e manutenção nos veículos com checklists customizáveis.
+            </p>
+            <Button 
+              className="w-full" 
+              onClick={() => setLocation("/checklists")}
+              style={{ backgroundColor: '#12305D' }}
+            >
+              Realizar Checklist
             </Button>
           </CardContent>
         </Card>

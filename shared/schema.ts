@@ -207,3 +207,82 @@ export const tripRegistrationSchema = extendedRegistrationSchema.refine(
     path: ["type"],
   }
 );
+
+// ========= Checklist de Veículos =========
+// Tabela para modelos de checklist
+export const checklistTemplates = pgTable("checklist_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).pick({
+  name: true,
+  description: true,
+  isDefault: true,
+});
+
+export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSchema>;
+export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
+
+// Tabela para itens de checklist
+export const checklistItems = pgTable("checklist_items", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isRequired: boolean("is_required").default(true),
+  category: text("category"),
+  order: integer("order").default(0),
+});
+
+export const insertChecklistItemSchema = createInsertSchema(checklistItems).pick({
+  templateId: true,
+  name: true,
+  description: true,
+  isRequired: true,
+  category: true,
+  order: true,
+});
+
+export type InsertChecklistItem = z.infer<typeof insertChecklistItemSchema>;
+export type ChecklistItem = typeof checklistItems.$inferSelect;
+
+// Tabela para checklists realizados
+export const vehicleChecklists = pgTable("vehicle_checklists", {
+  id: serial("id").primaryKey(),
+  vehicleId: integer("vehicle_id").notNull(),
+  driverId: integer("driver_id").notNull(),
+  templateId: integer("template_id").notNull(),
+  date: timestamp("date").notNull().defaultNow(),
+  observations: text("observations"),
+  odometer: integer("odometer").notNull(),
+  status: text("status").notNull(), // 'pending', 'complete', 'failed'
+  photoUrl: text("photo_url"),
+});
+
+export const insertVehicleChecklistSchema = createInsertSchema(vehicleChecklists).omit({
+  id: true
+});
+
+export type InsertVehicleChecklist = z.infer<typeof insertVehicleChecklistSchema>;
+export type VehicleChecklist = typeof vehicleChecklists.$inferSelect;
+
+// Tabela para resultados dos itens de checklist
+export const checklistResults = pgTable("checklist_results", {
+  id: serial("id").primaryKey(),
+  checklistId: integer("checklist_id").notNull(),
+  itemId: integer("item_id").notNull(),
+  status: text("status").notNull(), // 'ok', 'issue', 'not_applicable'
+  observation: text("observation"),
+  photoUrl: text("photo_url"),
+});
+
+export const insertChecklistResultSchema = createInsertSchema(checklistResults).omit({
+  id: true
+});
+
+export type InsertChecklistResult = z.infer<typeof insertChecklistResultSchema>;
+export type ChecklistResult = typeof checklistResults.$inferSelect;
