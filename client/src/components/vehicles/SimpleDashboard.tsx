@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -18,12 +18,21 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
+  LineChart,
+  Line,
 } from "recharts";
-import { Fuel, Wrench, MapPin, Droplet, Car, DollarSign } from "lucide-react";
+import { Fuel, Wrench, MapPin, Calendar, Search, RefreshCw, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { offlineStorage } from "@/services/offlineStorage";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function SimpleDashboard() {
+  // Estado para filtros básicos
+  const [timeFilter, setTimeFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("resumo");
+  const [vehicleData, setVehicleData] = useState<any[]>([]);
+
   // Fetch all registrations with offline support
   const { data: registrations = [], isLoading } = useQuery({
     queryKey: ["/api/registrations"],
@@ -47,6 +56,97 @@ export function SimpleDashboard() {
     }
   });
 
+  // Buscar veículos
+  const { data: vehicles = [] } = useQuery({
+    queryKey: ["/api/vehicles"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/vehicles");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveVehicles(data);
+            return data;
+          }
+        }
+        
+        return await offlineStorage.getVehicles();
+      } catch (error) {
+        console.error("Erro ao buscar veículos:", error);
+        return await offlineStorage.getVehicles();
+      }
+    }
+  });
+
+  // Função para filtrar os registros por período
+  const filterRegistrationsByTime = (regs: any[]) => {
+    if (timeFilter === "all") return regs;
+    
+    const today = new Date();
+    const periodStart = new Date();
+    
+    switch (timeFilter) {
+      case "month":
+        periodStart.setMonth(today.getMonth() - 1);
+        break;
+      case "3months":
+        periodStart.setMonth(today.getMonth() - 3);
+        break;
+      case "6months":
+        periodStart.setMonth(today.getMonth() - 6);
+        break;
+      case "year":
+        periodStart.setFullYear(today.getFullYear() - 1);
+        break;
+    }
+    
+    return regs.filter((reg: any) => new Date(reg.date) >= periodStart);
+  };
+  
+  // Preparar dados veículo quando os registros ou timeFilter mudar
+  useEffect(() => {
+    if (registrations.length && vehicles.length) {
+      const filteredRegistrations = filterRegistrationsByTime(registrations);
+      
+      // Preparar dados por veículo
+      const vehicleStats = vehicles.map((vehicle: any) => {
+        // Filtrar registros para este veículo
+        const vehicleRegs = filteredRegistrations.filter((reg: any) => reg.vehicleId === vehicle.id);
+        const fuelRegs = vehicleRegs.filter((reg: any) => reg.type === "fuel");
+        const maintenanceRegs = vehicleRegs.filter((reg: any) => reg.type === "maintenance");
+        const tripRegs = vehicleRegs.filter((reg: any) => reg.type === "trip");
+        
+        // Calcular estatísticas
+        const totalFuelCost = fuelRegs.reduce((sum: number, reg: any) => sum + (reg.fuelCost || 0), 0);
+        const totalMaintenanceCost = maintenanceRegs.reduce((sum: number, reg: any) => sum + (reg.maintenanceCost || 0), 0);
+        const totalFuel = fuelRegs.reduce((sum: number, reg: any) => sum + (reg.fuelQuantity || 0), 0);
+        
+        // Calcular quilometragem total (das viagens)
+        const totalKm = tripRegs.reduce((sum: number, reg: any) => sum + ((reg.finalKm || 0) - (reg.initialKm || 0)), 0);
+        
+        // Calcular consumo médio (L/100km)
+        let avgConsumption = 0;
+        if (totalKm > 0 && totalFuel > 0) {
+          avgConsumption = (totalFuel / totalKm) * 100;
+        }
+        
+        return {
+          id: vehicle.id,
+          name: vehicle.name,
+          plate: vehicle.plate,
+          model: vehicle.model,
+          totalFuelCost,
+          totalMaintenanceCost,
+          totalCost: totalFuelCost + totalMaintenanceCost,
+          avgConsumption,
+          totalKm
+        };
+      });
+      
+      setVehicleData(vehicleStats);
+    }
+  }, [registrations, vehicles, timeFilter]);
+
   if (isLoading) {
     return (
       <Card className="w-full">
@@ -62,33 +162,153 @@ export function SimpleDashboard() {
     );
   }
 
-  // Prepare data for charts
-  const fuelRegistrations = registrations.filter((reg: any) => reg.type === "fuel");
-  const maintenanceRegistrations = registrations.filter((reg: any) => reg.type === "maintenance");
-  const tripRegistrations = registrations.filter((reg: any) => reg.type === "trip");
+  // Filtrar registros pelo período selecionado
+  const filteredRegistrations = filterRegistrationsByTime(registrations);
+  
+  // Preparar dados para gráficos
+  const fuelRegistrations = filteredRegistrations.filter((reg: any) => reg.type === "fuel");
+  const maintenanceRegistrations = filteredRegistrations.filter((reg: any) => reg.type === "maintenance");
+  const tripRegistrations = filteredRegistrations.filter((reg: any) => reg.type === "trip");
 
-  // Data for registration type distribution
+  // Dados para distribuição de tipos de registros
   const registrationTypeData = [
     { name: "Abastecimentos", value: fuelRegistrations.length, color: "#f59e0b" },
     { name: "Manutenções", value: maintenanceRegistrations.length, color: "#10b981" },
     { name: "Viagens", value: tripRegistrations.length, color: "#3b82f6" },
   ];
 
-  // Calculate totals
+  // Calcular totais
   const totalFuelCost = fuelRegistrations.reduce((sum: number, reg: any) => sum + (reg.fuelCost || 0), 0);
   const totalMaintenanceCost = maintenanceRegistrations.reduce((sum: number, reg: any) => sum + (reg.maintenanceCost || 0), 0);
   const totalKm = tripRegistrations.reduce((sum: number, reg: any) => sum + ((reg.finalKm || 0) - (reg.initialKm || 0)), 0);
 
+  // Preparar dados para gráfico de linha (gastos por mês)
+  const getMonthlyExpenseData = () => {
+    // Criar um objeto para armazenar gastos por mês
+    const monthlyExpenses: Record<string, {
+      month: string, 
+      combustivel: number, 
+      manutencao: number,
+      total: number
+    }> = {};
+    
+    // Definir período dos últimos 12 meses
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(endDate.getMonth() - 11); // 12 meses incluindo o atual
+    
+    // Inicializar o objeto com zeros para todos os meses
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(startDate);
+      date.setMonth(startDate.getMonth() + i);
+      
+      const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('pt-BR', { month: 'short' });
+      
+      monthlyExpenses[monthKey] = {
+        month: monthName,
+        combustivel: 0,
+        manutencao: 0,
+        total: 0
+      };
+    }
+    
+    // Preencher com dados reais
+    filteredRegistrations.forEach((reg: any) => {
+      const regDate = new Date(reg.date);
+      const monthKey = `${regDate.getFullYear()}-${(regDate.getMonth() + 1).toString().padStart(2, '0')}`;
+      
+      // Verificar se o mês está no período analisado
+      if (monthlyExpenses[monthKey]) {
+        if (reg.type === 'fuel' && reg.fuelCost) {
+          monthlyExpenses[monthKey].combustivel += reg.fuelCost || 0;
+          monthlyExpenses[monthKey].total += reg.fuelCost || 0;
+        } else if (reg.type === 'maintenance' && reg.maintenanceCost) {
+          monthlyExpenses[monthKey].manutencao += reg.maintenanceCost || 0;
+          monthlyExpenses[monthKey].total += reg.maintenanceCost || 0;
+        }
+      }
+    });
+    
+    // Converter o objeto para um array ordenado por mês
+    return Object.values(monthlyExpenses).sort((a, b) => {
+      const monthA = Object.keys(monthlyExpenses).find(key => monthlyExpenses[key] === a);
+      const monthB = Object.keys(monthlyExpenses).find(key => monthlyExpenses[key] === b);
+      return monthA && monthB ? monthA.localeCompare(monthB) : 0;
+    });
+  };
+  
+  const monthlyExpenseData = getMonthlyExpenseData();
+
+  // Preparar dados para consumo por veículo
+  const vehicleConsumptionData = vehicleData
+    .filter(v => v.avgConsumption > 0)
+    .sort((a, b) => a.avgConsumption - b.avgConsumption)
+    .map(v => ({
+      name: v.name,
+      consumo: parseFloat(v.avgConsumption.toFixed(2))
+    }));
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Dashboard de Frota</CardTitle>
-          <CardDescription>Visualização dos dados de movimentação de veículos</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle>Dashboard de Frota</CardTitle>
+            <CardDescription>Visualização dos dados de movimentação de veículos</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Período:</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                variant={timeFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeFilter("all")}
+                className="text-xs h-8"
+              >
+                Todo
+              </Button>
+              <Button
+                variant={timeFilter === "month" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeFilter("month")}
+                className="text-xs h-8"
+              >
+                1 mês
+              </Button>
+              <Button
+                variant={timeFilter === "3months" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeFilter("3months")}
+                className="text-xs h-8"
+              >
+                3 meses
+              </Button>
+              <Button
+                variant={timeFilter === "6months" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeFilter("6months")}
+                className="text-xs h-8"
+              >
+                6 meses
+              </Button>
+              <Button
+                variant={timeFilter === "year" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTimeFilter("year")}
+                className="text-xs h-8"
+              >
+                1 ano
+              </Button>
+            </div>
+          </div>
         </CardHeader>
       </Card>
 
-      {/* Summary cards */}
+      {/* Cartões de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -133,72 +353,221 @@ export function SimpleDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição de Registros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={registrationTypeData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    dataKey="value"
-                    nameKey="name"
-                    label={(entry) => entry.name}
-                  >
-                    {registrationTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: any) => [value, 'Quantidade']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs para visualizações diferentes */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid grid-cols-3 w-full">
+          <TabsTrigger value="resumo">Resumo</TabsTrigger>
+          <TabsTrigger value="gastos">Análise de Gastos</TabsTrigger>
+          <TabsTrigger value="veiculos">Comparativo de Veículos</TabsTrigger>
+        </TabsList>
+        
+        {/* Tab de Resumo */}
+        <TabsContent value="resumo" className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribuição de Registros</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={registrationTypeData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        nameKey="name"
+                        label={(entry) => entry.name}
+                      >
+                        {registrationTypeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: any) => [value, 'Quantidade']} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Maintenance costs by vehicle */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Gastos com Manutenção por Veículo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={maintenanceRegistrations.reduce((acc: any[], reg: any) => {
-                    const vehicleName = reg.vehicle?.name || "Desconhecido";
-                    const existingVehicle = acc.find(item => item.name === vehicleName);
-                    
-                    if (existingVehicle) {
-                      existingVehicle.value += reg.maintenanceCost || 0;
-                    } else {
-                      acc.push({
-                        name: vehicleName,
-                        value: reg.maintenanceCost || 0
-                      });
+            <Card>
+              <CardHeader>
+                <CardTitle>Gastos por Mês</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyExpenseData}>
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                      <Tooltip 
+                        formatter={(value: any) => [formatCurrency(value), 'Valor']}
+                        labelFormatter={(label) => `Mês: ${label}`}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="combustivel" 
+                        name="Combustível"
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="manutencao" 
+                        name="Manutenção" 
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        
+        {/* Tab de Análise de Gastos */}
+        <TabsContent value="gastos" className="space-y-4 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Evolução de Gastos por Mês</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyExpenseData}>
+                    <XAxis dataKey="month" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <Tooltip 
+                      formatter={(value: any) => [formatCurrency(value), 'Valor']}
+                      labelFormatter={(label) => `Mês: ${label}`}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="combustivel" 
+                      name="Combustível" 
+                      stackId="a"
+                      fill="#f59e0b" 
+                    />
+                    <Bar 
+                      dataKey="manutencao" 
+                      name="Manutenção" 
+                      stackId="a"
+                      fill="#10b981" 
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Distribuição de Custos por Veículo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={vehicleData.map(v => ({
+                      name: v.name,
+                      combustivel: v.totalFuelCost,
+                      manutencao: v.totalMaintenanceCost,
+                    }))}
+                  >
+                    <XAxis dataKey="name" />
+                    <YAxis tickFormatter={(value) => formatCurrency(value)} />
+                    <Tooltip 
+                      formatter={(value: any) => [formatCurrency(value), 'Valor']}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="combustivel" 
+                      name="Combustível" 
+                      stackId="a"
+                      fill="#f59e0b" 
+                    />
+                    <Bar 
+                      dataKey="manutencao" 
+                      name="Manutenção" 
+                      stackId="a"
+                      fill="#10b981" 
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        {/* Tab de Comparativo de Veículos */}
+        <TabsContent value="veiculos" className="space-y-4 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Consumo Médio (L/100km)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-96">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={vehicleConsumptionData} layout="vertical">
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={100} />
+                    <Tooltip 
+                      formatter={(value: any) => [`${value} L/100km`, 'Consumo']}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="consumo" 
+                      name="Consumo (L/100km)" 
+                      fill="#3b82f6" 
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Custo por Quilômetro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={vehicleData
+                      .filter(v => v.totalKm > 0)
+                      .map(v => ({
+                        name: v.name,
+                        custo: parseFloat((v.totalCost / Math.max(1, v.totalKm)).toFixed(2))
+                      }))
+                      .sort((a, b) => a.custo - b.custo)
                     }
-                    
-                    return acc;
-                  }, [])}
-                >
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                  <Tooltip formatter={(value: any) => [formatCurrency(value), 'Valor']} />
-                  <Bar dataKey="value" name="Valor" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                    layout="vertical"
+                  >
+                    <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
+                    <YAxis dataKey="name" type="category" width={100} />
+                    <Tooltip 
+                      formatter={(value: any) => [formatCurrency(value), 'Custo/km']}
+                    />
+                    <Bar 
+                      dataKey="custo" 
+                      name="Custo por km" 
+                      fill="#ea580c" 
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       
       <Card>
         <CardHeader>
@@ -207,25 +576,25 @@ export function SimpleDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <h3 className="font-medium">Registros</h3>
-              <p>Total: {registrations.length}</p>
+              <h3 className="font-medium mb-2">Registros</h3>
+              <p>Total: {filteredRegistrations.length}</p>
               <p>Abastecimentos: {fuelRegistrations.length}</p>
               <p>Manutenções: {maintenanceRegistrations.length}</p>
               <p>Viagens: {tripRegistrations.length}</p>
             </div>
             
             <div>
-              <h3 className="font-medium">Custos</h3>
+              <h3 className="font-medium mb-2">Custos</h3>
               <p>Combustível: {formatCurrency(totalFuelCost)}</p>
               <p>Manutenção: {formatCurrency(totalMaintenanceCost)}</p>
               <p>Total: {formatCurrency(totalFuelCost + totalMaintenanceCost)}</p>
             </div>
             
             <div>
-              <h3 className="font-medium">Veículos</h3>
+              <h3 className="font-medium mb-2">Veículos</h3>
               <p>Quilometragem: {totalKm.toLocaleString('pt-BR')} km</p>
-              <p>Média por veículo: {(totalKm / 3).toLocaleString('pt-BR')} km</p>
-              <p>Custo por km: {formatCurrency((totalFuelCost + totalMaintenanceCost) / Math.max(1, totalKm))}</p>
+              <p>Custo médio: {formatCurrency((totalFuelCost + totalMaintenanceCost) / Math.max(1, totalKm))} por km</p>
+              <p>Consumo médio: {vehicleData.reduce((sum, v) => sum + v.avgConsumption, 0) / Math.max(1, vehicleData.filter(v => v.avgConsumption > 0).length).toFixed(2)} L/100km</p>
             </div>
           </div>
         </CardContent>
