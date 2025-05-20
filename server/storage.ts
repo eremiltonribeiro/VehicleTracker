@@ -14,6 +14,14 @@ import {
   InsertMaintenanceType,
   VehicleRegistration,
   InsertRegistration,
+  ChecklistTemplate,
+  InsertChecklistTemplate,
+  ChecklistItem,
+  InsertChecklistItem,
+  VehicleChecklist,
+  InsertVehicleChecklist,
+  ChecklistResult,
+  InsertChecklistResult
 } from "@shared/schema";
 
 // Extend the storage interface with CRUD methods
@@ -58,6 +66,31 @@ export interface IStorage {
   createRegistration(
     registration: InsertRegistration
   ): Promise<VehicleRegistration>;
+  
+  // Checklist template methods
+  getChecklistTemplates(): Promise<ChecklistTemplate[]>;
+  getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined>;
+  createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate>;
+  
+  // Checklist item methods
+  getChecklistItems(templateId: number): Promise<ChecklistItem[]>;
+  getChecklistItem(id: number): Promise<ChecklistItem | undefined>;
+  createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem>;
+  
+  // Vehicle checklist methods
+  getVehicleChecklists(filters?: {
+    vehicleId?: number;
+    driverId?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<VehicleChecklist[]>;
+  getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined>;
+  createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist>;
+  
+  // Checklist result methods
+  getChecklistResults(checklistId: number): Promise<ChecklistResult[]>;
+  getChecklistResult(id: number): Promise<ChecklistResult | undefined>;
+  createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult>;
 }
 
 export class MemStorage implements IStorage {
@@ -68,6 +101,10 @@ export class MemStorage implements IStorage {
   private fuelTypes: Map<number, FuelType>;
   private maintenanceTypes: Map<number, MaintenanceType>;
   private registrations: Map<number, VehicleRegistration>;
+  private checklistTemplates: Map<number, ChecklistTemplate>;
+  private checklistItems: Map<number, ChecklistItem>;
+  private vehicleChecklists: Map<number, VehicleChecklist>;
+  private checklistResults: Map<number, ChecklistResult>;
 
   private userCurrentId: number;
   private vehicleCurrentId: number;
@@ -76,6 +113,10 @@ export class MemStorage implements IStorage {
   private fuelTypeCurrentId: number;
   private maintenanceTypeCurrentId: number;
   private registrationCurrentId: number;
+  private checklistTemplateCurrentId: number;
+  private checklistItemCurrentId: number;
+  private vehicleChecklistCurrentId: number;
+  private checklistResultCurrentId: number;
 
   constructor() {
     this.users = new Map();
@@ -85,6 +126,10 @@ export class MemStorage implements IStorage {
     this.fuelTypes = new Map();
     this.maintenanceTypes = new Map();
     this.registrations = new Map();
+    this.checklistTemplates = new Map();
+    this.checklistItems = new Map();
+    this.vehicleChecklists = new Map();
+    this.checklistResults = new Map();
 
     this.userCurrentId = 1;
     this.vehicleCurrentId = 1;
@@ -93,6 +138,10 @@ export class MemStorage implements IStorage {
     this.fuelTypeCurrentId = 1;
     this.maintenanceTypeCurrentId = 1;
     this.registrationCurrentId = 1;
+    this.checklistTemplateCurrentId = 1;
+    this.checklistItemCurrentId = 1;
+    this.vehicleChecklistCurrentId = 1;
+    this.checklistResultCurrentId = 1;
 
     // Add initial data
     this.initializeData();
@@ -132,6 +181,146 @@ export class MemStorage implements IStorage {
     this.createMaintenanceType({ name: "Reparo na Suspensão" });
     this.createMaintenanceType({ name: "Reparo nos Freios" });
     this.createMaintenanceType({ name: "Outro" });
+    
+    // Add checklist templates
+    const dailyTemplate = this.createChecklistTemplate({
+      name: "Checklist Diário",
+      description: "Itens básicos a serem verificados antes de cada viagem",
+      isDefault: true
+    });
+    
+    const weeklyTemplate = this.createChecklistTemplate({
+      name: "Checklist Semanal",
+      description: "Verificação mais completa para ser realizada uma vez por semana",
+      isDefault: false
+    });
+    
+    // Add checklist items for daily template
+    this.createChecklistItem({
+      templateId: dailyTemplate.id,
+      name: "Verificação do óleo do motor",
+      description: "Verificar nível do óleo",
+      isRequired: true,
+      category: "Motor",
+      order: 1
+    });
+    
+    this.createChecklistItem({
+      templateId: dailyTemplate.id,
+      name: "Verificação do líquido de arrefecimento",
+      description: "Verificar nível do radiador",
+      isRequired: true,
+      category: "Motor",
+      order: 2
+    });
+    
+    this.createChecklistItem({
+      templateId: dailyTemplate.id,
+      name: "Verificação dos freios",
+      description: "Verificar funcionamento e nível do fluido",
+      isRequired: true,
+      category: "Segurança",
+      order: 3
+    });
+    
+    this.createChecklistItem({
+      templateId: dailyTemplate.id,
+      name: "Verificação das luzes",
+      description: "Testar faróis, lanternas e setas",
+      isRequired: true,
+      category: "Segurança",
+      order: 4
+    });
+    
+    this.createChecklistItem({
+      templateId: dailyTemplate.id,
+      name: "Verificação da pressão dos pneus",
+      description: "Verificar pressão conforme manual",
+      isRequired: true,
+      category: "Pneus",
+      order: 5
+    });
+    
+    // Add items for weekly template
+    this.createChecklistItem({
+      templateId: weeklyTemplate.id,
+      name: "Verificação da suspensão",
+      description: "Verificar amortecedores e molas",
+      isRequired: true,
+      category: "Suspensão",
+      order: 1
+    });
+    
+    this.createChecklistItem({
+      templateId: weeklyTemplate.id,
+      name: "Verificação da bateria",
+      description: "Verificar terminais e carga",
+      isRequired: true,
+      category: "Elétrica",
+      order: 2
+    });
+    
+    this.createChecklistItem({
+      templateId: weeklyTemplate.id,
+      name: "Verificação do filtro de ar",
+      description: "Verificar limpeza do filtro",
+      isRequired: true,
+      category: "Motor",
+      order: 3
+    });
+    
+    // Sample vehicle checklist
+    const sampleChecklist = this.createVehicleChecklist({
+      vehicleId: 1,
+      driverId: 1,
+      templateId: dailyTemplate.id,
+      date: new Date(),
+      observations: "Veículo em boas condições gerais",
+      odometer: 5430,
+      status: "complete",
+      photoUrl: null
+    });
+    
+    // Sample checklist results
+    this.createChecklistResult({
+      checklistId: sampleChecklist.id,
+      itemId: 1,
+      status: "ok",
+      observation: null,
+      photoUrl: null
+    });
+    
+    this.createChecklistResult({
+      checklistId: sampleChecklist.id,
+      itemId: 2,
+      status: "ok",
+      observation: null,
+      photoUrl: null
+    });
+    
+    this.createChecklistResult({
+      checklistId: sampleChecklist.id,
+      itemId: 3,
+      status: "issue",
+      observation: "Freios com desgaste acentuado, programar manutenção",
+      photoUrl: "/uploads/freios.jpg"
+    });
+    
+    this.createChecklistResult({
+      checklistId: sampleChecklist.id,
+      itemId: 4,
+      status: "ok",
+      observation: null,
+      photoUrl: null
+    });
+    
+    this.createChecklistResult({
+      checklistId: sampleChecklist.id,
+      itemId: 5,
+      status: "ok",
+      observation: null,
+      photoUrl: null
+    });
     
     // Add sample registrations
     const now = new Date();
@@ -359,6 +548,140 @@ export class MemStorage implements IStorage {
     const registration: VehicleRegistration = { ...insertRegistration, id };
     this.registrations.set(id, registration);
     return registration;
+  }
+  
+  // Checklist template methods
+  async getChecklistTemplates(): Promise<ChecklistTemplate[]> {
+    return Array.from(this.checklistTemplates.values());
+  }
+  
+  async getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined> {
+    return this.checklistTemplates.get(id);
+  }
+  
+  async createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate> {
+    const id = this.checklistTemplateCurrentId++;
+    const checklistTemplate: ChecklistTemplate = { ...template, id };
+    this.checklistTemplates.set(id, checklistTemplate);
+    return checklistTemplate;
+  }
+  
+  // Checklist item methods
+  async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
+    return Array.from(this.checklistItems.values())
+      .filter(item => item.templateId === templateId)
+      .sort((a, b) => a.order - b.order);
+  }
+  
+  async getChecklistItem(id: number): Promise<ChecklistItem | undefined> {
+    return this.checklistItems.get(id);
+  }
+  
+  async createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem> {
+    const id = this.checklistItemCurrentId++;
+    const checklistItem: ChecklistItem = { ...item, id };
+    this.checklistItems.set(id, checklistItem);
+    return checklistItem;
+  }
+  
+  // Vehicle checklist methods
+  async getVehicleChecklists(filters?: {
+    vehicleId?: number;
+    driverId?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<VehicleChecklist[]> {
+    let checklists = Array.from(this.vehicleChecklists.values());
+    
+    if (filters) {
+      if (filters.vehicleId) {
+        checklists = checklists.filter(c => c.vehicleId === filters.vehicleId);
+      }
+      
+      if (filters.driverId) {
+        checklists = checklists.filter(c => c.driverId === filters.driverId);
+      }
+      
+      if (filters.startDate) {
+        checklists = checklists.filter(c => new Date(c.date) >= filters.startDate!);
+      }
+      
+      if (filters.endDate) {
+        checklists = checklists.filter(c => new Date(c.date) <= filters.endDate!);
+      }
+    }
+    
+    // Sort by date (newest first)
+    return checklists.sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }
+  
+  async getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined> {
+    return this.vehicleChecklists.get(id);
+  }
+  
+  async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
+    const id = this.vehicleChecklistCurrentId++;
+    
+    // Garantir que a data está definida
+    if (!checklist.date) {
+      checklist.date = new Date();
+    }
+    
+    const vehicleChecklist: VehicleChecklist = { ...checklist, id };
+    this.vehicleChecklists.set(id, vehicleChecklist);
+    return vehicleChecklist;
+  }
+  
+  // Checklist result methods
+  async getChecklistResults(checklistId: number): Promise<ChecklistResult[]> {
+    return Array.from(this.checklistResults.values())
+      .filter(result => result.checklistId === checklistId);
+  }
+  
+  async getChecklistResult(id: number): Promise<ChecklistResult | undefined> {
+    return this.checklistResults.get(id);
+  }
+  
+  async createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult> {
+    const id = this.checklistResultCurrentId++;
+    const checklistResult: ChecklistResult = { ...result, id };
+    this.checklistResults.set(id, checklistResult);
+    return checklistResult;
+  }
+  
+  // Implementação para Replit Auth
+  async getUser(id: string): Promise<User | undefined> {
+    // Como estamos usando número no MemStorage mas string na interface
+    // vamos tentar converter
+    const numId = parseInt(id);
+    return this.users.get(numId);
+  }
+  
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    // Verificar se o usuário já existe
+    const existingUser = Array.from(this.users.values())
+      .find(user => user.id === userData.id);
+    
+    if (existingUser) {
+      // Atualizar usuário existente
+      const updatedUser = { ...existingUser, ...userData, updatedAt: new Date() };
+      this.users.set(parseInt(updatedUser.id), updatedUser);
+      return updatedUser;
+    } else {
+      // Criar novo usuário
+      const newUserId = userData.id || this.userCurrentId.toString();
+      const newUser: User = { 
+        ...userData, 
+        id: newUserId,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      this.users.set(parseInt(newUserId), newUser);
+      this.userCurrentId = Math.max(this.userCurrentId, parseInt(newUserId) + 1);
+      return newUser;
+    }
   }
 }
 

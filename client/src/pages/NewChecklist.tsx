@@ -44,6 +44,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { apiRequest } from "@/lib/queryClient";
 
 // Interfaces para os dados
 interface Vehicle {
@@ -191,7 +192,7 @@ export default function NewChecklist() {
   };
   
   // Enviar o formulário
-  const onSubmit = (data: z.infer<typeof baseFormSchema>) => {
+  const onSubmit = async (data: z.infer<typeof baseFormSchema>) => {
     // Se estivermos na primeira etapa, avançar para a segunda
     if (selectedTab === "info") {
       setBaseFormComplete(true);
@@ -215,8 +216,7 @@ export default function NewChecklist() {
     // Se todos os itens obrigatórios foram avaliados, enviar o checklist
     setIsSubmitting(true);
     
-    // Simulação de envio
-    setTimeout(() => {
+    try {
       // Criar objeto com os dados do checklist
       const checklistData = {
         vehicleId: parseInt(data.vehicleId),
@@ -225,6 +225,8 @@ export default function NewChecklist() {
         odometer: parseInt(data.odometer),
         observations: data.observations || null,
         date: new Date(),
+        status: "pending", // Status inicial
+        photoUrl: null,
         results: Object.entries(results).map(([itemId, result]) => ({
           itemId: parseInt(itemId),
           status: result.status || "not_applicable",
@@ -235,15 +237,32 @@ export default function NewChecklist() {
       
       console.log("Enviando checklist:", checklistData);
       
-      // Simulação de sucesso
+      // Enviar para a API
+      const response = await apiRequest("/api/checklists", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(checklistData),
+      });
+      
       toast({
         title: "Checklist salvo com sucesso!",
         description: "O checklist foi registrado no sistema.",
       });
       
-      setIsSubmitting(false);
+      // Redirecionar para a página de checklists
       setLocation("/checklists");
-    }, 1000);
+    } catch (error) {
+      console.error("Erro ao salvar checklist:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o checklist. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   // Atualizar o status de um item
