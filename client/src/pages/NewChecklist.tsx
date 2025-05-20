@@ -614,9 +614,13 @@ export default function NewChecklist() {
                                   <TableCell>
                                     {results[item.id]?.status === "issue" && (
                                       <Button
+                                        type="button"
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => openIssueDialog(item)}
+                                        onClick={(e) => {
+                                          e.preventDefault(); // Impedir que o formulário seja submetido
+                                          openIssueDialog(item);
+                                        }}
                                         className="text-red-600 border-red-600"
                                       >
                                         Detalhar Problema
