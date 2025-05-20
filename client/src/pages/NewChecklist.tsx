@@ -97,6 +97,7 @@ export default function NewChecklist() {
   const [selectedTab, setSelectedTab] = useState<"info" | "items">("info");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [results, setResults] = useState<{ [key: number]: { status: string; observation: string | null; photoUrl: string | null } }>({});
   const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
@@ -480,9 +481,6 @@ export default function NewChecklist() {
       </div>
     );
   }
-
-  const [isSaving, setIsSaving] = useState(false);
-  const navigate = useLocation()[1];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
