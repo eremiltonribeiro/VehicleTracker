@@ -119,7 +119,8 @@ export default function NewChecklist() {
   });
   
   // Carregar dados iniciais
-  // Referência adiantada da função para evitar o erro "Cannot find name"
+
+  // Função para carregar um checklist existente
   const loadExistingChecklist = async (id: number) => {
     try {
       const response = await fetch(`/api/checklists/${id}`);

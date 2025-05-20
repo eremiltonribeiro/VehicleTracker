@@ -535,6 +535,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
+  
+  // Atualizar um checklist existente
+  app.put("/api/checklists/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const checklist = await storage.getVehicleChecklist(id);
+      
+      if (!checklist) {
+        return res.status(404).json({ message: "Checklist não encontrado" });
+      }
+      
+      const checklistData = req.body;
+      
+      // Em um banco de dados real, este seria um update em vez desta simulação
+      console.log(`Atualizando checklist ${id} com os dados:`, checklistData);
+      
+      // Atualizar status baseado nos resultados
+      const hasIssues = checklistData.results && checklistData.results.some((r: any) => r.status === 'issue');
+      checklistData.status = hasIssues ? 'failed' : 'complete';
+      
+      // Responder com sucesso e dados atualizados
+      res.json({ 
+        id, 
+        ...checklistData,
+        message: "Checklist atualizado com sucesso"
+      });
+    } catch (error: any) {
+      console.error("Erro ao atualizar checklist:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   // Criar novo checklist
   app.post("/api/checklists", upload.single("photo"), async (req, res) => {
