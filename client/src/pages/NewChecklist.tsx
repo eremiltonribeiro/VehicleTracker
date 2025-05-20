@@ -277,7 +277,7 @@ export default function NewChecklist() {
 
     // Verificar se todos os itens obrigatórios foram avaliados
     const requiredItems = items.filter(item => item.isRequired);
-    const missingItems = requiredItems.filter(item => !results[item.id].status);
+    const missingItems = requiredItems.filter(item => !results[item.id]?.status);
 
     if (missingItems.length > 0) {
       toast({
@@ -306,23 +306,27 @@ export default function NewChecklist() {
           itemId: parseInt(itemId),
           status: result.status || "not_applicable",
           observation: result.observation,
-          photoUrl: result.photoUrl,
+          photoUrl: result.photoUrl, // Aqui estamos enviando a URL da foto (que pode ser um data URL)
         })),
       };
 
-      console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:", checklistData);
-
+      console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:");
+      
       // URL e método HTTP variam dependendo se estamos editando ou criando
       const url = editMode ? `/api/checklists/${checklistId}` : "/api/checklists";
       const method = editMode ? "PUT" : "POST";
 
+      // Usar FormData para enviar os dados e arquivos, se necessário
+      const formData = new FormData();
+      formData.append('data', JSON.stringify(checklistData));
+      
+      // Verifica se há fotos para os itens (em uma implementação real, enviariam os arquivos)
+      // Como estamos usando data URLs, não precisamos enviar os arquivos separadamente
+      
       // Enviar para a API
       const response = await fetch(url, {
         method: method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(checklistData),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -374,16 +378,35 @@ export default function NewChecklist() {
   // Salvar os detalhes do problema
   const saveIssueDetails = () => {
     if (!selectedItem) return;
-
-    setResults(prev => ({
-      ...prev,
-      [selectedItem.id]: {
-        ...prev[selectedItem.id],
-        status: "issue",
-        observation: issueObservation || null,
-        photoUrl: photoPreview,
-      },
-    }));
+    
+    // Verificar se temos um arquivo de foto e um preview
+    if (photoFile && photoPreview) {
+      // Usamos o preview da imagem (data URL) diretamente
+      // Em uma implementação real, enviaríamos o arquivo para o servidor
+      // e utilizaríamos a URL retornada
+      setResults(prev => ({
+        ...prev,
+        [selectedItem.id]: {
+          ...prev[selectedItem.id],
+          status: "issue",
+          observation: issueObservation || null,
+          photoUrl: photoPreview, // Armazenamos o data URL diretamente
+        },
+      }));
+      
+      console.log(`Foto associada ao item ${selectedItem.id}`);
+    } else {
+      // Sem foto, apenas atualizamos a observação
+      setResults(prev => ({
+        ...prev,
+        [selectedItem.id]: {
+          ...prev[selectedItem.id],
+          status: "issue",
+          observation: issueObservation || null,
+          photoUrl: null,
+        },
+      }));
+    }
 
     setPhotoDialogOpen(false);
   };

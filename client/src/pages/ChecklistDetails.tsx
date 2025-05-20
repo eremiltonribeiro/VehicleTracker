@@ -434,9 +434,25 @@ export default function ChecklistDetails() {
                             <div>
                               <h5 className="text-sm font-medium mb-1 text-gray-700">Evidência fotográfica:</h5>
                               <div className="relative w-full h-40 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
-                                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                                  Imagem não disponível em modo de demonstração
-                                </div>
+                                {result.photoUrl.startsWith("data:") ? (
+                                  <img 
+                                    src={result.photoUrl} 
+                                    alt="Evidência do problema" 
+                                    className="absolute inset-0 w-full h-full object-contain"
+                                  />
+                                ) : (
+                                  <img 
+                                    src={result.photoUrl} 
+                                    alt="Evidência do problema" 
+                                    className="absolute inset-0 w-full h-full object-contain"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.onerror = null;
+                                      target.src = ""; // Limpa a src
+                                      target.parentElement!.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
+                                    }}
+                                  />
+                                )}
                               </div>
                             </div>
                           )}

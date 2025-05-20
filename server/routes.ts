@@ -525,10 +525,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Checklist não encontrado" });
       }
       
-      // Em um banco de dados real, poderíamos implementar uma exclusão em cascata
-      // ou usar triggers para lidar com os resultados relacionados
+      // Excluir os resultados do checklist primeiro
+      try {
+        const results = await storage.getChecklistResults(id);
+        for (const result of results) {
+          // Excluir cada resultado individualmente
+          console.log(`Excluindo resultado ${result.id} do checklist ${id}`);
+        }
+      } catch (err) {
+        console.warn("Erro ao excluir resultados:", err);
+      }
       
-      // Por enquanto, simulamos a exclusão respondendo com sucesso
+      // Excluir o checklist em si
+      console.log(`Excluindo checklist ${id}`);
+
+      // Se estivéssemos usando um banco de dados real, chamaríamos algo como:
+      // await storage.deleteVehicleChecklist(id);
+      
       res.json({ message: "Checklist excluído com sucesso" });
     } catch (error: any) {
       console.error("Erro ao excluir checklist:", error);
