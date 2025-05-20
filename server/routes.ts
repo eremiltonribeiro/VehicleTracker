@@ -487,7 +487,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Obter um checklist específico com seus resultados
-  app.get("/api/checklists/:id", async (req, res) => {
+  // Obter dados para edição de um checklist específico
+app.get("/api/checklists/edit/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    console.log(`Obtendo dados para edição do checklist ${id}`);
+    const checklist = await storage.getVehicleChecklist(id);
+
+    if (!checklist) {
+      return res.status(404).json({ message: "Checklist não encontrado" });
+    }
+
+    const vehicle = await storage.getVehicle(checklist.vehicleId);
+    const driver = await storage.getDriver(checklist.driverId);
+    const template = await storage.getChecklistTemplate(checklist.templateId);
+    const items = await storage.getChecklistItems(checklist.templateId);
+    const results = await storage.getChecklistResults(id);
+
+    // Processar URLs de fotos, se existirem
+    const processedResults = results.map(result => {
+      if (result.photoUrl) {
+        if (!result.photoUrl.startsWith('data:') && 
+            !result.photoUrl.startsWith('/') &&
+            !result.photoUrl.startsWith('http')) {
+          result.photoUrl = '/' + result.photoUrl;
+        }
+      }
+      return result;
+    });
+
+    res.json({
+      ...checklist,
+      vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
+      driver: driver ? { id: driver.id, name: driver.name } : null,
+      template: template ? { id: template.id, name: template.name } : null,
+      items,
+      results: processedResults,
+    });
+  } catch (error: any) {
+    console.error("Erro ao obter dados para edição de checklist:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.get("/api/checklists/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const checklist = await storage.getVehicleChecklist(id);
@@ -519,13 +562,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/registrations/:id", upload.single("photo"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const registrationData = typeof req.body.data === 'string' 
-        ? JSON.parse(req.body.data) 
-        : req.body;
+      console.log(`Atualizando registro ${id}. Corpo da requisição:`, req.body);
+      
+      let registrationData;
+      try {
+        registrationData = typeof req.body.data === 'string' 
+          ? JSON.parse(req.body.data) 
+          : req.body;
+      } catch (error) {
+        console.error("Erro ao analisar dados do registro:", error);
+        return res.status(400).json({ message: "Formato de dados inválido" });
+      }
 
       // Se houver upload de foto
       if (req.file) {
         registrationData.photoUrl = `/uploads/${req.file.filename}`;
+        console.log("Nova foto adicionada:", registrationData.photoUrl);
       }
 
       // Verificar se o registro existe
@@ -534,9 +586,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Registro não encontrado" });
       }
 
+      // Converter datas se necessário
+      if (registrationData.date && typeof registrationData.date === 'string') {
+        registrationData.date = new Date(registrationData.date);
+      }
+      
+      console.log("Dados que serão atualizados:", registrationData);
+
       // Atualizar o registro
       const registration = await storage.updateRegistration(id, registrationData);
-      res.json(registration);
+      console.log("Registro atualizado com sucesso:", registration);
+      res.status(200).json({ 
+        message: "Registro atualizado com sucesso", 
+        registration 
+      });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
@@ -704,6 +767,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }));
       }
+      
+      // Retornar resposta de sucesso com o checklist criado
+      res.status(201).json({ 
+        message: "Checklist criado com sucesso", 
+        checklist 
+      });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -720,17 +789,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/registrations/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log(`Solicitação para excluir registro ${id}`);
+      
       const registration = await storage.getRegistration(id);
       
       if (!registration) {
+        console.error(`Registro ${id} não encontrado`);
         return res.status(404).json({ message: "Registro não encontrado" });
       }
       
+      console.log(`Excluindo registro ${id}`);
       await storage.deleteRegistration(id);
-      res.json({ message: "Registro excluído com sucesso" });
+      
+      // Se o registro tiver uma foto no sistema de arquivos, poderia excluir aqui também
+      if (registration.photoUrl && !registration.photoUrl.startsWith('data:')) {
+        // Verificar caminho da foto e remover
+        console.log(`O registro possui uma foto: ${registration.photoUrl}`);
+        // Implementação da exclusão de foto poderia ser feita aqui
+      }
+      
+      console.log(`Registro ${id} excluído com sucesso`);
+      res.status(200).json({ 
+        message: "Registro excluído com sucesso",
+        success: true,
+        id: id
+      });
     } catch (error: any) {
-      console.error("Erro ao excluir registro:", error);
-      res.status(500).json({ message: error.message });
+      console.error(`Erro ao excluir registro ${req.params.id}:`, error);
+      res.status(500).json({ 
+        message: "Erro ao excluir registro: " + (error.message || "Erro desconhecido"),
+        success: false
+      });
     }
   });
 
@@ -738,13 +827,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/checklists/:id/results", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log(`Obtendo resultados do checklist ${id}`);
       const results = await storage.getChecklistResults(id);
+      console.log(`Encontrados ${results.length} resultados para o checklist ${id}`);
 
       // Processa as URLs das fotos para garantir que estejam acessíveis
       const processedResults = results.map(result => {
         if (result.photoUrl) {
-          // Certifica-se de que as URLs começam com / se não forem data URLs
-          if (!result.photoUrl.startsWith('data:') && !result.photoUrl.startsWith('/')) {
+          // Certifica-se de que as URLs começam com / se não forem data URLs ou URLs externas
+          if (!result.photoUrl.startsWith('data:') && 
+              !result.photoUrl.startsWith('/') &&
+              !result.photoUrl.startsWith('http')) {
             result.photoUrl = '/' + result.photoUrl;
           }
           console.log("URL da foto processada:", result.photoUrl);
