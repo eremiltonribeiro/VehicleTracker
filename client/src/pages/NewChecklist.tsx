@@ -105,7 +105,7 @@ export default function NewChecklist() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [issueObservation, setIssueObservation] = useState("");
   const [existingChecklist, setExistingChecklist] = useState<any>(null);
-  
+
   // Inicializar o formulário
   const form = useForm<z.infer<typeof baseFormSchema>>({
     resolver: zodResolver(baseFormSchema),
@@ -117,31 +117,31 @@ export default function NewChecklist() {
       observations: "",
     },
   });
-  
+
   // Carregar dados iniciais
 
   // Função para carregar um checklist existente
   const loadExistingChecklist = async (id: number) => {
     try {
       const response = await fetch(`/api/checklists/${id}`);
-      
+
       if (!response.ok) {
         throw new Error("Erro ao carregar dados do checklist");
       }
-      
+
       const checklistData = await response.json();
-      
+
       // Preencher o formulário com os dados existentes
       form.setValue("vehicleId", checklistData.vehicleId.toString());
       form.setValue("driverId", checklistData.driverId.toString());
       form.setValue("templateId", checklistData.templateId.toString());
       form.setValue("odometer", checklistData.odometer.toString());
       form.setValue("observations", checklistData.observations || "");
-      
+
       // Carregar os resultados do checklist
       if (checklistData.results && checklistData.results.length > 0) {
         const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
-        
+
         checklistData.results.forEach((result: any) => {
           resultsMap[result.itemId] = {
             status: result.status,
@@ -149,33 +149,33 @@ export default function NewChecklist() {
             photoUrl: result.photoUrl
           };
         });
-        
+
         setResults(resultsMap);
       }
-      
+
       // Depois de carregar os dados, podemos ir direto para os itens
       setBaseFormComplete(true);
       setSelectedTab("items");
-      
+
     } catch (error) {
       console.error("Erro ao carregar checklist para edição:", error);
       toast({
         title: "Erro ao carregar",
         description: "Não foi possível carregar os dados do checklist para edição",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
   useEffect(() => {
     loadInitialData();
-    
+
     // Se estiver no modo de edição, carregar dados do checklist existente
     if (editMode && checklistId) {
       loadExistingChecklist(checklistId);
     }
   }, [editMode, checklistId]);
-  
+
   // Carregar dados quando o template muda
   useEffect(() => {
     const templateId = form.watch("templateId");
@@ -183,11 +183,11 @@ export default function NewChecklist() {
       loadTemplateItems(parseInt(templateId));
     }
   }, [form.watch("templateId")]);
-  
+
   // Função para carregar os dados iniciais
   const loadInitialData = async () => {
     setIsLoading(true);
-    
+
     try {
       // Carregar veículos da API
       const vehiclesResponse = await fetch('/api/vehicles');
@@ -196,7 +196,7 @@ export default function NewChecklist() {
       }
       const vehiclesData = await vehiclesResponse.json();
       setVehicles(vehiclesData);
-      
+
       // Carregar motoristas da API
       const driversResponse = await fetch('/api/drivers');
       if (!driversResponse.ok) {
@@ -204,7 +204,7 @@ export default function NewChecklist() {
       }
       const driversData = await driversResponse.json();
       setDrivers(driversData);
-      
+
       // Carregar templates de checklist da API
       const templatesResponse = await fetch('/api/checklist-templates');
       if (!templatesResponse.ok) {
@@ -223,74 +223,29 @@ export default function NewChecklist() {
       setIsLoading(false);
     }
   };
-  
-  // Função para carregar um checklist existente para edição
-  const loadExistingChecklist = async (id: number) => {
-    try {
-      const response = await fetch(`/api/checklists/${id}`);
-      
-      if (!response.ok) {
-        throw new Error("Erro ao carregar dados do checklist");
-      }
-      
-      const checklistData = await response.json();
-      
-      // Preencher o formulário com os dados existentes
-      form.setValue("vehicleId", checklistData.vehicleId.toString());
-      form.setValue("driverId", checklistData.driverId.toString());
-      form.setValue("templateId", checklistData.templateId.toString());
-      form.setValue("odometer", checklistData.odometer.toString());
-      form.setValue("observations", checklistData.observations || "");
-      
-      // Carregar os resultados do checklist
-      if (checklistData.results && checklistData.results.length > 0) {
-        const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
-        
-        checklistData.results.forEach((result: any) => {
-          resultsMap[result.itemId] = {
-            status: result.status,
-            observation: result.observation,
-            photoUrl: result.photoUrl
-          };
-        });
-        
-        setResults(resultsMap);
-      }
-      
-      // Depois de carregar os dados, podemos ir direto para os itens
-      setBaseFormComplete(true);
-      setSelectedTab("items");
-      
-    } catch (error) {
-      console.error("Erro ao carregar checklist para edição:", error);
-      toast({
-        title: "Erro ao carregar",
-        description: "Não foi possível carregar os dados do checklist para edição",
-        variant: "destructive",
-      });
-    }
-  };
-  
+
+  // This duplicate function has been removed to fix the build error
+
   // Função para carregar os itens do template selecionado
   const loadTemplateItems = async (templateId: number) => {
     try {
       // Carregar itens do template da API
       const response = await fetch(`/api/checklist-templates/${templateId}/items`);
-      
+
       if (!response.ok) {
         throw new Error('Erro ao carregar itens do template');
       }
-      
+
       const items: ChecklistItem[] = await response.json();
-      
+
       setItems(items);
-      
+
       // Inicializar resultados como vazios
       const initialResults: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
       items.forEach(item => {
         initialResults[item.id] = { status: "", observation: null, photoUrl: null };
       });
-      
+
       setResults(initialResults);
     } catch (error) {
       console.error('Erro ao carregar itens do template:', error);
@@ -299,18 +254,18 @@ export default function NewChecklist() {
         description: "Não foi possível carregar os itens do checklist. Tente novamente.",
         variant: "destructive",
       });
-      
+
       // Em caso de erro, definir uma lista vazia
       setItems([]);
       setResults({});
     }
   };
-  
+
   // Voltar para a página de checklists
   const handleBack = () => {
     setLocation("/checklists");
   };
-  
+
   // Enviar o formulário
   const onSubmit = async (data: z.infer<typeof baseFormSchema>) => {
     // Se estivermos na primeira etapa, avançar para a segunda
@@ -319,11 +274,11 @@ export default function NewChecklist() {
       setSelectedTab("items");
       return;
     }
-    
+
     // Verificar se todos os itens obrigatórios foram avaliados
     const requiredItems = items.filter(item => item.isRequired);
     const missingItems = requiredItems.filter(item => !results[item.id].status);
-    
+
     if (missingItems.length > 0) {
       toast({
         title: "Checklist incompleto",
@@ -332,10 +287,10 @@ export default function NewChecklist() {
       });
       return;
     }
-    
+
     // Se todos os itens obrigatórios foram avaliados, enviar o checklist
     setIsSubmitting(true);
-    
+
     try {
       // Criar objeto com os dados do checklist
       const checklistData = {
@@ -354,13 +309,13 @@ export default function NewChecklist() {
           photoUrl: result.photoUrl,
         })),
       };
-      
+
       console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:", checklistData);
-      
+
       // URL e método HTTP variam dependendo se estamos editando ou criando
       const url = editMode ? `/api/checklists/${checklistId}` : "/api/checklists";
       const method = editMode ? "PUT" : "POST";
-      
+
       // Enviar para a API
       const response = await fetch(url, {
         method: method,
@@ -369,19 +324,19 @@ export default function NewChecklist() {
         },
         body: JSON.stringify(checklistData),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Erro ao salvar checklist");
       }
-      
+
       toast({
         title: editMode ? "Checklist atualizado com sucesso!" : "Checklist salvo com sucesso!",
         description: editMode 
           ? "As alterações foram salvas no sistema."
           : "O checklist foi registrado no sistema.",
       });
-      
+
       // Redirecionar para a página de checklists
       setLocation("/checklists");
     } catch (error) {
@@ -395,7 +350,7 @@ export default function NewChecklist() {
       setIsSubmitting(false);
     }
   };
-  
+
   // Atualizar o status de um item
   const updateItemStatus = (itemId: number, status: string) => {
     setResults(prev => ({
@@ -406,7 +361,7 @@ export default function NewChecklist() {
       },
     }));
   };
-  
+
   // Abrir o diálogo para reportar um problema
   const openIssueDialog = (item: ChecklistItem) => {
     setSelectedItem(item);
@@ -415,11 +370,11 @@ export default function NewChecklist() {
     setPhotoPreview(null);
     setPhotoDialogOpen(true);
   };
-  
+
   // Salvar os detalhes do problema
   const saveIssueDetails = () => {
     if (!selectedItem) return;
-    
+
     setResults(prev => ({
       ...prev,
       [selectedItem.id]: {
@@ -429,17 +384,17 @@ export default function NewChecklist() {
         photoUrl: photoPreview,
       },
     }));
-    
+
     setPhotoDialogOpen(false);
   };
-  
+
   // Manipular o upload de foto
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setPhotoFile(file);
-    
+
     // Criar preview da imagem
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -447,11 +402,11 @@ export default function NewChecklist() {
     };
     reader.readAsDataURL(file);
   };
-  
+
   // Agrupar itens por categoria
   const getItemsByCategory = () => {
     const categories: Record<string, ChecklistItem[]> = {};
-    
+
     items.forEach(item => {
       const category = item.category || "Sem categoria";
       if (!categories[category]) {
@@ -459,16 +414,16 @@ export default function NewChecklist() {
       }
       categories[category].push(item);
     });
-    
+
     return categories;
   };
-  
+
   // Verificar se todos os itens foram avaliados
   const allItemsChecked = () => {
     const requiredItems = items.filter(item => item.isRequired);
     return requiredItems.every(item => results[item.id]?.status);
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -478,7 +433,7 @@ export default function NewChecklist() {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between">
@@ -511,7 +466,7 @@ export default function NewChecklist() {
           </Button>
         </div>
       </div>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {selectedTab === "info" && (
@@ -548,7 +503,7 @@ export default function NewChecklist() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="driverId"
@@ -577,7 +532,7 @@ export default function NewChecklist() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   control={form.control}
                   name="templateId"
@@ -605,7 +560,7 @@ export default function NewChecklist() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="odometer"
@@ -619,7 +574,7 @@ export default function NewChecklist() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="observations"
@@ -639,7 +594,7 @@ export default function NewChecklist() {
               </CardContent>
             </Card>
           )}
-          
+
           {selectedTab === "items" && (
             <Card>
               <CardHeader>
@@ -759,7 +714,7 @@ export default function NewChecklist() {
               </CardContent>
             </Card>
           )}
-          
+
           <div className="flex justify-between">
             <Button
               type="button"
@@ -771,7 +726,7 @@ export default function NewChecklist() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Cancelar
             </Button>
-            
+
             {selectedTab === "info" ? (
               <Button 
                 type="submit"
@@ -794,7 +749,7 @@ export default function NewChecklist() {
           </div>
         </form>
       </Form>
-      
+
       {/* Diálogo para reportar um problema */}
       <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -804,7 +759,7 @@ export default function NewChecklist() {
               Adicione uma descrição e foto do problema encontrado.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label htmlFor="observation" className="text-sm font-medium">
@@ -817,7 +772,7 @@ export default function NewChecklist() {
                 onChange={(e) => setIssueObservation(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="photo" className="text-sm font-medium">
                 Foto do Problema (opcional)
@@ -828,7 +783,7 @@ export default function NewChecklist() {
                 accept="image/*"
                 onChange={handlePhotoUpload}
               />
-              
+
               {photoPreview && (
                 <div className="mt-2">
                   <p className="text-sm mb-1">Preview:</p>
@@ -843,7 +798,7 @@ export default function NewChecklist() {
               )}
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2">
             <Button
               variant="outline"
