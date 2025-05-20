@@ -85,6 +85,9 @@ const baseFormSchema = z.object({
 
 // Componente principal
 export default function NewChecklist() {
+  const params = useParams<{ id?: string }>();
+  const editMode = !!params.id;
+  const checklistId = params.id ? parseInt(params.id) : undefined;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -101,6 +104,7 @@ export default function NewChecklist() {
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [issueObservation, setIssueObservation] = useState("");
+  const [existingChecklist, setExistingChecklist] = useState<any>(null);
   
   // Inicializar o formulário
   const form = useForm<z.infer<typeof baseFormSchema>>({
@@ -115,9 +119,61 @@ export default function NewChecklist() {
   });
   
   // Carregar dados iniciais
+  // Referência adiantada da função para evitar o erro "Cannot find name"
+  const loadExistingChecklist = async (id: number) => {
+    try {
+      const response = await fetch(`/api/checklists/${id}`);
+      
+      if (!response.ok) {
+        throw new Error("Erro ao carregar dados do checklist");
+      }
+      
+      const checklistData = await response.json();
+      
+      // Preencher o formulário com os dados existentes
+      form.setValue("vehicleId", checklistData.vehicleId.toString());
+      form.setValue("driverId", checklistData.driverId.toString());
+      form.setValue("templateId", checklistData.templateId.toString());
+      form.setValue("odometer", checklistData.odometer.toString());
+      form.setValue("observations", checklistData.observations || "");
+      
+      // Carregar os resultados do checklist
+      if (checklistData.results && checklistData.results.length > 0) {
+        const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
+        
+        checklistData.results.forEach((result: any) => {
+          resultsMap[result.itemId] = {
+            status: result.status,
+            observation: result.observation,
+            photoUrl: result.photoUrl
+          };
+        });
+        
+        setResults(resultsMap);
+      }
+      
+      // Depois de carregar os dados, podemos ir direto para os itens
+      setBaseFormComplete(true);
+      setSelectedTab("items");
+      
+    } catch (error) {
+      console.error("Erro ao carregar checklist para edição:", error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os dados do checklist para edição",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     loadInitialData();
-  }, []);
+    
+    // Se estiver no modo de edição, carregar dados do checklist existente
+    if (editMode && checklistId) {
+      loadExistingChecklist(checklistId);
+    }
+  }, [editMode, checklistId]);
   
   // Carregar dados quando o template muda
   useEffect(() => {
@@ -164,6 +220,53 @@ export default function NewChecklist() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Função para carregar um checklist existente para edição
+  const loadExistingChecklist = async (id: number) => {
+    try {
+      const response = await fetch(`/api/checklists/${id}`);
+      
+      if (!response.ok) {
+        throw new Error("Erro ao carregar dados do checklist");
+      }
+      
+      const checklistData = await response.json();
+      
+      // Preencher o formulário com os dados existentes
+      form.setValue("vehicleId", checklistData.vehicleId.toString());
+      form.setValue("driverId", checklistData.driverId.toString());
+      form.setValue("templateId", checklistData.templateId.toString());
+      form.setValue("odometer", checklistData.odometer.toString());
+      form.setValue("observations", checklistData.observations || "");
+      
+      // Carregar os resultados do checklist
+      if (checklistData.results && checklistData.results.length > 0) {
+        const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
+        
+        checklistData.results.forEach((result: any) => {
+          resultsMap[result.itemId] = {
+            status: result.status,
+            observation: result.observation,
+            photoUrl: result.photoUrl
+          };
+        });
+        
+        setResults(resultsMap);
+      }
+      
+      // Depois de carregar os dados, podemos ir direto para os itens
+      setBaseFormComplete(true);
+      setSelectedTab("items");
+      
+    } catch (error) {
+      console.error("Erro ao carregar checklist para edição:", error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os dados do checklist para edição",
+        variant: "destructive",
+      });
     }
   };
   
@@ -251,20 +354,31 @@ export default function NewChecklist() {
         })),
       };
       
-      console.log("Enviando checklist:", checklistData);
+      console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:", checklistData);
+      
+      // URL e método HTTP variam dependendo se estamos editando ou criando
+      const url = editMode ? `/api/checklists/${checklistId}` : "/api/checklists";
+      const method = editMode ? "PUT" : "POST";
       
       // Enviar para a API
-      const response = await fetch("/api/checklists", {
-        method: "POST",
+      const response = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(checklistData),
       });
       
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao salvar checklist");
+      }
+      
       toast({
-        title: "Checklist salvo com sucesso!",
-        description: "O checklist foi registrado no sistema.",
+        title: editMode ? "Checklist atualizado com sucesso!" : "Checklist salvo com sucesso!",
+        description: editMode 
+          ? "As alterações foram salvas no sistema."
+          : "O checklist foi registrado no sistema.",
       });
       
       // Redirecionar para a página de checklists
