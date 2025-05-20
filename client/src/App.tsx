@@ -16,6 +16,7 @@ import Checklists from "@/pages/Checklists";
 import NewChecklist from "@/pages/NewChecklist";
 import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
+import ChecklistSimple from "@/pages/ChecklistSimple";
 import AppConfig from "@/pages/AppConfig";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
@@ -168,7 +169,7 @@ function Router() {
             <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
             <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
             <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
-            <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
+            <PrivateRoute path="/checklists" component={ChecklistSimple} permission="checklists" />
             <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
             <Route component={NotFound} />
           </Switch>
