@@ -56,6 +56,9 @@ export default function ChecklistDetails() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
+  // Função para navegação
+  const navigate = (path: string) => setLocation(path);
+  
   useEffect(() => {
     if (id) {
       loadChecklistData(id);
@@ -150,7 +153,7 @@ export default function ChecklistDetails() {
   };
   
   const handleBack = () => {
-    setLocation("/checklists");
+    navigate("/checklists");
   };
   
   const formatDate = (dateString: string) => {
@@ -365,7 +368,7 @@ export default function ChecklistDetails() {
               <div key={category} className="space-y-3">
                 <h3 className="font-medium text-blue-900">{category}</h3>
                 <div className="space-y-4">
-                  {items.map(({ item, result }) => (
+                  {items.map(({ item, result }: { item: ChecklistItem, result: ChecklistResult }) => (
                     <div key={item.id} className="border rounded-lg p-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div>
@@ -428,11 +431,8 @@ export default function ChecklistDetails() {
             variant="outline" 
             className="border-amber-600 text-amber-600 hover:bg-amber-50"
             onClick={() => {
-              // Aqui adicionaríamos a lógica para editar
-              toast({
-                title: "Edição",
-                description: "Funcionalidade de edição será implementada em breve.",
-              });
+              // Redirecionar para a página de edição
+              navigate(`/checklists/edit/${id}`);
             }}
           >
             Editar
@@ -441,15 +441,35 @@ export default function ChecklistDetails() {
           <Button 
             variant="outline" 
             className="border-red-600 text-red-600 hover:bg-red-50"
-            onClick={() => {
+            onClick={async () => {
               const confirm = window.confirm("Tem certeza que deseja excluir este checklist?");
               
               if (confirm) {
-                // Lógica para excluir o checklist
-                toast({
-                  title: "Exclusão",
-                  description: "Funcionalidade de exclusão será implementada em breve.",
-                });
+                try {
+                  // Excluir o checklist usando a API
+                  const response = await fetch(`/api/checklists/${id}`, {
+                    method: 'DELETE',
+                  });
+                  
+                  if (response.ok) {
+                    toast({
+                      title: "Sucesso",
+                      description: "Checklist excluído com sucesso!",
+                    });
+                    // Redirecionar para a lista de checklists
+                    navigate('/checklists');
+                  } else {
+                    const error = await response.json();
+                    throw new Error(error.message || "Erro ao excluir checklist");
+                  }
+                } catch (error) {
+                  console.error("Erro ao excluir checklist:", error);
+                  toast({
+                    title: "Erro",
+                    description: error instanceof Error ? error.message : "Erro ao excluir checklist",
+                    variant: "destructive",
+                  });
+                }
               }
             }}
           >
