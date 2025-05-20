@@ -593,19 +593,30 @@ app.get("/api/checklists/:id", async (req, res) => {
       
       console.log("Dados que serão atualizados:", registrationData);
 
-      // Atualizar o registro
-      const registration = await storage.updateRegistration(id, registrationData);
-      console.log("Registro atualizado com sucesso:", registration);
-      res.status(200).json({ 
-        message: "Registro atualizado com sucesso", 
-        registration 
-      });
+      try {
+        // Atualizar o registro
+        const registration = await storage.updateRegistration(id, registrationData);
+        console.log("Registro atualizado com sucesso:", registration);
+        res.status(200).json({ 
+          message: "Registro atualizado com sucesso", 
+          registration 
+        });
+      } catch (updateError: any) {
+        console.error("Erro específico ao atualizar registro:", updateError);
+        return res.status(500).json({ 
+          message: "Erro ao atualizar registro: " + updateError.message,
+          success: false
+        });
+      }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
       console.error("Erro ao atualizar registro:", error);
-      res.status(500).json({ message: error.message });
+      res.status(500).json({ 
+        message: "Erro ao atualizar registro: " + error.message,
+        success: false
+      });
     }
   });
 
@@ -763,25 +774,47 @@ app.get("/api/checklists/:id", async (req, res) => {
       
       if (!registration) {
         console.error(`Registro ${id} não encontrado`);
-        return res.status(404).json({ message: "Registro não encontrado" });
+        return res.status(404).json({ 
+          message: "Registro não encontrado", 
+          success: false 
+        });
       }
       
       console.log(`Excluindo registro ${id}`);
-      await storage.deleteRegistration(id);
-      
-      // Se o registro tiver uma foto no sistema de arquivos, poderia excluir aqui também
-      if (registration.photoUrl && !registration.photoUrl.startsWith('data:')) {
-        // Verificar caminho da foto e remover
-        console.log(`O registro possui uma foto: ${registration.photoUrl}`);
-        // Implementação da exclusão de foto poderia ser feita aqui
+      try {
+        const deleted = await storage.deleteRegistration(id);
+        
+        if (!deleted) {
+          throw new Error(`Falha ao excluir registro ${id}`);
+        }
+        
+        // Se o registro tiver uma foto no sistema de arquivos, poderia excluir aqui também
+        if (registration.photoUrl && 
+            !registration.photoUrl.startsWith('data:') && 
+            registration.photoUrl.includes('/uploads/')) {
+          // Verificar caminho da foto e remover
+          console.log(`O registro possui uma foto: ${registration.photoUrl}`);
+          // Consideração para implementar exclusão de arquivos no futuro
+          // const filePath = path.join(process.cwd(), 'dist/public', registration.photoUrl);
+          // if (fs.existsSync(filePath)) {
+          //   fs.unlinkSync(filePath);
+          //   console.log(`Arquivo excluído: ${filePath}`);
+          // }
+        }
+        
+        console.log(`Registro ${id} excluído com sucesso`);
+        res.status(200).json({ 
+          message: "Registro excluído com sucesso",
+          success: true,
+          id: id
+        });
+      } catch (deleteError: any) {
+        console.error(`Erro específico ao excluir registro ${id}:`, deleteError);
+        return res.status(500).json({
+          message: "Erro ao excluir registro: " + deleteError.message,
+          success: false
+        });
       }
-      
-      console.log(`Registro ${id} excluído com sucesso`);
-      res.status(200).json({ 
-        message: "Registro excluído com sucesso",
-        success: true,
-        id: id
-      });
     } catch (error: any) {
       console.error(`Erro ao excluir registro ${req.params.id}:`, error);
       res.status(500).json({ 

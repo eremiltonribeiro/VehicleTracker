@@ -504,6 +504,24 @@ export class MemStorage implements IStorage {
   }
 
   // Vehicle registration methods
+  async updateRegistration(id: number, data: any): Promise<VehicleRegistration> {
+    const existingRegistration = this.registrations.get(id);
+    if (!existingRegistration) {
+      throw new Error(`Registro com ID ${id} não encontrado`);
+    }
+
+    // Preservar campos que não foram fornecidos na atualização
+    const updatedRegistration: VehicleRegistration = { 
+      ...existingRegistration,
+      ...data,
+      id // Garantir que o ID não seja alterado
+    };
+
+    this.registrations.set(id, updatedRegistration);
+    console.log(`Registro ${id} atualizado com sucesso:`, updatedRegistration);
+    return updatedRegistration;
+  }
+
   async getRegistrations(filters?: {
     type?: string;
     vehicleId?: number;
@@ -553,6 +571,16 @@ export class MemStorage implements IStorage {
     const registration: VehicleRegistration = { ...insertRegistration, id };
     this.registrations.set(id, registration);
     return registration;
+  }
+
+  async deleteRegistration(id: number): Promise<boolean> {
+    const exists = this.registrations.has(id);
+    if (!exists) {
+      throw new Error(`Registro com ID ${id} não encontrado`);
+    }
+    const result = this.registrations.delete(id);
+    console.log(`Registro ${id} excluído: ${result}`);
+    return result;
   }
 
   // Checklist template methods
