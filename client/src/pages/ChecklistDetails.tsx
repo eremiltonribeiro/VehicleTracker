@@ -65,40 +65,56 @@ export default function ChecklistDetails() {
     setIsLoading(true);
     
     try {
+      console.log("Carregando checklist ID:", id);
+      
       // Buscar dados do checklist da API
       const response = await fetch(`/api/checklists/${id}`);
       
       if (!response.ok) {
+        console.error("Falha ao carregar checklist:", response.status, response.statusText);
         throw new Error('Erro ao carregar dados do checklist');
       }
       
       const checklistData = await response.json();
+      console.log("Dados do checklist:", checklistData);
+      
+      if (!checklistData || !checklistData.templateId) {
+        console.error("Dados do checklist inválidos:", checklistData);
+        throw new Error('Dados do checklist inválidos');
+      }
       
       // Buscar os resultados do checklist
       const resultsResponse = await fetch(`/api/checklists/${id}/results`);
       
-      if (!resultsResponse.ok) {
-        throw new Error('Erro ao carregar resultados do checklist');
+      let resultsData = [];
+      if (resultsResponse.ok) {
+        resultsData = await resultsResponse.json();
+        console.log("Resultados carregados:", resultsData.length);
+      } else {
+        console.warn("Não foi possível carregar resultados:", resultsResponse.status);
+        // Continuar mesmo sem resultados
       }
-      
-      const resultsData = await resultsResponse.json();
       
       // Buscar os itens do template associado
       const itemsResponse = await fetch(`/api/checklist-templates/${checklistData.templateId}/items`);
       
-      if (!itemsResponse.ok) {
-        throw new Error('Erro ao carregar itens do template');
+      let itemsData = [];
+      if (itemsResponse.ok) {
+        itemsData = await itemsResponse.json();
+        console.log("Itens carregados:", itemsData.length);
+      } else {
+        console.warn("Não foi possível carregar itens:", itemsResponse.status);
+        // Continuar mesmo sem itens
       }
-      
-      const itemsData = await itemsResponse.json();
       
       // Montar o objeto checklist completo
       const completeChecklist = {
         ...checklistData,
-        results: resultsData,
-        items: itemsData
+        results: resultsData || [],
+        items: itemsData || []
       };
       
+      console.log("Checklist completo montado com sucesso:", completeChecklist.id);
       setChecklist(completeChecklist);
     } catch (error) {
       console.error('Erro ao carregar dados do checklist:', error);
@@ -185,16 +201,30 @@ export default function ChecklistDetails() {
     
     const categories: Record<string, { item: ChecklistItem, result: ChecklistResult }[]> = {};
     
+    // Verificar se checklist.items e checklist.results existem
+    if (!checklist.items || !checklist.results) {
+      return categories;
+    }
+    
     checklist.items.forEach(item => {
       const category = item.category || "Sem categoria";
       if (!categories[category]) {
         categories[category] = [];
       }
       
+      // Buscar o resultado correspondente ao item
       const result = checklist.results.find(r => r.itemId === item.id);
-      if (result) {
-        categories[category].push({ item, result });
-      }
+      // Se não encontrar um resultado, criar um resultado padrão para evitar erros
+      const defaultResult: ChecklistResult = {
+        id: 0,
+        checklistId: checklist.id,
+        itemId: item.id,
+        status: "not_applicable",
+        observation: null,
+        photoUrl: null
+      };
+      
+      categories[category].push({ item, result: result || defaultResult });
     });
     
     return categories;
