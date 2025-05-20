@@ -464,7 +464,10 @@ export default function ChecklistDetails() {
                                       } else {
                                         // Se todas as tentativas falham, mostrar mensagem de erro
                                         target.src = ""; // Limpa a src
-                                        target.parentElement!.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
+                                        const parentElement = target.parentElement;
+                                        if (parentElement) {
+                                          parentElement.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
+                                        }
                                       }
                                     }}
                                   />
@@ -473,8 +476,13 @@ export default function ChecklistDetails() {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      window.open(result.photoUrl, '_blank');
+                                      if (result.photoUrl) {
+                                        window.open(result.photoUrl, '_blank');
+                                      }
                                     }}
+                                    className="bg-white text-blue-700 p-1 rounded-full shadow-md"
+                                    title="Ver em tamanho real"
+                                    aria-label="Abrir imagem em tamanho real"
                                     className="bg-white text-blue-700 p-1 rounded-full shadow-md"
                                     title="Ver em tamanho real"
                                   >
