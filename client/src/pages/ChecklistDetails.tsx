@@ -61,51 +61,55 @@ export default function ChecklistDetails() {
     loadChecklistData();
   }, [id]);
   
-  const loadChecklistData = () => {
+  const loadChecklistData = async () => {
     setIsLoading(true);
     
-    // Simulação de carregamento de dados (em um sistema real, isso viria do servidor)
-    setTimeout(() => {
-      // Dados simulados de um checklist
-      const mockChecklist: VehicleChecklist = {
-        id: parseInt(id || "1"),
-        vehicleId: 1,
-        driverId: 1,
-        templateId: 1,
-        date: new Date().toISOString(),
-        observations: "Veículo em boas condições gerais",
-        odometer: 5430,
-        status: "complete",
-        photoUrl: null,
-        vehicle: {
-          name: "Caminhão 01",
-          plate: "ABC1234"
-        },
-        driver: {
-          name: "João Silva"
-        },
-        template: {
-          name: "Checklist Diário"
-        },
-        items: [
-          { id: 1, templateId: 1, name: "Verificação do óleo do motor", description: "Verificar nível do óleo", isRequired: true, category: "Motor", order: 1 },
-          { id: 2, templateId: 1, name: "Verificação do líquido de arrefecimento", description: "Verificar nível do radiador", isRequired: true, category: "Motor", order: 2 },
-          { id: 3, templateId: 1, name: "Verificação dos freios", description: "Verificar funcionamento e nível do fluido", isRequired: true, category: "Segurança", order: 3 },
-          { id: 4, templateId: 1, name: "Verificação das luzes", description: "Testar faróis, lanternas e setas", isRequired: true, category: "Segurança", order: 4 },
-          { id: 5, templateId: 1, name: "Verificação da pressão dos pneus", description: "Verificar pressão conforme manual", isRequired: true, category: "Pneus", order: 5 },
-        ],
-        results: [
-          { id: 1, checklistId: parseInt(id || "1"), itemId: 1, status: "ok", observation: null, photoUrl: null },
-          { id: 2, checklistId: parseInt(id || "1"), itemId: 2, status: "ok", observation: null, photoUrl: null },
-          { id: 3, checklistId: parseInt(id || "1"), itemId: 3, status: "issue", observation: "Freios com desgaste acentuado, programar manutenção", photoUrl: "/freios.jpg" },
-          { id: 4, checklistId: parseInt(id || "1"), itemId: 4, status: "ok", observation: null, photoUrl: null },
-          { id: 5, checklistId: parseInt(id || "1"), itemId: 5, status: "ok", observation: null, photoUrl: null },
-        ]
+    try {
+      // Buscar dados do checklist da API
+      const response = await fetch(`/api/checklists/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar dados do checklist');
+      }
+      
+      const checklistData = await response.json();
+      
+      // Buscar os resultados do checklist
+      const resultsResponse = await fetch(`/api/checklists/${id}/results`);
+      
+      if (!resultsResponse.ok) {
+        throw new Error('Erro ao carregar resultados do checklist');
+      }
+      
+      const resultsData = await resultsResponse.json();
+      
+      // Buscar os itens do template associado
+      const itemsResponse = await fetch(`/api/checklist-templates/${checklistData.templateId}/items`);
+      
+      if (!itemsResponse.ok) {
+        throw new Error('Erro ao carregar itens do template');
+      }
+      
+      const itemsData = await itemsResponse.json();
+      
+      // Montar o objeto checklist completo
+      const completeChecklist = {
+        ...checklistData,
+        results: resultsData,
+        items: itemsData
       };
       
-      setChecklist(mockChecklist);
+      setChecklist(completeChecklist);
+    } catch (error) {
+      console.error('Erro ao carregar dados do checklist:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os detalhes do checklist. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
   
   const handleBack = () => {

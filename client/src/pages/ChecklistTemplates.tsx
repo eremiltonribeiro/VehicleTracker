@@ -58,46 +58,64 @@ export default function ChecklistTemplates() {
     loadTemplates();
   }, []);
 
-  // Função para carregar os templates do localStorage
-  const loadTemplates = () => {
+  // Função para carregar os templates da API
+  const loadTemplates = async () => {
     setIsLoading(true);
-    const storedTemplates = JSON.parse(localStorage.getItem("checklistTemplates") || "[]");
     
-    if (storedTemplates.length > 0) {
-      setTemplates(storedTemplates);
-    } else {
-      // Criar templates padrão se não existirem
-      const defaultTemplates: ChecklistTemplate[] = [
-        {
-          id: "1",
-          name: "Inspeção Diária",
-          description: "Checklist básico para verificação diária dos veículos",
-          items: [
-            { id: "1", description: "Nível de combustível", required: true, category: "geral" },
-            { id: "2", description: "Pressão dos pneus", required: true, category: "pneus" },
-            { id: "3", description: "Luzes de sinalização", required: true, category: "luzes" },
-            { id: "4", description: "Documentação do veículo", required: true, category: "documentacao" }
-          ]
-        },
-        {
-          id: "2",
-          name: "Manutenção Preventiva",
-          description: "Checklist completo para manutenção mensal",
-          items: [
-            { id: "1", description: "Nível de óleo", required: true, category: "motor" },
-            { id: "2", description: "Nível de água do radiador", required: true, category: "motor" },
-            { id: "3", description: "Desgaste das pastilhas de freio", required: true, category: "seguranca" },
-            { id: "4", description: "Condição das correias", required: false, category: "motor" },
-            { id: "5", description: "Alinhamento e balanceamento", required: false, category: "pneus" }
-          ]
-        }
-      ];
+    try {
+      // Carregar templates da API
+      const response = await fetch('/api/checklist-templates');
       
-      setTemplates(defaultTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(defaultTemplates));
+      if (!response.ok) {
+        throw new Error('Erro ao carregar templates');
+      }
+      
+      const templatesData = await response.json();
+      
+      // Para cada template, buscar seus itens
+      const templatesWithItems = await Promise.all(
+        templatesData.map(async (template: any) => {
+          const itemsResponse = await fetch(`/api/checklist-templates/${template.id}/items`);
+          
+          if (!itemsResponse.ok) {
+            console.error(`Erro ao carregar itens do template ${template.id}`);
+            return {
+              ...template,
+              items: []
+            };
+          }
+          
+          const items = await itemsResponse.json();
+          
+          // Converter para o formato esperado pela interface
+          const formattedItems = items.map((item: any) => ({
+            id: item.id.toString(),
+            description: item.name,
+            required: item.isRequired,
+            category: item.category || "geral"
+          }));
+          
+          return {
+            id: template.id.toString(),
+            name: template.name,
+            description: template.description || "",
+            items: formattedItems
+          };
+        })
+      );
+      
+      setTemplates(templatesWithItems);
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os templates de checklist. Tente novamente.",
+        variant: "destructive",
+      });
+      setTemplates([]);
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   // Função para abrir o diálogo de criação/edição de template
@@ -158,45 +176,86 @@ export default function ChecklistTemplates() {
   };
 
   // Salvar template
-  const handleSaveTemplate = () => {
+  const handleSaveTemplate = async () => {
     if (!validateTemplateForm()) return;
     
-    if (selectedTemplate) {
-      // Edição de template existente
-      const updatedTemplates = templates.map(t => {
-        if (t.id === selectedTemplate.id) {
-          return {
-            ...t,
+    try {
+      if (selectedTemplate) {
+        // Edição de template existente
+        const response = await fetch(`/api/checklist-templates/${selectedTemplate.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             name: templateName,
-            description: templateDescription
-          };
+            description: templateDescription,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar o template');
         }
-        return t;
-      });
-      
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
+        
+        // Atualizar o estado local
+        const updatedTemplates = templates.map(t => {
+          if (t.id === selectedTemplate.id) {
+            return {
+              ...t,
+              name: templateName,
+              description: templateDescription
+            };
+          }
+          return t;
+        });
+        
+        setTemplates(updatedTemplates);
+        
+        toast({
+          title: "Template atualizado",
+          description: `O template "${templateName}" foi atualizado com sucesso.`
+        });
+      } else {
+        // Novo template
+        const response = await fetch('/api/checklist-templates', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: templateName,
+            description: templateDescription,
+            isDefault: false,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao criar o template');
+        }
+        
+        const newTemplate = await response.json();
+        
+        // Formatar para o formato da interface
+        const formattedTemplate: ChecklistTemplate = {
+          id: newTemplate.id.toString(),
+          name: newTemplate.name,
+          description: newTemplate.description || "",
+          items: []
+        };
+        
+        setTemplates([...templates, formattedTemplate]);
+        
+        toast({
+          title: "Template criado",
+          description: `O template "${templateName}" foi criado com sucesso.`
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao salvar template:', error);
       toast({
-        title: "Template atualizado",
-        description: `O template "${templateName}" foi atualizado com sucesso.`
-      });
-    } else {
-      // Novo template
-      const newTemplate: ChecklistTemplate = {
-        id: Date.now().toString(),
-        name: templateName,
-        description: templateDescription,
-        items: []
-      };
-      
-      const updatedTemplates = [...templates, newTemplate];
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
-      toast({
-        title: "Template criado",
-        description: `O template "${templateName}" foi criado com sucesso.`
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o template. Tente novamente.",
+        variant: "destructive",
       });
     }
     
@@ -204,62 +263,113 @@ export default function ChecklistTemplates() {
   };
 
   // Salvar item
-  const handleSaveItem = () => {
+  const handleSaveItem = async () => {
     if (!validateItemForm() || !selectedTemplate) return;
     
-    const templateIndex = templates.findIndex(t => t.id === selectedTemplate.id);
-    if (templateIndex === -1) return;
-    
-    if (selectedItem) {
-      // Edição de item existente
-      const updatedTemplate = {
-        ...selectedTemplate,
-        items: selectedTemplate.items.map(item => {
-          if (item.id === selectedItem.id) {
-            return {
-              ...item,
-              description: itemDescription,
-              category: itemCategory,
-              required: itemRequired
-            };
-          }
-          return item;
-        })
-      };
-      
-      const updatedTemplates = [...templates];
-      updatedTemplates[templateIndex] = updatedTemplate;
-      
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
+    try {
+      if (selectedItem) {
+        // Edição de item existente
+        const response = await fetch(`/api/checklist-items/${selectedItem.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: itemDescription,
+            category: itemCategory,
+            isRequired: itemRequired,
+            templateId: parseInt(selectedTemplate.id),
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao atualizar o item');
+        }
+        
+        // Atualizar o estado local
+        const updatedTemplate = {
+          ...selectedTemplate,
+          items: selectedTemplate.items.map(item => {
+            if (item.id === selectedItem.id) {
+              return {
+                ...item,
+                description: itemDescription,
+                category: itemCategory,
+                required: itemRequired
+              };
+            }
+            return item;
+          })
+        };
+        
+        const templateIndex = templates.findIndex(t => t.id === selectedTemplate.id);
+        if (templateIndex === -1) return;
+        
+        const updatedTemplates = [...templates];
+        updatedTemplates[templateIndex] = updatedTemplate;
+        
+        setTemplates(updatedTemplates);
+        
+        toast({
+          title: "Item atualizado",
+          description: "O item de checklist foi atualizado com sucesso."
+        });
+      } else {
+        // Novo item
+        const response = await fetch('/api/checklist-items', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: itemDescription,
+            category: itemCategory,
+            isRequired: itemRequired,
+            templateId: parseInt(selectedTemplate.id),
+            order: selectedTemplate.items.length + 1, // Ordem automática
+            description: null,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao criar o item');
+        }
+        
+        const newItem = await response.json();
+        
+        // Formatar para o formato da interface
+        const formattedItem: ChecklistItem = {
+          id: newItem.id.toString(),
+          description: newItem.name,
+          category: newItem.category || "geral",
+          required: newItem.isRequired || false
+        };
+        
+        // Atualizar estado local
+        const updatedTemplate = {
+          ...selectedTemplate,
+          items: [...selectedTemplate.items, formattedItem]
+        };
+        
+        const templateIndex = templates.findIndex(t => t.id === selectedTemplate.id);
+        if (templateIndex === -1) return;
+        
+        const updatedTemplates = [...templates];
+        updatedTemplates[templateIndex] = updatedTemplate;
+        
+        setTemplates(updatedTemplates);
+        
+        toast({
+          title: "Item adicionado",
+          description: "O novo item foi adicionado ao checklist com sucesso."
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao salvar item:', error);
       toast({
-        title: "Item atualizado",
-        description: "O item de checklist foi atualizado com sucesso."
-      });
-    } else {
-      // Novo item
-      const newItem: ChecklistItem = {
-        id: Date.now().toString(),
-        description: itemDescription,
-        category: itemCategory,
-        required: itemRequired
-      };
-      
-      const updatedTemplate = {
-        ...selectedTemplate,
-        items: [...selectedTemplate.items, newItem]
-      };
-      
-      const updatedTemplates = [...templates];
-      updatedTemplates[templateIndex] = updatedTemplate;
-      
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
-      toast({
-        title: "Item adicionado",
-        description: "O novo item foi adicionado ao checklist com sucesso."
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar o item. Tente novamente.",
+        variant: "destructive",
       });
     }
     
@@ -267,46 +377,80 @@ export default function ChecklistTemplates() {
   };
 
   // Excluir template
-  const handleDeleteTemplate = (templateId: string) => {
-    // Verificar se há checklists usando este template
-    // (Em um sistema real, verificaria no backend)
+  const handleDeleteTemplate = async (templateId: string) => {
     const confirmDelete = window.confirm("Tem certeza que deseja excluir este template de checklist?");
     
     if (confirmDelete) {
-      const updatedTemplates = templates.filter(t => t.id !== templateId);
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
-      toast({
-        title: "Template excluído",
-        description: "O template de checklist foi excluído com sucesso."
-      });
+      try {
+        // Excluir template na API
+        const response = await fetch(`/api/checklist-templates/${templateId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao excluir o template');
+        }
+        
+        // Atualizar estado local
+        const updatedTemplates = templates.filter(t => t.id !== templateId);
+        setTemplates(updatedTemplates);
+        
+        toast({
+          title: "Template excluído",
+          description: "O template de checklist foi excluído com sucesso."
+        });
+      } catch (error) {
+        console.error('Erro ao excluir template:', error);
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível excluir o template. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   // Excluir item
-  const handleDeleteItem = (templateId: string, itemId: string) => {
+  const handleDeleteItem = async (templateId: string, itemId: string) => {
     const confirmDelete = window.confirm("Tem certeza que deseja excluir este item de checklist?");
     
     if (confirmDelete) {
-      const templateIndex = templates.findIndex(t => t.id === templateId);
-      if (templateIndex === -1) return;
-      
-      const updatedTemplate = {
-        ...templates[templateIndex],
-        items: templates[templateIndex].items.filter(item => item.id !== itemId)
-      };
-      
-      const updatedTemplates = [...templates];
-      updatedTemplates[templateIndex] = updatedTemplate;
-      
-      setTemplates(updatedTemplates);
-      localStorage.setItem("checklistTemplates", JSON.stringify(updatedTemplates));
-      
-      toast({
-        title: "Item excluído",
-        description: "O item de checklist foi excluído com sucesso."
-      });
+      try {
+        // Excluir item na API
+        const response = await fetch(`/api/checklist-items/${itemId}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error('Erro ao excluir o item');
+        }
+        
+        // Atualizar estado local
+        const templateIndex = templates.findIndex(t => t.id === templateId);
+        if (templateIndex === -1) return;
+        
+        const updatedTemplate = {
+          ...templates[templateIndex],
+          items: templates[templateIndex].items.filter(item => item.id !== itemId)
+        };
+        
+        const updatedTemplates = [...templates];
+        updatedTemplates[templateIndex] = updatedTemplate;
+        
+        setTemplates(updatedTemplates);
+        
+        toast({
+          title: "Item excluído",
+          description: "O item de checklist foi excluído com sucesso."
+        });
+      } catch (error) {
+        console.error('Erro ao excluir item:', error);
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível excluir o item. Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
