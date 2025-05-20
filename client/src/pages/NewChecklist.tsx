@@ -131,7 +131,7 @@ export default function NewChecklist() {
 
       const checklistData = await response.json();
       console.log("Checklist carregado para edição:", checklistData);
-      
+
       // Armazenar os dados completos do checklist
       setExistingChecklist(checklistData);
 
@@ -319,7 +319,7 @@ export default function NewChecklist() {
       };
 
       console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:", checklistData);
-      
+
       // URL e método HTTP variam dependendo se estamos editando ou criando
       const url = editMode ? `/api/checklists/${checklistId}` : "/api/checklists";
       const method = editMode ? "PUT" : "POST";
@@ -327,10 +327,10 @@ export default function NewChecklist() {
       // Usar FormData para enviar os dados e arquivos, se necessário
       const formData = new FormData();
       formData.append('data', JSON.stringify(checklistData));
-      
+
       // Verifica se há fotos para os itens (em uma implementação real, enviariam os arquivos)
       // Como estamos usando data URLs, não precisamos enviar os arquivos separadamente
-      
+
       // Enviar para a API com headers adequados para FormData
       const response = await fetch(url, {
         method: method,
@@ -362,7 +362,7 @@ export default function NewChecklist() {
 
       // Sempre setar isSubmitting para false antes de redirecionar
       setIsSubmitting(false);
-      
+
       // Redirecionar para a página de checklists após pequeno delay para mostrar mensagem
       setTimeout(() => {
         setLocation("/checklists");
@@ -402,7 +402,7 @@ export default function NewChecklist() {
   // Salvar os detalhes do problema
   const saveIssueDetails = () => {
     if (!selectedItem) return;
-    
+
     // Verificar se temos um arquivo de foto e um preview
     if (photoFile && photoPreview) {
       // Usamos o preview da imagem (data URL) diretamente
@@ -417,7 +417,7 @@ export default function NewChecklist() {
           photoUrl: photoPreview, // Armazenamos o data URL diretamente
         },
       }));
-      
+
       console.log(`Foto associada ao item ${selectedItem.id}`);
     } else {
       // Sem foto, apenas atualizamos a observação

@@ -515,6 +515,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Atualizar registro existente
+  app.put("/api/registrations/:id", upload.single("photo"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const registrationData = typeof req.body.data === 'string' 
+        ? JSON.parse(req.body.data) 
+        : req.body;
+
+      // Se houver upload de foto
+      if (req.file) {
+        registrationData.photoUrl = `/uploads/${req.file.filename}`;
+      }
+
+      // Verificar se o registro existe
+      const existingRegistration = await storage.getRegistration(id);
+      if (!existingRegistration) {
+        return res.status(404).json({ message: "Registro não encontrado" });
+      }
+
+      // Atualizar o registro
+      const registration = await storage.updateRegistration(id, registrationData);
+      res.json(registration);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      console.error("Erro ao atualizar registro:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Excluir um checklist específico
   app.delete("/api/checklists/:id", async (req, res) => {
     try {
@@ -682,6 +713,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Erro ao criar checklist:", error);
       res.status(500).json({ message: "Erro ao criar checklist" });
+    }
+  });
+
+  // Excluir um registro
+  app.delete("/api/registrations/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const registration = await storage.getRegistration(id);
+      
+      if (!registration) {
+        return res.status(404).json({ message: "Registro não encontrado" });
+      }
+      
+      await storage.deleteRegistration(id);
+      res.json({ message: "Registro excluído com sucesso" });
+    } catch (error: any) {
+      console.error("Erro ao excluir registro:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
