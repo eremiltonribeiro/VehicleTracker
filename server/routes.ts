@@ -401,6 +401,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
+  
+  // Obter itens de um template específico
+  app.get("/api/checklist-templates/:id/items", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.getChecklistTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template não encontrado" });
+      }
+      
+      const items = await storage.getChecklistItems(id);
+      console.log(`Itens retornados para o template ${id}:`, items);
+      res.json(items);
+    } catch (error: any) {
+      console.error(`Erro ao buscar itens para o template ${req.params.id}:`, error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   // Criar novo template de checklist
   app.post("/api/checklist-templates", async (req, res) => {
