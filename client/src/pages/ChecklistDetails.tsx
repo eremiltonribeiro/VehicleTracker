@@ -522,9 +522,9 @@ export default function ChecklistDetails() {
             variant="outline" 
             className="border-amber-600 text-amber-600 hover:bg-amber-50"
             onClick={() => {
-              // Redirecionar para a página de edição usando window.location
-              console.log("Navigating to edit checklist page", id);
-              window.location.href = `/checklists/edit/${id}`;
+              // Redirecionar para a página de edição usando a forma mais direta
+              console.log("Editando checklist ID:", id);
+              document.location.href = `/checklists/edit/${id}`;
             }}
           >
             Editar

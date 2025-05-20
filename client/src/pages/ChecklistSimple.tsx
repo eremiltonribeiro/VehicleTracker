@@ -64,8 +64,9 @@ export default function ChecklistSimple() {
   }, []);
 
   const handleNewChecklist = () => {
-    console.log("Navigating to new checklist page");
-    window.location.href = "/checklists/new";
+    console.log("Criando novo checklist");
+    // Usando a forma mais direta e garantida de navegação
+    document.location.href = "/checklists/new";
   };
   
   const handleViewChecklist = (id: number) => {
