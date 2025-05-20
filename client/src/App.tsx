@@ -85,13 +85,13 @@ function PrivateRoute(props: any) {
     if (requiredPermission) {
       const userData = user || JSON.parse(localStorage.getItem("user") || "{}");
       const userRole = userData.role;
-      
+
       // Obter os perfis de usuário do localStorage
       const userRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
       const currentRole = userRoles.find((role: any) => 
         role.name.toLowerCase() === userRole.toLowerCase()
       );
-      
+
       if (currentRole && currentRole.permissions) {
         // Verificar se o usuário tem a permissão necessária
         setHasAccess(currentRole.permissions[requiredPermission]);
@@ -139,7 +139,7 @@ function Router() {
   const { isAuthenticated } = useAuth();
   const [location] = useLocation();
   const isLoginPage = location === "/login";
-  
+
   // Se estiver na página de login, não mostra cabeçalho nem navegação
   if (isLoginPage) {
     return (
@@ -150,7 +150,7 @@ function Router() {
       </div>
     );
   }
-  
+
   // Renderização normal para páginas autenticadas
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -185,25 +185,25 @@ function App() {
   useEffect(() => {
     // Inicializa o gerenciador de sincronização para suporte offline
     syncManager.initialize();
-    
+
     // Verificar conexão e mostrar mensagens apropriadas
     const handleOnlineStatusChange = () => {
       const isOnline = navigator.onLine;
       console.log(`Status de conexão alterado: ${isOnline ? 'online' : 'offline'}`);
     };
-    
+
     window.addEventListener('online', handleOnlineStatusChange);
     window.addEventListener('offline', handleOnlineStatusChange);
-    
+
     // Verificar o status inicial
     handleOnlineStatusChange();
-    
+
     return () => {
       window.removeEventListener('online', handleOnlineStatusChange);
       window.removeEventListener('offline', handleOnlineStatusChange);
     };
   }, []);
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -211,52 +211,6 @@ function App() {
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
-  );
-}
-
-export default App;
-import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
-import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import { NewChecklist } from "./pages/NewChecklist";
-import { ChecklistDetails } from "./pages/ChecklistDetails";
-import { Checklists } from "./pages/Checklists";
-import { Reports } from "./pages/Reports";
-import { Settings } from "./pages/Settings";
-import { UserManagement } from "./pages/UserManagement";
-import { ChecklistTemplates } from "./pages/ChecklistTemplates";
-import { NotFound } from "./pages/not-found";
-
-// Componente de edição de registro
-function EditRegistration() {
-  const params = useParams();
-  const id = params.id;
-  const type = new URLSearchParams(window.location.search).get("type");
-
-  // Redireciona para o componente Home com view=registration e mode=edit
-  return <Home defaultView="registration" editId={id} editType={type} mode="edit" />;
-}
-
-function App() {
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/checklists" element={<Checklists />} />
-        <Route path="/checklists/new" element={<NewChecklist />} />
-        <Route path="/checklists/:id" element={<ChecklistDetails />} />
-        <Route path="/templates" element={<ChecklistTemplates />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/registros/edit/:id" element={<EditRegistration />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Toaster />
-    </>
   );
 }
 
