@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -10,16 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Filter, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Plus, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-
-interface ChecklistItem {
-  id: number;
-  name: string;
-  isRequired: boolean;
-}
 
 interface VehicleChecklist {
   id: number;
@@ -44,31 +37,35 @@ export default function Checklists() {
   const [checklists, setChecklists] = useState<VehicleChecklist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [, setLocation] = useLocation();
-  const params = useParams();
   const { toast } = useToast();
   
   useEffect(() => {
-    // Se houver um ID nos parâmetros, redireciona para a página de detalhes
-    if (params.id) {
-      setLocation(`/checklists/${params.id}`);
-    } else {
-      loadChecklists();
-    }
-  }, [params.id]);
+    // Carregar a lista de checklists quando o componente montar
+    loadChecklists();
+  }, []);
   
   const loadChecklists = async () => {
     setIsLoading(true);
     
     try {
-      // Carregar dados da API
+      console.log("Buscando checklists da API...");
+      // Buscar os dados da API
       const response = await fetch('/api/checklists');
       
       if (!response.ok) {
-        throw new Error('Erro ao carregar checklists');
+        throw new Error(`Erro ao carregar checklists: ${response.status}`);
       }
       
       const data = await response.json();
-      setChecklists(data);
+      console.log("Checklists carregados:", data);
+      
+      // Transformar os dados para garantir que o template exista
+      const formattedData = data.map((checklist: any) => ({
+        ...checklist,
+        template: checklist.template || { name: "Sem modelo" }
+      }));
+      
+      setChecklists(formattedData);
     } catch (error) {
       console.error('Erro ao carregar checklists:', error);
       toast({
@@ -76,16 +73,21 @@ export default function Checklists() {
         description: "Não foi possível carregar os checklists. Tente novamente.",
         variant: "destructive",
       });
+      
+      // Definir uma lista vazia em caso de erro
+      setChecklists([]);
     } finally {
       setIsLoading(false);
     }
   };
   
   const handleNewChecklist = () => {
+    console.log("Navegando para /checklists/new");
     setLocation("/checklists/new");
   };
   
   const handleViewChecklist = (id: number) => {
+    console.log(`Navegando para /checklists/${id}`);
     setLocation(`/checklists/${id}`);
   };
   
@@ -173,10 +175,10 @@ export default function Checklists() {
                         {formatDate(new Date(checklist.date))}
                       </TableCell>
                       <TableCell>
-                        {checklist.vehicle.name} ({checklist.vehicle.plate})
+                        {checklist.vehicle?.name} ({checklist.vehicle?.plate})
                       </TableCell>
-                      <TableCell>{checklist.driver.name}</TableCell>
-                      <TableCell>{checklist.template.name}</TableCell>
+                      <TableCell>{checklist.driver?.name}</TableCell>
+                      <TableCell>{checklist.template?.name}</TableCell>
                       <TableCell>{checklist.odometer} km</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

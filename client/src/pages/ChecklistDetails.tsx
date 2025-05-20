@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Truck, CheckCircle2, XCircle, AlertTriangle, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -13,7 +12,7 @@ interface ChecklistItem {
   description: string | null;
   isRequired: boolean;
   category: string | null;
-  order: number;
+  order: number | null;
 }
 
 interface ChecklistResult {
@@ -50,7 +49,7 @@ interface VehicleChecklist {
 }
 
 export default function ChecklistDetails() {
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const id = params.id;
   const [checklist, setChecklist] = useState<VehicleChecklist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -58,17 +57,19 @@ export default function ChecklistDetails() {
   const { toast } = useToast();
   
   useEffect(() => {
-    loadChecklistData();
+    if (id) {
+      loadChecklistData(id);
+    }
   }, [id]);
   
-  const loadChecklistData = async () => {
+  const loadChecklistData = async (checklistId: string) => {
     setIsLoading(true);
     
     try {
-      console.log("Carregando checklist ID:", id);
+      console.log("Carregando checklist ID:", checklistId);
       
       // Buscar dados do checklist da API
-      const response = await fetch(`/api/checklists/${id}`);
+      const response = await fetch(`/api/checklists/${checklistId}`);
       
       if (!response.ok) {
         console.error("Falha ao carregar checklist:", response.status, response.statusText);
@@ -78,43 +79,63 @@ export default function ChecklistDetails() {
       const checklistData = await response.json();
       console.log("Dados do checklist:", checklistData);
       
-      if (!checklistData || !checklistData.templateId) {
-        console.error("Dados do checklist inválidos:", checklistData);
+      // Verificar se há dados válidos e templateId
+      if (!checklistData) {
         throw new Error('Dados do checklist inválidos');
       }
       
-      // Buscar os resultados do checklist
-      const resultsResponse = await fetch(`/api/checklists/${id}/results`);
-      
-      let resultsData = [];
-      if (resultsResponse.ok) {
-        resultsData = await resultsResponse.json();
-        console.log("Resultados carregados:", resultsData.length);
-      } else {
-        console.warn("Não foi possível carregar resultados:", resultsResponse.status);
-        // Continuar mesmo sem resultados
+      // Se o template não existir, definir um padrão
+      if (!checklistData.template) {
+        checklistData.template = { name: "Sem modelo" };
       }
       
-      // Buscar os itens do template associado
-      const itemsResponse = await fetch(`/api/checklist-templates/${checklistData.templateId}/items`);
+      // Se o veículo não existir, definir um padrão
+      if (!checklistData.vehicle) {
+        checklistData.vehicle = { name: "Veículo desconhecido", plate: "N/A" };
+      }
       
-      let itemsData = [];
-      if (itemsResponse.ok) {
-        itemsData = await itemsResponse.json();
-        console.log("Itens carregados:", itemsData.length);
-      } else {
-        console.warn("Não foi possível carregar itens:", itemsResponse.status);
-        // Continuar mesmo sem itens
+      // Se o motorista não existir, definir um padrão
+      if (!checklistData.driver) {
+        checklistData.driver = { name: "Motorista desconhecido" };
+      }
+      
+      let resultsData: ChecklistResult[] = [];
+      let itemsData: ChecklistItem[] = [];
+      
+      // Buscar os resultados do checklist se possível
+      try {
+        const resultsResponse = await fetch(`/api/checklists/${checklistId}/results`);
+        
+        if (resultsResponse.ok) {
+          resultsData = await resultsResponse.json();
+          console.log("Resultados carregados:", resultsData.length);
+        }
+      } catch (error) {
+        console.warn("Erro ao carregar resultados:", error);
+      }
+      
+      // Buscar os itens do template se houver templateId
+      if (checklistData.templateId) {
+        try {
+          const itemsResponse = await fetch(`/api/checklist-templates/${checklistData.templateId}/items`);
+          
+          if (itemsResponse.ok) {
+            itemsData = await itemsResponse.json();
+            console.log("Itens carregados:", itemsData.length);
+          }
+        } catch (error) {
+          console.warn("Erro ao carregar itens:", error);
+        }
       }
       
       // Montar o objeto checklist completo
       const completeChecklist = {
         ...checklistData,
-        results: resultsData || [],
-        items: itemsData || []
+        results: resultsData,
+        items: itemsData
       };
       
-      console.log("Checklist completo montado com sucesso:", completeChecklist.id);
+      console.log("Checklist completo montado:", completeChecklist);
       setChecklist(completeChecklist);
     } catch (error) {
       console.error('Erro ao carregar dados do checklist:', error);
@@ -133,14 +154,18 @@ export default function ChecklistDetails() {
   };
   
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return dateString || "Data não disponível";
+    }
   };
   
   const getStatusIcon = (status: string) => {
@@ -191,7 +216,7 @@ export default function ChecklistDetails() {
       case "pending":
         return "Pendente";
       default:
-        return status;
+        return status || "Status desconhecido";
     }
   };
   
@@ -201,11 +226,34 @@ export default function ChecklistDetails() {
     
     const categories: Record<string, { item: ChecklistItem, result: ChecklistResult }[]> = {};
     
-    // Verificar se checklist.items e checklist.results existem
-    if (!checklist.items || !checklist.results) {
-      return categories;
+    // Verificar se os itens existem
+    if (!checklist.items || checklist.items.length === 0) {
+      return {
+        "Sem itens": [
+          {
+            item: {
+              id: 0,
+              templateId: checklist.templateId || 0,
+              name: "Nenhum item de checklist encontrado",
+              description: null,
+              isRequired: false,
+              category: null,
+              order: null
+            },
+            result: {
+              id: 0,
+              checklistId: checklist.id,
+              itemId: 0,
+              status: "not_applicable",
+              observation: null,
+              photoUrl: null
+            }
+          }
+        ]
+      };
     }
     
+    // Agregar itens por categoria
     checklist.items.forEach(item => {
       const category = item.category || "Sem categoria";
       if (!categories[category]) {
@@ -214,7 +262,8 @@ export default function ChecklistDetails() {
       
       // Buscar o resultado correspondente ao item
       const result = checklist.results.find(r => r.itemId === item.id);
-      // Se não encontrar um resultado, criar um resultado padrão para evitar erros
+      
+      // Se não encontrar um resultado, criar um resultado padrão
       const defaultResult: ChecklistResult = {
         id: 0,
         checklistId: checklist.id,
@@ -224,7 +273,10 @@ export default function ChecklistDetails() {
         photoUrl: null
       };
       
-      categories[category].push({ item, result: result || defaultResult });
+      categories[category].push({ 
+        item, 
+        result: result || defaultResult 
+      });
     });
     
     return categories;
@@ -271,23 +323,25 @@ export default function ChecklistDetails() {
       
       <Card>
         <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
             <div>
               <CardTitle className="text-xl font-medium mb-2">
-                {checklist.template.name} - {formatDate(checklist.date)}
+                {checklist.template?.name || "Sem modelo"} - {formatDate(checklist.date)}
               </CardTitle>
-              <div className="flex items-center gap-2 text-gray-600 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-gray-600 text-sm">
                 <div className="flex items-center gap-1">
                   <Truck className="h-4 w-4" />
-                  <span>{checklist.vehicle.name} ({checklist.vehicle.plate})</span>
+                  <span>{checklist.vehicle?.name || "Veículo desconhecido"} 
+                    ({checklist.vehicle?.plate || "N/A"})
+                  </span>
                 </div>
-                <span className="text-gray-400">•</span>
+                <span className="text-gray-400 hidden sm:inline">•</span>
                 <div className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  <span>{checklist.driver.name}</span>
+                  <span>{checklist.driver?.name || "Motorista desconhecido"}</span>
                 </div>
-                <span className="text-gray-400">•</span>
-                <span>{checklist.odometer} km</span>
+                <span className="text-gray-400 hidden sm:inline">•</span>
+                <span>{checklist.odometer || 0} km</span>
               </div>
             </div>
             <div className="flex items-center gap-2 font-medium">
