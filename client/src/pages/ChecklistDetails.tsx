@@ -324,30 +324,38 @@ export default function ChecklistDetails() {
         <h2 className="text-2xl font-bold text-blue-900">Detalhes do Checklist</h2>
       </div>
       
-      <Card>
+      <Card className="overflow-hidden">
+        <div className={`h-2 w-full ${
+          checklist.status === "complete" ? "bg-green-500" : 
+          checklist.status === "failed" ? "bg-red-500" : 
+          "bg-yellow-500"
+        }`}></div>
         <CardHeader className="pb-2">
           <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
             <div>
-              <CardTitle className="text-xl font-medium mb-2">
+              <CardTitle className="text-xl font-medium mb-2 text-blue-900">
                 {checklist.template?.name || "Sem modelo"} - {formatDate(checklist.date)}
               </CardTitle>
-              <div className="flex flex-wrap items-center gap-2 text-gray-600 text-sm">
-                <div className="flex items-center gap-1">
-                  <Truck className="h-4 w-4" />
-                  <span>{checklist.vehicle?.name || "Veículo desconhecido"} 
-                    ({checklist.vehicle?.plate || "N/A"})
-                  </span>
+              <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-gray-600 text-sm">
+                <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-md">
+                  <Truck className="h-4 w-4 text-blue-700" />
+                  <span className="font-medium">{checklist.vehicle?.name || "Veículo desconhecido"}</span>
+                  <span className="text-gray-500">({checklist.vehicle?.plate || "N/A"})</span>
                 </div>
-                <span className="text-gray-400 hidden sm:inline">•</span>
-                <div className="flex items-center gap-1">
-                  <User className="h-4 w-4" />
-                  <span>{checklist.driver?.name || "Motorista desconhecido"}</span>
+                <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-md">
+                  <User className="h-4 w-4 text-blue-700" />
+                  <span className="font-medium">{checklist.driver?.name || "Motorista desconhecido"}</span>
                 </div>
-                <span className="text-gray-400 hidden sm:inline">•</span>
-                <span>{checklist.odometer || 0} km</span>
+                <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 rounded-md">
+                  <span className="font-medium">{checklist.odometer || 0} km</span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 font-medium">
+            <div className={`flex items-center gap-2 font-medium px-3 py-2 rounded-full ${
+              checklist.status === "complete" ? "bg-green-100 text-green-800" : 
+              checklist.status === "failed" ? "bg-red-100 text-red-800" : 
+              "bg-yellow-100 text-yellow-800"
+            }`}>
               {getChecklistStatusIcon(checklist.status)}
               <span>
                 {getChecklistStatusText(checklist.status)}
@@ -358,47 +366,74 @@ export default function ChecklistDetails() {
         <CardContent className="pt-4">
           {checklist.observations && (
             <div className="mb-6">
-              <h3 className="font-medium text-gray-700 mb-1">Observações gerais:</h3>
-              <p className="text-gray-600 bg-gray-50 p-3 rounded-md">{checklist.observations}</p>
+              <h3 className="font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-700">
+                  <path d="M14 3v4a1 1 0 0 0 1 1h4"></path>
+                  <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <path d="M9 9h1"></path>
+                  <path d="M9 13h6"></path>
+                  <path d="M9 17h6"></path>
+                </svg>
+                Observações gerais
+              </h3>
+              <p className="text-gray-600 bg-gray-50 p-4 rounded-md border border-gray-100 shadow-sm">{checklist.observations}</p>
             </div>
           )}
           
           <div className="space-y-6">
             {Object.entries(getItemsByCategory()).map(([category, items]) => (
               <div key={category} className="space-y-3">
-                <h3 className="font-medium text-blue-900">{category}</h3>
+                <h3 className="font-medium text-blue-900 flex items-center gap-2 mb-2 pb-1 border-b">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-700">
+                    <path d="m2 18 8-8 4 4 6-6 2 2-8 8-4-4-6 6-2-2Z"/>
+                  </svg>
+                  {category}
+                </h3>
                 <div className="space-y-4">
                   {items.map(({ item, result }: { item: ChecklistItem, result: ChecklistResult }) => (
-                    <div key={item.id} className="border rounded-lg p-4">
+                    <div key={item.id} className={`border rounded-lg p-4 ${
+                      result.status === "ok" ? "border-l-4 border-l-green-500" : 
+                      result.status === "issue" ? "border-l-4 border-l-red-500" : 
+                      "border-l-4 border-l-yellow-500"
+                    } hover:shadow-md transition-shadow duration-200`}>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{item.name}</h4>
-                            <div className="flex items-center gap-1">
+                        <div className="flex-grow">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`
+                              px-2 py-1 rounded-full text-xs font-medium inline-flex items-center
+                              ${result.status === "ok" ? "bg-green-100 text-green-800" : 
+                                result.status === "issue" ? "bg-red-100 text-red-800" : 
+                                "bg-yellow-100 text-yellow-800"}
+                            `}>
                               {getStatusIcon(result.status)}
-                              <span className="text-sm font-medium">
-                                {getStatusText(result.status)}
-                              </span>
-                            </div>
+                              <span className="ml-1">{getStatusText(result.status)}</span>
+                            </span>
+                            <h4 className="font-medium text-blue-900">{item.name}</h4>
                           </div>
                           {item.description && (
-                            <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                            <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded-md">{item.description}</p>
                           )}
                         </div>
+                        {item.isRequired && (
+                          <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Obrigatório
+                          </span>
+                        )}
                       </div>
                       
                       {result.status === "issue" && (
                         <div className="mt-3 space-y-3">
                           {result.observation && (
-                            <div className="bg-red-50 p-3 rounded-md">
+                            <div className="bg-red-50 p-3 rounded-md border border-red-100">
+                              <h5 className="text-sm font-semibold text-red-800 mb-1">Descrição do problema:</h5>
                               <p className="text-red-700 text-sm">{result.observation}</p>
                             </div>
                           )}
                           
                           {result.photoUrl && (
                             <div>
-                              <h5 className="text-sm font-medium mb-1">Foto:</h5>
-                              <div className="relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
+                              <h5 className="text-sm font-medium mb-1 text-gray-700">Evidência fotográfica:</h5>
+                              <div className="relative w-full h-40 bg-gray-100 rounded-md overflow-hidden border border-gray-200">
                                 <div className="absolute inset-0 flex items-center justify-center text-gray-400">
                                   Imagem não disponível em modo de demonstração
                                 </div>
