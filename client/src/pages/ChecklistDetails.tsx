@@ -55,60 +55,60 @@ export default function ChecklistDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
   // Função para navegação
   const navigate = (path: string) => setLocation(path);
-  
+
   useEffect(() => {
     if (id) {
       loadChecklistData(id);
     }
   }, [id]);
-  
+
   const loadChecklistData = async (checklistId: string) => {
     setIsLoading(true);
-    
+
     try {
       console.log("Carregando checklist ID:", checklistId);
-      
+
       // Buscar dados do checklist da API
       const response = await fetch(`/api/checklists/${checklistId}`);
-      
+
       if (!response.ok) {
         console.error("Falha ao carregar checklist:", response.status, response.statusText);
         throw new Error('Erro ao carregar dados do checklist');
       }
-      
+
       const checklistData = await response.json();
       console.log("Dados do checklist:", checklistData);
-      
+
       // Verificar se há dados válidos e templateId
       if (!checklistData) {
         throw new Error('Dados do checklist inválidos');
       }
-      
+
       // Se o template não existir, definir um padrão
       if (!checklistData.template) {
         checklistData.template = { name: "Sem modelo" };
       }
-      
+
       // Se o veículo não existir, definir um padrão
       if (!checklistData.vehicle) {
         checklistData.vehicle = { name: "Veículo desconhecido", plate: "N/A" };
       }
-      
+
       // Se o motorista não existir, definir um padrão
       if (!checklistData.driver) {
         checklistData.driver = { name: "Motorista desconhecido" };
       }
-      
+
       let resultsData: ChecklistResult[] = [];
       let itemsData: ChecklistItem[] = [];
-      
+
       // Buscar os resultados do checklist se possível
       try {
         const resultsResponse = await fetch(`/api/checklists/${checklistId}/results`);
-        
+
         if (resultsResponse.ok) {
           resultsData = await resultsResponse.json();
           console.log("Resultados carregados:", resultsData.length);
@@ -116,12 +116,12 @@ export default function ChecklistDetails() {
       } catch (error) {
         console.warn("Erro ao carregar resultados:", error);
       }
-      
+
       // Buscar os itens do template se houver templateId
       if (checklistData.templateId) {
         try {
           const itemsResponse = await fetch(`/api/checklist-templates/${checklistData.templateId}/items`);
-          
+
           if (itemsResponse.ok) {
             itemsData = await itemsResponse.json();
             console.log("Itens carregados:", itemsData.length);
@@ -130,14 +130,14 @@ export default function ChecklistDetails() {
           console.warn("Erro ao carregar itens:", error);
         }
       }
-      
+
       // Montar o objeto checklist completo
       const completeChecklist = {
         ...checklistData,
         results: resultsData,
         items: itemsData
       };
-      
+
       console.log("Checklist completo montado:", completeChecklist);
       setChecklist(completeChecklist);
     } catch (error) {
@@ -151,11 +151,11 @@ export default function ChecklistDetails() {
       setIsLoading(false);
     }
   };
-  
+
   const handleBack = () => {
     navigate("/checklists");
   };
-  
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -170,7 +170,7 @@ export default function ChecklistDetails() {
       return dateString || "Data não disponível";
     }
   };
-  
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "ok":
@@ -183,7 +183,7 @@ export default function ChecklistDetails() {
         return null;
     }
   };
-  
+
   const getStatusText = (status: string) => {
     switch (status) {
       case "ok":
@@ -196,7 +196,7 @@ export default function ChecklistDetails() {
         return status;
     }
   };
-  
+
   const getChecklistStatusIcon = (status: string) => {
     switch (status) {
       case "complete":
@@ -209,7 +209,7 @@ export default function ChecklistDetails() {
         return null;
     }
   };
-  
+
   const getChecklistStatusText = (status: string) => {
     switch (status) {
       case "complete":
@@ -222,13 +222,13 @@ export default function ChecklistDetails() {
         return status || "Status desconhecido";
     }
   };
-  
+
   // Agrupar itens por categoria
   const getItemsByCategory = () => {
     if (!checklist) return {};
-    
+
     const categories: Record<string, { item: ChecklistItem, result: ChecklistResult }[]> = {};
-    
+
     // Verificar se os itens existem
     if (!checklist.items || checklist.items.length === 0) {
       return {
@@ -255,17 +255,17 @@ export default function ChecklistDetails() {
         ]
       };
     }
-    
+
     // Agregar itens por categoria
     checklist.items.forEach(item => {
       const category = item.category || "Sem categoria";
       if (!categories[category]) {
         categories[category] = [];
       }
-      
+
       // Buscar o resultado correspondente ao item
       const result = checklist.results.find(r => r.itemId === item.id);
-      
+
       // Se não encontrar um resultado, criar um resultado padrão
       const defaultResult: ChecklistResult = {
         id: 0,
@@ -275,16 +275,16 @@ export default function ChecklistDetails() {
         observation: null,
         photoUrl: null
       };
-      
+
       categories[category].push({ 
         item, 
         result: result || defaultResult 
       });
     });
-    
+
     return categories;
   };
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -294,7 +294,7 @@ export default function ChecklistDetails() {
       </div>
     );
   }
-  
+
   if (!checklist) {
     return (
       <div className="p-6">
@@ -309,7 +309,7 @@ export default function ChecklistDetails() {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6 pb-8">
       <div className="flex items-center">
@@ -323,7 +323,7 @@ export default function ChecklistDetails() {
         </Button>
         <h2 className="text-2xl font-bold text-blue-900">Detalhes do Checklist</h2>
       </div>
-      
+
       <Card className="overflow-hidden">
         <div className={`h-2 w-full ${
           checklist.status === "complete" ? "bg-green-500" : 
@@ -379,7 +379,7 @@ export default function ChecklistDetails() {
               <p className="text-gray-600 bg-gray-50 p-4 rounded-md border border-gray-100 shadow-sm">{checklist.observations}</p>
             </div>
           )}
-          
+
           <div className="space-y-6">
             {Object.entries(getItemsByCategory()).map(([category, items]) => (
               <div key={category} className="space-y-3">
@@ -420,7 +420,7 @@ export default function ChecklistDetails() {
                           </span>
                         )}
                       </div>
-                      
+
                       {result.status === "issue" && (
                         <div className="mt-3 space-y-3">
                           {result.observation && (
@@ -429,7 +429,7 @@ export default function ChecklistDetails() {
                               <p className="text-red-700 text-sm">{result.observation}</p>
                             </div>
                           )}
-                          
+
                           {result.photoUrl && (
                             <div>
                               <h5 className="text-sm font-medium mb-1 text-gray-700">Evidência fotográfica:</h5>
@@ -466,7 +466,7 @@ export default function ChecklistDetails() {
           </div>
         </CardContent>
       </Card>
-      
+
       <div className="flex justify-between">
         <Button 
           variant="outline" 
@@ -476,7 +476,7 @@ export default function ChecklistDetails() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar para Checklists
         </Button>
-        
+
         <div className="flex space-x-2">
           <Button 
             variant="outline" 
@@ -488,20 +488,20 @@ export default function ChecklistDetails() {
           >
             Editar
           </Button>
-          
+
           <Button 
             variant="outline" 
             className="border-red-600 text-red-600 hover:bg-red-50"
             onClick={async () => {
               const confirm = window.confirm("Tem certeza que deseja excluir este checklist?");
-              
+
               if (confirm) {
                 try {
                   // Excluir o checklist usando a API
                   const response = await fetch(`/api/checklists/${id}`, {
                     method: 'DELETE',
                   });
-                  
+
                   if (response.ok) {
                     toast({
                       title: "Sucesso",

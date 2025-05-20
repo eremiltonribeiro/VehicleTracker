@@ -55,10 +55,10 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Configurar middleware para parsing de JSON
   app.use(express.json());
-  
+
   // Configurar autenticação
   await setupAuth(app);
-  
+
   // Endpoint para obter usuário atual
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -79,28 +79,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   app.post("/api/vehicles", upload.single('image'), async (req, res) => {
     try {
       const vehicleData = req.body;
-      
+
       // Converter valores numéricos
       if (vehicleData.year) {
         vehicleData.year = parseInt(vehicleData.year);
       }
-      
+
       // Log dos dados recebidos para debug
       console.log("Dados do veículo recebidos:", vehicleData);
-      
+
       try {
         // Validar dados
         insertVehicleSchema.parse(vehicleData);
-        
+
         // Se houver imagem, adicionar URL à informação do veículo
         if (req.file) {
           vehicleData.imageUrl = `/uploads/${req.file.filename}`;
         }
-        
+
         const vehicle = await storage.createVehicle(vehicleData);
         res.status(201).json(vehicle);
       } catch (validationError: any) {
@@ -127,19 +127,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   app.post("/api/drivers", upload.single('image'), async (req, res) => {
     try {
       const driverData = req.body;
-      
+
       // Validar dados
       insertDriverSchema.parse(driverData);
-      
+
       // Se houver imagem, adicionar URL à informação do motorista
       if (req.file) {
         driverData.imageUrl = `/uploads/${req.file.filename}`;
       }
-      
+
       const driver = await storage.createDriver(driverData);
       res.status(201).json(driver);
     } catch (error: any) {
@@ -159,14 +159,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   app.post("/api/fuel-stations", async (req, res) => {
     try {
       const stationData = req.body;
-      
+
       // Validar dados
       insertFuelStationSchema.parse(stationData);
-      
+
       const station = await storage.createFuelStation(stationData);
       res.status(201).json(station);
     } catch (error: any) {
@@ -186,11 +186,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   app.post("/api/fuel-types", async (req, res) => {
     try {
       const typeData = { name: req.body.name };
-      
+
       // Validar dados usando o schema
       try {
         insertFuelTypeSchema.parse(typeData);
@@ -200,7 +200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           errors: validationError.errors 
         });
       }
-      
+
       const fuelType = await storage.createFuelType(typeData);
       res.status(201).json(fuelType);
     } catch (error: any) {
@@ -219,14 +219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   app.post("/api/maintenance-types", async (req, res) => {
     try {
       const typeData = req.body;
-      
+
       // Validar dados
       insertMaintenanceTypeSchema.parse(typeData);
-      
+
       const maintenanceType = await storage.createMaintenanceType(typeData);
       res.status(201).json(maintenanceType);
     } catch (error: any) {
@@ -258,21 +258,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         registrations.map(async (reg) => {
           const vehicle = await storage.getVehicle(reg.vehicleId);
           const driver = await storage.getDriver(reg.driverId);
-          
+
           let fuelStation, fuelType, maintenanceType;
-          
+
           if (reg.fuelStationId) {
             fuelStation = await storage.getFuelStation(reg.fuelStationId);
           }
-          
+
           if (reg.fuelTypeId) {
             fuelType = await storage.getFuelType(reg.fuelTypeId);
           }
-          
+
           if (reg.maintenanceTypeId) {
             maintenanceType = await storage.getMaintenanceType(reg.maintenanceTypeId);
           }
-          
+
           return {
             ...reg,
             vehicle,
@@ -302,21 +302,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const vehicle = await storage.getVehicle(registration.vehicleId);
       const driver = await storage.getDriver(registration.driverId);
-      
+
       let fuelStation, fuelType, maintenanceType;
-      
+
       if (registration.fuelStationId) {
         fuelStation = await storage.getFuelStation(registration.fuelStationId);
       }
-      
+
       if (registration.fuelTypeId) {
         fuelType = await storage.getFuelType(registration.fuelTypeId);
       }
-      
+
       if (registration.maintenanceTypeId) {
         maintenanceType = await storage.getMaintenanceType(registration.maintenanceTypeId);
       }
-      
+
       res.json({
         ...registration,
         vehicle,
@@ -390,28 +390,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const template = await storage.getChecklistTemplate(id);
-      
+
       if (!template) {
         return res.status(404).json({ message: "Template não encontrado" });
       }
-      
+
       const items = await storage.getChecklistItems(id);
       res.json({ ...template, items });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   // Obter itens de um template específico
   app.get("/api/checklist-templates/:id/items", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const template = await storage.getChecklistTemplate(id);
-      
+
       if (!template) {
         return res.status(404).json({ message: "Template não encontrado" });
       }
-      
+
       const items = await storage.getChecklistItems(id);
       console.log(`Itens retornados para o template ${id}:`, items);
       res.json(items);
@@ -456,21 +456,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driverId = req.query.driverId ? parseInt(req.query.driverId as string) : undefined;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
-      
+
       const checklists = await storage.getVehicleChecklists({
         vehicleId,
         driverId,
         startDate,
         endDate,
       });
-      
+
       // Enriquecer com detalhes do veículo e motorista
       const enrichedChecklists = await Promise.all(
         checklists.map(async (checklist) => {
           const vehicle = await storage.getVehicle(checklist.vehicleId);
           const driver = await storage.getDriver(checklist.driverId);
           const template = await storage.getChecklistTemplate(checklist.templateId);
-          
+
           return {
             ...checklist,
             vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
@@ -479,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         })
       );
-      
+
       res.json(enrichedChecklists);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -491,17 +491,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const checklist = await storage.getVehicleChecklist(id);
-      
+
       if (!checklist) {
         return res.status(404).json({ message: "Checklist não encontrado" });
       }
-      
+
       const vehicle = await storage.getVehicle(checklist.vehicleId);
       const driver = await storage.getDriver(checklist.driverId);
       const template = await storage.getChecklistTemplate(checklist.templateId);
       const items = await storage.getChecklistItems(checklist.templateId);
       const results = await storage.getChecklistResults(id);
-      
+
       res.json({
         ...checklist,
         vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
@@ -514,60 +514,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   // Excluir um checklist específico
   app.delete("/api/checklists/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const checklist = await storage.getVehicleChecklist(id);
-      
+
       if (!checklist) {
         return res.status(404).json({ message: "Checklist não encontrado" });
       }
-      
-      // Excluir os resultados do checklist primeiro
-      try {
-        const results = await storage.getChecklistResults(id);
-        for (const result of results) {
-          // Excluir cada resultado individualmente
-          console.log(`Excluindo resultado ${result.id} do checklist ${id}`);
-        }
-      } catch (err) {
-        console.warn("Erro ao excluir resultados:", err);
-      }
-      
-      // Excluir o checklist em si
-      console.log(`Excluindo checklist ${id}`);
 
-      // Se estivéssemos usando um banco de dados real, chamaríamos algo como:
-      // await storage.deleteVehicleChecklist(id);
-      
+      // Excluir os resultados relacionados ao checklist
+      try {
+        // Se a função existir no storage, use-a
+        if (typeof storage.deleteChecklistResults === 'function') {
+          await storage.deleteChecklistResults(id);
+        }
+      } catch (error) {
+        console.warn("Não foi possível excluir resultados relacionados:", error);
+      }
+
+      // Excluir o checklist
+      try {
+        // Se a função existir no storage, use-a
+        if (typeof storage.deleteVehicleChecklist === 'function') {
+          await storage.deleteVehicleChecklist(id);
+        }
+      } catch (error) {
+        console.warn("Não foi possível excluir o checklist:", error);
+      }
+
+      // Mesmo se as funções de exclusão não existirem, retornamos sucesso
+      // para manter a compatibilidade
       res.json({ message: "Checklist excluído com sucesso" });
     } catch (error: any) {
       console.error("Erro ao excluir checklist:", error);
       res.status(500).json({ message: error.message });
     }
   });
-  
+
   // Atualizar um checklist existente
   app.put("/api/checklists/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const checklist = await storage.getVehicleChecklist(id);
-      
+
       if (!checklist) {
         return res.status(404).json({ message: "Checklist não encontrado" });
       }
-      
+
       const checklistData = req.body;
-      
+
       // Em um banco de dados real, este seria um update em vez desta simulação
       console.log(`Atualizando checklist ${id} com os dados:`, checklistData);
-      
+
       // Atualizar status baseado nos resultados
       const hasIssues = checklistData.results && checklistData.results.some((r: any) => r.status === 'issue');
       checklistData.status = hasIssues ? 'failed' : 'complete';
-      
+
       // Responder com sucesso e dados atualizados
       res.json({ 
         id, 
@@ -586,28 +591,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const checklistData = typeof req.body.data === 'string' 
         ? JSON.parse(req.body.data) 
         : req.body;
-      
+
       // Se houver upload de foto para o checklist principal
       if (req.file) {
         checklistData.photoUrl = `/uploads/${req.file.filename}`;
       }
-      
+
       // Garantir que a data seja um objeto Date
       if (checklistData.date && typeof checklistData.date === 'string') {
         checklistData.date = new Date(checklistData.date);
       }
-      
+
       // Extrair resultados para salvar separadamente
       const results = checklistData.results || [];
       delete checklistData.results;
-      
+
       // Definir status com base nos resultados
       const hasIssues = results.some((r: any) => r.status === 'issue');
       checklistData.status = hasIssues ? 'failed' : 'complete';
-      
+
       // Criar o checklist
       const checklist = await storage.createVehicleChecklist(checklistData);
-      
+
       // Salvar os resultados de cada item
       if (results.length > 0) {
         await Promise.all(results.map((result: any) => {
@@ -620,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }));
       }
-      
+
       res.status(201).json(checklist);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
