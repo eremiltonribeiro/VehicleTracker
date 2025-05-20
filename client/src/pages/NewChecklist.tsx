@@ -130,13 +130,20 @@ export default function NewChecklist() {
       }
 
       const checklistData = await response.json();
+      console.log("Checklist carregado para edição:", checklistData);
+      
+      // Armazenar os dados completos do checklist
+      setExistingChecklist(checklistData);
 
       // Preencher o formulário com os dados existentes
       form.setValue("vehicleId", checklistData.vehicleId.toString());
       form.setValue("driverId", checklistData.driverId.toString());
       form.setValue("templateId", checklistData.templateId.toString());
-      form.setValue("odometer", checklistData.odometer.toString());
+      form.setValue("odometer", checklistData.odometer ? checklistData.odometer.toString() : "0");
       form.setValue("observations", checklistData.observations || "");
+
+      // Carregar os itens do template primeiro
+      await loadTemplateItems(checklistData.templateId);
 
       // Carregar os resultados do checklist
       if (checklistData.results && checklistData.results.length > 0) {
@@ -299,7 +306,8 @@ export default function NewChecklist() {
         templateId: parseInt(data.templateId),
         odometer: parseInt(data.odometer),
         observations: data.observations || null,
-        date: new Date(),
+        // Manter a data original se estiver em modo edição
+        date: editMode && existingChecklist?.date ? new Date(existingChecklist.date) : new Date(),
         status: "pending", // Status inicial
         photoUrl: null,
         results: Object.entries(results).map(([itemId, result]) => ({
@@ -310,7 +318,7 @@ export default function NewChecklist() {
         })),
       };
 
-      console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:");
+      console.log(editMode ? "Atualizando checklist:" : "Enviando novo checklist:", checklistData);
       
       // URL e método HTTP variam dependendo se estamos editando ou criando
       const url = editMode ? `/api/checklists/${checklistId}` : "/api/checklists";
@@ -323,16 +331,27 @@ export default function NewChecklist() {
       // Verifica se há fotos para os itens (em uma implementação real, enviariam os arquivos)
       // Como estamos usando data URLs, não precisamos enviar os arquivos separadamente
       
-      // Enviar para a API
+      // Enviar para a API com headers adequados para FormData
       const response = await fetch(url, {
         method: method,
         body: formData,
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Erro ao salvar checklist");
+        const errorText = await response.text();
+        let errorMessage = "Erro ao salvar checklist";
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorMessage;
+        } catch (e) {
+          console.error("Resposta de erro não é JSON válido:", errorText);
+        }
+        throw new Error(errorMessage);
       }
+
+      // Tentar obter a resposta para debugging
+      const responseData = await response.json();
+      console.log("Resposta do servidor:", responseData);
 
       toast({
         title: editMode ? "Checklist atualizado com sucesso!" : "Checklist salvo com sucesso!",
@@ -347,7 +366,7 @@ export default function NewChecklist() {
       console.error("Erro ao salvar checklist:", error);
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar o checklist. Tente novamente.",
+        description: error instanceof Error ? error.message : "Não foi possível salvar o checklist. Tente novamente.",
         variant: "destructive",
       });
     } finally {

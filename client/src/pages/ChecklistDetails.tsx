@@ -448,8 +448,14 @@ export default function ChecklistDetails() {
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.onerror = null;
-                                      target.src = ""; // Limpa a src
-                                      target.parentElement!.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
+                                      console.log("Erro ao carregar imagem:", result.photoUrl);
+                                      // Tenta prefixar com o caminho certo se necessário
+                                      if (!result.photoUrl.startsWith("/")) {
+                                        target.src = "/" + result.photoUrl;
+                                      } else {
+                                        target.src = ""; // Limpa a src
+                                        target.parentElement!.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
+                                      }
                                     }}
                                   />
                                 )}
@@ -497,21 +503,38 @@ export default function ChecklistDetails() {
 
               if (confirm) {
                 try {
+                  console.log("Tentando excluir checklist ID:", id);
                   // Excluir o checklist usando a API
                   const response = await fetch(`/api/checklists/${id}`, {
                     method: 'DELETE',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    }
                   });
+
+                  console.log("Resposta da exclusão:", response.status);
+
+                  const responseText = await response.text();
+                  console.log("Resposta completa:", responseText);
+                  
+                  let responseData;
+                  try {
+                    responseData = JSON.parse(responseText);
+                  } catch (e) {
+                    console.log("Resposta não é JSON válido");
+                  }
 
                   if (response.ok) {
                     toast({
                       title: "Sucesso",
                       description: "Checklist excluído com sucesso!",
                     });
-                    // Redirecionar para a lista de checklists
-                    navigate('/checklists');
+                    // Redirecionar para a lista de checklists após um pequeno delay
+                    setTimeout(() => {
+                      navigate('/checklists');
+                    }, 500);
                   } else {
-                    const error = await response.json();
-                    throw new Error(error.message || "Erro ao excluir checklist");
+                    throw new Error(responseData?.message || "Erro ao excluir checklist");
                   }
                 } catch (error) {
                   console.error("Erro ao excluir checklist:", error);
