@@ -65,10 +65,10 @@ export function HistoryView() {
     startDate: undefined as Date | undefined,
     endDate: undefined as Date | undefined,
   });
-  
+
   // Detail view state
   const [selectedRegistration, setSelectedRegistration] = useState<any>(null);
-  
+
   // Photo view state
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
@@ -79,13 +79,13 @@ export function HistoryView() {
 
   // Toast hook
   const { toast } = useToast();
-  
+
   // Location hook for navigation
   const [, setLocation] = useLocation();
-  
+
   // Query client for refetching data
   const queryClient = useQueryClient();
-  
+
   // Query for fetching registrations with filters
   const { data: registrations = [], isLoading, refetch } = useQuery({
     queryKey: [
@@ -97,37 +97,37 @@ export function HistoryView() {
     ],
     queryFn: async ({ queryKey }) => {
       const [_, type, vehicleId, startDate, endDate] = queryKey;
-      
+
       let url = "/api/registrations";
       const params = new URLSearchParams();
-      
+
       if (type && type !== "all") params.append("type", type as string);
       if (vehicleId && vehicleId !== "all") params.append("vehicleId", vehicleId as string);
       if (startDate) params.append("startDate", (startDate as Date).toISOString());
       if (endDate) params.append("endDate", (endDate as Date).toISOString());
-      
+
       const queryString = params.toString();
       if (queryString) {
         url += `?${queryString}`;
       }
-      
+
       const res = await fetch(url, {
         credentials: "include",
       });
-      
+
       if (!res.ok) {
         throw new Error("Failed to fetch registrations");
       }
-      
+
       return res.json();
     },
   });
-  
+
   // Fetch vehicles for filter
   const { data: vehicles = [] } = useQuery({
     queryKey: ["/api/vehicles"],
   });
-  
+
   // Reset filters handler
   const resetFilters = () => {
     setFilters({
@@ -137,7 +137,7 @@ export function HistoryView() {
       endDate: undefined,
     });
   };
-  
+
   // Open detail view
   const openDetailView = (registration: any) => {
     setSelectedRegistration(registration);
@@ -163,29 +163,29 @@ export function HistoryView() {
   // Delete registration
   const handleDeleteRegistration = async () => {
     if (!registrationToDelete) return;
-    
+
     try {
       const response = await fetch(`/api/registrations/${registrationToDelete}`, {
         method: 'DELETE',
         credentials: 'include',
       });
-      
-      if (!response.ok) {
+
+      if (!response.ok){
         throw new Error('Falha ao excluir o registro');
       }
-      
+
       toast({
         title: "Registro excluído",
         description: "O registro foi excluído com sucesso!",
       });
-      
+
       // Refresh data
-      refetch();
-      
+      queryClient.invalidateQueries(["/api/registrations"]);
+
       // Close dialog
       setDeleteDialogOpen(false);
       setRegistrationToDelete(null);
-      
+
     } catch (error) {
       console.error('Erro ao excluir registro:', error);
       toast({
@@ -205,25 +205,25 @@ export function HistoryView() {
     link.click();
     document.body.removeChild(link);
   };
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-  
+
   const totalItems = registrations?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-  
+
   const paginatedRegistrations = registrations
     ? registrations.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
       )
     : [];
-  
+
   return (
     <Card className="w-full">
       <CardContent className="space-y-6 pt-6">
@@ -251,7 +251,7 @@ export function HistoryView() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="filter-vehicle">Veículo</Label>
               <Select
@@ -271,7 +271,7 @@ export function HistoryView() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Período</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -305,7 +305,7 @@ export function HistoryView() {
                     />
                   </PopoverContent>
                 </Popover>
-                
+
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -339,7 +339,7 @@ export function HistoryView() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={resetFilters}>
               Limpar
@@ -349,7 +349,7 @@ export function HistoryView() {
             </Button>
           </div>
         </div>
-        
+
         {/* History Items */}
         <div className="space-y-4">
           {isLoading ? (
@@ -461,7 +461,7 @@ export function HistoryView() {
                     <User className="h-4 w-4 mr-1" />
                     {registration.driver?.name}
                   </div>
-                  
+
                   {/* Action buttons */}
                   <div className="flex items-center gap-1">
                     {/* Detail button */}
@@ -493,7 +493,7 @@ export function HistoryView() {
                             {formatDate(registration.date)}
                           </DialogDescription>
                         </DialogHeader>
-                        
+
                         <div className="space-y-4 mt-2">
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -505,7 +505,7 @@ export function HistoryView() {
                               <p>{registration.driver?.name}</p>
                             </div>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <h4 className="text-sm font-medium text-gray-500">KM Inicial</h4>
@@ -518,7 +518,7 @@ export function HistoryView() {
                               </div>
                             )}
                           </div>
-                          
+
                           {registration.type === "fuel" && (
                             <>
                               <div className="grid grid-cols-2 gap-4">
@@ -531,7 +531,7 @@ export function HistoryView() {
                                   <p>{registration.fuelType?.name}</p>
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <h4 className="text-sm font-medium text-gray-500">Litros</h4>
@@ -542,7 +542,7 @@ export function HistoryView() {
                                   <p>{formatCurrency(registration.fuelCost)}</p>
                                 </div>
                               </div>
-                              
+
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <h4 className="text-sm font-medium text-gray-500">Tanque Completo</h4>
@@ -555,7 +555,7 @@ export function HistoryView() {
                               </div>
                             </>
                           )}
-                          
+
                           {registration.type === "maintenance" && (
                             <>
                               <div className="grid grid-cols-2 gap-4">
@@ -570,7 +570,7 @@ export function HistoryView() {
                               </div>
                             </>
                           )}
-                          
+
                           {registration.type === "trip" && (
                             <>
                               <div className="grid grid-cols-2 gap-4">
@@ -585,14 +585,14 @@ export function HistoryView() {
                               </div>
                             </>
                           )}
-                          
+
                           {registration.observations && (
                             <div>
                               <h4 className="text-sm font-medium text-gray-500">Observações</h4>
                               <p className="text-sm text-gray-700">{registration.observations}</p>
                             </div>
                           )}
-                          
+
                           {registration.photoUrl && (
                             <div>
                               <h4 className="text-sm font-medium text-gray-500 mb-2">Comprovante</h4>
@@ -601,11 +601,22 @@ export function HistoryView() {
                                   src={registration.photoUrl} 
                                   alt="Comprovante" 
                                   className="absolute inset-0 w-full h-full object-contain cursor-pointer"
-                                  onClick={() => openPhotoView(registration.photoUrl)}
+                                  onClick={() => {
+                                    if (registration.photoUrl) {
+                                      openPhotoView(registration.photoUrl);
+                                    }
+                                  }}
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.onerror = null;
                                     console.log("Erro ao carregar imagem:", registration.photoUrl);
+                                    // Tentar corrigir o caminho se necessário
+                                    if (registration.photoUrl && !registration.photoUrl.startsWith('/')) {
+                                      target.src = '/' + registration.photoUrl;
+                                      return;
+                                    }
+
+                                    // Se ainda falhar, mostrar mensagem de erro
                                     target.src = ""; // Limpa a src
                                     const parentElement = target.parentElement;
                                     if (parentElement) {
@@ -644,7 +655,7 @@ export function HistoryView() {
                           <div className="flex gap-2">
                             <Button 
                               variant="outline" 
-                              onClick={() => handleEditRegistration(registration.id, registration.type)}
+                              onClick={() => setLocation(`/registros/edit/${registration.id}?type=${registration.type}`)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Editar
@@ -669,7 +680,7 @@ export function HistoryView() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-amber-600"
-                      onClick={() => handleEditRegistration(registration.id, registration.type)}
+                      onClick={() => setLocation(`/registros/edit/${registration.id}?type=${registration.type}`)}
                       title="Editar registro"
                     >
                       <Edit className="h-4 w-4" />
@@ -690,7 +701,7 @@ export function HistoryView() {
               </div>
             ))
           )}
-          
+
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center space-x-2 pt-4">
@@ -702,11 +713,11 @@ export function HistoryView() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              
+
               <span className="text-sm text-gray-600">
                 Página {currentPage} de {totalPages}
               </span>
-              
+
               <Button
                 variant="outline"
                 size="sm"
