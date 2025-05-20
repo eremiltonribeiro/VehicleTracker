@@ -458,7 +458,7 @@ export default function ChecklistDetails() {
                                       // Tentativas de correção de caminho
                                       if (!result.photoUrl.startsWith("/")) {
                                         target.src = "/" + result.photoUrl;
-                                      } else if (result.photoUrl.startsWith("/uploads/")) {
+                                      } else if (result.photoUrl && result.photoUrl.startsWith("/uploads/")) {
                                         // Se o caminho já começa com /uploads, tentar caminho absoluto
                                         target.src = result.photoUrl;
                                       } else {

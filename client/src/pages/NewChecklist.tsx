@@ -360,8 +360,13 @@ export default function NewChecklist() {
           : "O checklist foi registrado no sistema.",
       });
 
-      // Redirecionar para a página de checklists
-      setLocation("/checklists");
+      // Sempre setar isSubmitting para false antes de redirecionar
+      setIsSubmitting(false);
+      
+      // Redirecionar para a página de checklists após pequeno delay para mostrar mensagem
+      setTimeout(() => {
+        setLocation("/checklists");
+      }, 500);
     } catch (error) {
       console.error("Erro ao salvar checklist:", error);
       toast({
