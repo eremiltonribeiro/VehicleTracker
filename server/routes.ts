@@ -546,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Excluir os resultados relacionados ao checklist
       await storage.deleteChecklistResults(id);
-      
+
       // Excluir o checklist
       await storage.deleteVehicleChecklist(id);
 
@@ -599,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { id: checklistId, ...data };
         };
       }
-      
+
       const updatedChecklist = await storage.updateVehicleChecklist(id, {
         vehicleId: checklistData.vehicleId,
         driverId: checklistData.driverId,
@@ -673,8 +673,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }));
       }
-
-      res.status(201).json(checklist);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -684,6 +682,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Erro ao criar checklist:", error);
       res.status(500).json({ message: "Erro ao criar checklist" });
+    }
+  });
+
+  // Obter os resultados de um checklist específico
+  app.get("/api/checklists/:id/results", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const results = await storage.getChecklistResults(id);
+
+      // Processa as URLs das fotos para garantir que estejam acessíveis
+      const processedResults = results.map(result => {
+        if (result.photoUrl) {
+          // Certifica-se de que as URLs começam com / se não forem data URLs
+          if (!result.photoUrl.startsWith('data:') && !result.photoUrl.startsWith('/')) {
+            result.photoUrl = '/' + result.photoUrl;
+          }
+          console.log("URL da foto processada:", result.photoUrl);
+        }
+        return result;
+      });
+
+      res.json(processedResults);
+    } catch (error: any) {
+      console.error("Erro ao obter resultados do checklist:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 

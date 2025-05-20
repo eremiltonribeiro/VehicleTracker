@@ -445,20 +445,46 @@ export default function ChecklistDetails() {
                                     src={result.photoUrl} 
                                     alt="Evidência do problema" 
                                     className="absolute inset-0 w-full h-full object-contain"
+                                    onClick={() => {
+                                      // Abrir imagem em tamanho completo em uma nova aba
+                                      window.open(result.photoUrl, '_blank');
+                                    }}
+                                    style={{ cursor: 'pointer' }}
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.onerror = null;
                                       console.log("Erro ao carregar imagem:", result.photoUrl);
-                                      // Tenta prefixar com o caminho certo se necessário
+                                      
+                                      // Tentativas de correção de caminho
                                       if (!result.photoUrl.startsWith("/")) {
                                         target.src = "/" + result.photoUrl;
+                                      } else if (result.photoUrl.startsWith("/uploads/")) {
+                                        // Se o caminho já começa com /uploads, tentar caminho absoluto
+                                        target.src = result.photoUrl;
                                       } else {
+                                        // Se todas as tentativas falham, mostrar mensagem de erro
                                         target.src = ""; // Limpa a src
                                         target.parentElement!.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
                                       }
                                     }}
                                   />
                                 )}
+                                <div className="absolute bottom-2 right-2">
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(result.photoUrl, '_blank');
+                                    }}
+                                    className="bg-white text-blue-700 p-1 rounded-full shadow-md"
+                                    title="Ver em tamanho real"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M15 3h6v6"></path>
+                                      <path d="M10 14 21 3"></path>
+                                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                    </svg>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}
