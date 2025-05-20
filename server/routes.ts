@@ -374,6 +374,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rotas para checklists
+  // Obter templates de checklist
+  app.get("/api/checklist-templates", async (req, res) => {
+    try {
+      const templates = await storage.getChecklistTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Obter um template específico com seus itens
+  app.get("/api/checklist-templates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const template = await storage.getChecklistTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template não encontrado" });
+      }
+      
+      const items = await storage.getChecklistItems(id);
+      res.json({ ...template, items });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Criar novo template de checklist
+  app.post("/api/checklist-templates", async (req, res) => {
+    try {
+      const templateData = req.body;
+      const template = await storage.createChecklistTemplate(templateData);
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Adicionar item ao template
+  app.post("/api/checklist-items", async (req, res) => {
+    try {
+      const itemData = req.body;
+      const item = await storage.createChecklistItem(itemData);
+      res.status(201).json(item);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0].message });
+      }
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Obter checklists realizados
+  app.get("/api/checklists", async (req, res) => {
+    try {
+      const vehicleId = req.query.vehicleId ? parseInt(req.query.vehicleId as string) : undefined;
+      const driverId = req.query.driverId ? parseInt(req.query.driverId as string) : undefined;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      
+      const checklists = await storage.getVehicleChecklists({
+        vehicleId,
+        driverId,
+        startDate,
+        endDate,
+      });
+      
+      // Enriquecer com detalhes do veículo e motorista
+      const enrichedChecklists = await Promise.all(
+        checklists.map(async (checklist) => {
+          const vehicle = await storage.getVehicle(checklist.vehicleId);
+          const driver = await storage.getDriver(checklist.driverId);
+          const template = await storage.getChecklistTemplate(checklist.templateId);
+          
+          return {
+            ...checklist,
+            vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
+            driver: driver ? { id: driver.id, name: driver.name } : null,
+            template: template ? { id: template.id, name: template.name } : null,
+          };
+        })
+      );
+      
+      res.json(enrichedChecklists);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Obter um checklist específico com seus resultados
+  app.get("/api/checklists/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const checklist = await storage.getVehicleChecklist(id);
+      
+      if (!checklist) {
+        return res.status(404).json({ message: "Checklist não encontrado" });
+      }
+      
+      const vehicle = await storage.getVehicle(checklist.vehicleId);
+      const driver = await storage.getDriver(checklist.driverId);
+      const template = await storage.getChecklistTemplate(checklist.templateId);
+      const items = await storage.getChecklistItems(checklist.templateId);
+      const results = await storage.getChecklistResults(id);
+      
+      res.json({
+        ...checklist,
+        vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
+        driver: driver ? { id: driver.id, name: driver.name } : null,
+        template: template ? { id: template.id, name: template.name } : null,
+        items,
+        results,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Criar novo checklist
+  app.post("/api/checklists", upload.single("photo"), async (req, res) => {
+    try {
+      const checklistData = typeof req.body.data === 'string' 
+        ? JSON.parse(req.body.data) 
+        : req.body;
+      
+      // Se houver upload de foto para o checklist principal
+      if (req.file) {
+        checklistData.photoUrl = `/uploads/${req.file.filename}`;
+      }
+      
+      // Garantir que a data seja um objeto Date
+      if (checklistData.date && typeof checklistData.date === 'string') {
+        checklistData.date = new Date(checklistData.date);
+      }
+      
+      // Extrair resultados para salvar separadamente
+      const results = checklistData.results || [];
+      delete checklistData.results;
+      
+      // Definir status com base nos resultados
+      const hasIssues = results.some((r: any) => r.status === 'issue');
+      checklistData.status = hasIssues ? 'failed' : 'complete';
+      
+      // Criar o checklist
+      const checklist = await storage.createVehicleChecklist(checklistData);
+      
+      // Salvar os resultados de cada item
+      if (results.length > 0) {
+        await Promise.all(results.map((result: any) => {
+          return storage.createChecklistResult({
+            checklistId: checklist.id,
+            itemId: result.itemId,
+            status: result.status,
+            observation: result.observation || null,
+            photoUrl: result.photoUrl || null,
+          });
+        }));
+      }
+      
+      res.status(201).json(checklist);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Erro de validação", 
+          errors: error.errors.map(e => e.message) 
+        });
+      }
+      console.error("Erro ao criar checklist:", error);
+      res.status(500).json({ message: "Erro ao criar checklist" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
