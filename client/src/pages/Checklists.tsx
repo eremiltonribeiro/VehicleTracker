@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Filter, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 interface ChecklistItem {
   id: number;
@@ -55,72 +56,29 @@ export default function Checklists() {
     }
   }, [params.id]);
   
-  const loadChecklists = () => {
+  const loadChecklists = async () => {
     setIsLoading(true);
     
-    // Simulação de carregamento de dados
-    setTimeout(() => {
-      // Dados simulados para demonstração
-      const mockChecklists: VehicleChecklist[] = [
-        {
-          id: 1,
-          date: new Date().toISOString(),
-          vehicleId: 1,
-          driverId: 1,
-          odometer: 5430,
-          status: "complete",
-          vehicle: {
-            name: "Caminhão 01",
-            plate: "ABC1234"
-          },
-          driver: {
-            name: "João Silva"
-          },
-          template: {
-            name: "Checklist Diário"
-          }
-        },
-        {
-          id: 2,
-          date: new Date(Date.now() - 86400000).toISOString(), // ontem
-          vehicleId: 2,
-          driverId: 2,
-          odometer: 12540,
-          status: "failed",
-          vehicle: {
-            name: "Caminhão 02",
-            plate: "XYZ5678"
-          },
-          driver: {
-            name: "Maria Oliveira"
-          },
-          template: {
-            name: "Checklist Semanal"
-          }
-        },
-        {
-          id: 3,
-          date: new Date(Date.now() - 172800000).toISOString(), // 2 dias atrás
-          vehicleId: 3,
-          driverId: 3,
-          odometer: 8120,
-          status: "pending",
-          vehicle: {
-            name: "Caminhão 03",
-            plate: "DEF9012"
-          },
-          driver: {
-            name: "Carlos Santos"
-          },
-          template: {
-            name: "Checklist Mensal"
-          }
-        }
-      ];
+    try {
+      // Carregar dados da API
+      const response = await fetch('/api/checklists');
       
-      setChecklists(mockChecklists);
+      if (!response.ok) {
+        throw new Error('Erro ao carregar checklists');
+      }
+      
+      const data = await response.json();
+      setChecklists(data);
+    } catch (error) {
+      console.error('Erro ao carregar checklists:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os checklists. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
   
   const handleNewChecklist = () => {

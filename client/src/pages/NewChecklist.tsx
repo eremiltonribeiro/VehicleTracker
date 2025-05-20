@@ -128,62 +128,78 @@ export default function NewChecklist() {
   }, [form.watch("templateId")]);
   
   // Função para carregar os dados iniciais
-  const loadInitialData = () => {
+  const loadInitialData = async () => {
     setIsLoading(true);
     
-    // Simulação de carregamento de dados
-    setTimeout(() => {
-      // Veículos simulados
-      const mockVehicles: Vehicle[] = [
-        { id: 1, name: "Caminhão 01", plate: "ABC1234" },
-        { id: 2, name: "Caminhão 02", plate: "XYZ5678" },
-        { id: 3, name: "Caminhão 03", plate: "DEF9012" },
-      ];
+    try {
+      // Carregar veículos da API
+      const vehiclesResponse = await fetch('/api/vehicles');
+      if (!vehiclesResponse.ok) {
+        throw new Error('Erro ao carregar veículos');
+      }
+      const vehiclesData = await vehiclesResponse.json();
+      setVehicles(vehiclesData);
       
-      // Motoristas simulados
-      const mockDrivers: Driver[] = [
-        { id: 1, name: "João Silva" },
-        { id: 2, name: "Maria Oliveira" },
-        { id: 3, name: "Carlos Santos" },
-      ];
+      // Carregar motoristas da API
+      const driversResponse = await fetch('/api/drivers');
+      if (!driversResponse.ok) {
+        throw new Error('Erro ao carregar motoristas');
+      }
+      const driversData = await driversResponse.json();
+      setDrivers(driversData);
       
-      // Templates simulados
-      const mockTemplates: ChecklistTemplate[] = [
-        { id: 1, name: "Checklist Diário", description: "Verificação diária básica do veículo" },
-        { id: 2, name: "Checklist Semanal", description: "Verificação semanal detalhada do veículo" },
-        { id: 3, name: "Checklist Mensal", description: "Verificação mensal completa do veículo" },
-      ];
-      
-      setVehicles(mockVehicles);
-      setDrivers(mockDrivers);
-      setTemplates(mockTemplates);
+      // Carregar templates de checklist da API
+      const templatesResponse = await fetch('/api/checklist-templates');
+      if (!templatesResponse.ok) {
+        throw new Error('Erro ao carregar templates');
+      }
+      const templatesData = await templatesResponse.json();
+      setTemplates(templatesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados iniciais:', error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível carregar os dados necessários. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
   
   // Função para carregar os itens do template selecionado
-  const loadTemplateItems = (templateId: number) => {
-    // Simulação de carregamento de itens do template
-    setTimeout(() => {
-      // Itens simulados
-      const mockItems: ChecklistItem[] = [
-        { id: 1, templateId, name: "Verificação do óleo do motor", description: "Verificar nível do óleo", isRequired: true, category: "Motor", order: 1 },
-        { id: 2, templateId, name: "Verificação do líquido de arrefecimento", description: "Verificar nível do radiador", isRequired: true, category: "Motor", order: 2 },
-        { id: 3, templateId, name: "Verificação dos freios", description: "Verificar funcionamento e nível do fluido", isRequired: true, category: "Segurança", order: 3 },
-        { id: 4, templateId, name: "Verificação das luzes", description: "Testar faróis, lanternas e setas", isRequired: true, category: "Segurança", order: 4 },
-        { id: 5, templateId, name: "Verificação da pressão dos pneus", description: "Verificar pressão conforme manual", isRequired: true, category: "Pneus", order: 5 },
-      ];
+  const loadTemplateItems = async (templateId: number) => {
+    try {
+      // Carregar itens do template da API
+      const response = await fetch(`/api/checklist-templates/${templateId}/items`);
       
-      setItems(mockItems);
+      if (!response.ok) {
+        throw new Error('Erro ao carregar itens do template');
+      }
+      
+      const items: ChecklistItem[] = await response.json();
+      
+      setItems(items);
       
       // Inicializar resultados como vazios
       const initialResults: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
-      mockItems.forEach(item => {
+      items.forEach(item => {
         initialResults[item.id] = { status: "", observation: null, photoUrl: null };
       });
       
       setResults(initialResults);
-    }, 300);
+    } catch (error) {
+      console.error('Erro ao carregar itens do template:', error);
+      toast({
+        title: "Erro ao carregar itens",
+        description: "Não foi possível carregar os itens do checklist. Tente novamente.",
+        variant: "destructive",
+      });
+      
+      // Em caso de erro, definir uma lista vazia
+      setItems([]);
+      setResults({});
+    }
   };
   
   // Voltar para a página de checklists
@@ -238,7 +254,7 @@ export default function NewChecklist() {
       console.log("Enviando checklist:", checklistData);
       
       // Enviar para a API
-      const response = await apiRequest("/api/checklists", {
+      const response = await fetch("/api/checklists", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
