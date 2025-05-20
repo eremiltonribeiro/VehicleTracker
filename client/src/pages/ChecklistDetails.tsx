@@ -454,7 +454,7 @@ export default function ChecklistDetails() {
                                       const target = e.target as HTMLImageElement;
                                       target.onerror = null;
                                       console.log("Erro ao carregar imagem:", result.photoUrl);
-                                      
+
                                       // Tentativas de correção de caminho
                                       if (!result.photoUrl.startsWith("/")) {
                                         target.src = "/" + result.photoUrl;
@@ -550,7 +550,7 @@ export default function ChecklistDetails() {
 
                   const responseText = await response.text();
                   console.log("Resposta completa:", responseText);
-                  
+
                   let responseData;
                   try {
                     responseData = JSON.parse(responseText);
