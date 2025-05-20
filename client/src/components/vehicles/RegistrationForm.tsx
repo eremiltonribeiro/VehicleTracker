@@ -48,7 +48,8 @@ export function RegistrationForm() {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<string>("fuel");
-  
+  const existingPhotoUrl = ""; // Placeholder for existing photo URL
+
   // Form with zod validation
   const form = useForm<FormValues>({
     resolver: zodResolver(extendedRegistrationSchema),
@@ -61,36 +62,36 @@ export function RegistrationForm() {
       arla: false,
     },
   });
-  
+
   // Get watch function to track form values
   const watchType = form.watch("type");
-  
+
   // Fetch all required data for the form
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({
     queryKey: ["/api/vehicles"],
   });
-  
+
   const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({
     queryKey: ["/api/drivers"],
   });
-  
+
   const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({
     queryKey: ["/api/fuel-stations"],
   });
-  
+
   const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({
     queryKey: ["/api/fuel-types"],
   });
-  
+
   const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({
     queryKey: ["/api/maintenance-types"],
   });
-  
+
   // Handle submission
   const createRegistration = useMutation({
     mutationFn: async (values: FormValues) => {
       const formData = new FormData();
-      
+
       // Convert values to the format expected by the server
       const data = {
         ...values,
@@ -98,26 +99,26 @@ export function RegistrationForm() {
         fuelCost: values.fuelCost ? Math.round(values.fuelCost * 100) : undefined,
         maintenanceCost: values.maintenanceCost ? Math.round(values.maintenanceCost * 100) : undefined,
       };
-      
+
       // Add data as JSON string to formData
       formData.append("data", JSON.stringify(data));
-      
+
       // Add file if selected
       if (selectedFile) {
         formData.append("photo", selectedFile);
       }
-      
+
       const res = await fetch("/api/registrations", {
         method: "POST",
         body: formData,
         credentials: "include",
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Erro ao salvar registro");
       }
-      
+
       return res.json();
     },
     onSuccess: () => {
@@ -125,14 +126,14 @@ export function RegistrationForm() {
         title: "Sucesso!",
         description: "Registro salvo com sucesso.",
       });
-      
+
       // Reset form
       form.reset();
       setSelectedFile(null);
-      
+
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
-      
+
       // Navigate to history view
       setLocation("/?view=history");
     },
@@ -144,7 +145,7 @@ export function RegistrationForm() {
       });
     },
   });
-  
+
   const onSubmit = (values: FormValues) => {
     // Additional validation based on type
     if (values.type === "fuel" && !selectedFile) {
@@ -155,7 +156,7 @@ export function RegistrationForm() {
       });
       return;
     }
-    
+
     if (values.type === "maintenance" && !selectedFile) {
       toast({
         title: "Erro",
@@ -164,16 +165,16 @@ export function RegistrationForm() {
       });
       return;
     }
-    
+
     createRegistration.mutate(values);
   };
-  
+
   // Handle type selection
   const handleTypeSelect = (type: string) => {
     form.setValue("type", type as any);
     setSelectedType(type);
   };
-  
+
   // Determine if forms are still loading
   const isLoading = 
     isLoadingVehicles || 
@@ -181,7 +182,7 @@ export function RegistrationForm() {
     isLoadingFuelStations || 
     isLoadingFuelTypes || 
     isLoadingMaintenanceTypes;
-    
+
   if (isLoading) {
     return (
       <Card className="w-full mb-20">
@@ -196,13 +197,13 @@ export function RegistrationForm() {
       </Card>
     );
   }
-  
+
   return (
     <Card className="w-full mb-20">
       <CardHeader>
         <CardTitle>Registro de Movimentação</CardTitle>
       </CardHeader>
-      
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
@@ -251,7 +252,7 @@ export function RegistrationForm() {
                 </Button>
               </div>
             </div>
-            
+
             {/* Common Fields */}
             <div className="space-y-4">
               <FormField
@@ -281,7 +282,7 @@ export function RegistrationForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="driverId"
@@ -309,7 +310,7 @@ export function RegistrationForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="date"
@@ -352,7 +353,7 @@ export function RegistrationForm() {
                   </FormItem>
                 )}
               />
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -372,7 +373,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="finalKm"
@@ -397,12 +398,12 @@ export function RegistrationForm() {
                 />
               </div>
             </div>
-            
+
             {/* Fuel Specific Fields */}
             {watchType === "fuel" && (
               <div className="space-y-4 border-t border-gray-200 pt-4">
                 <h3 className="text-lg font-medium text-amber-600 mb-3">Dados do Abastecimento</h3>
-                
+
                 <FormField
                   control={form.control}
                   name="fuelStationId"
@@ -430,7 +431,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="fuelTypeId"
@@ -458,7 +459,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -481,7 +482,7 @@ export function RegistrationForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="fuelCost"
@@ -506,7 +507,7 @@ export function RegistrationForm() {
                     )}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -525,7 +526,7 @@ export function RegistrationForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="arla"
@@ -544,7 +545,7 @@ export function RegistrationForm() {
                     )}
                   />
                 </div>
-                
+
                 <FormField
                   name="photoUrl"
                   render={({ field }) => (
@@ -555,9 +556,9 @@ export function RegistrationForm() {
                           accept={["image/jpeg", "image/png", "image/gif"]}
                           onFileChange={(file) => {
                             setSelectedFile(file);
-                            field.onChange(file ? "temp" : null);
+                            field.onChange(file ? "temp" : existingPhotoUrl);
                           }}
-                          defaultPreview={field.value}
+                          defaultPreview={existingPhotoUrl || field.value}
                           error={form.formState.errors.photoUrl?.message}
                         />
                       </FormControl>
@@ -567,12 +568,12 @@ export function RegistrationForm() {
                 />
               </div>
             )}
-            
+
             {/* Maintenance Specific Fields */}
             {watchType === "maintenance" && (
               <div className="space-y-4 border-t border-gray-200 pt-4">
                 <h3 className="text-lg font-medium text-green-600 mb-3">Dados da Manutenção</h3>
-                
+
                 <FormField
                   control={form.control}
                   name="maintenanceTypeId"
@@ -600,7 +601,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="maintenanceCost"
@@ -624,7 +625,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   name="photoUrl"
                   render={({ field }) => (
@@ -635,9 +636,9 @@ export function RegistrationForm() {
                           accept={["image/jpeg", "image/png", "image/gif"]}
                           onFileChange={(file) => {
                             setSelectedFile(file);
-                            field.onChange(file ? "temp" : null);
+                            field.onChange(file ? "temp" : existingPhotoUrl);
                           }}
-                          defaultPreview={field.value}
+                          defaultPreview={existingPhotoUrl || field.value}
                           error={form.formState.errors.photoUrl?.message}
                         />
                       </FormControl>
@@ -647,12 +648,12 @@ export function RegistrationForm() {
                 />
               </div>
             )}
-            
+
             {/* Trip Specific Fields */}
             {watchType === "trip" && (
               <div className="space-y-4 border-t border-gray-200 pt-4">
                 <h3 className="text-lg font-medium text-blue-600 mb-3">Dados da Viagem</h3>
-                
+
                 <FormField
                   control={form.control}
                   name="destination"
@@ -670,7 +671,7 @@ export function RegistrationForm() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="reason"
@@ -690,7 +691,7 @@ export function RegistrationForm() {
                 />
               </div>
             )}
-            
+
             {/* Common optional fields */}
             <div className="border-t border-gray-200 pt-4">
               <FormField
@@ -713,7 +714,7 @@ export function RegistrationForm() {
               />
             </div>
           </CardContent>
-          
+
           <div className="px-6 py-4 bg-gray-50 border-t rounded-b-lg">
             <Button type="submit" className="w-full md:w-auto">
               Salvar Registro

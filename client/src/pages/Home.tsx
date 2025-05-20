@@ -9,11 +9,18 @@ import { Wifi, WifiOff } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { offlineStorage } from "@/services/offlineStorage";
 
-export default function Home() {
+interface HomeProps {
+  defaultView?: string;
+  editId?: string;
+  editType?: string | null;
+  mode?: "edit" | "view";
+}
+
+export default function Home({ defaultView = "dashboard", editId, editType, mode }: HomeProps) {
   const [location, setLocation] = useLocation();
   const params = location.split("/");
   const view = params[params.length - 1] === "registros" ? null : params[params.length - 1];
-  
+
   // Monitor network status for offline functionality
   useEffect(() => {
     const saveDataLocally = async () => {
@@ -24,31 +31,31 @@ export default function Home() {
           const vehicles = await vehiclesRes.json();
           await offlineStorage.saveVehicles(vehicles);
         }
-        
+
         const driversRes = await fetch("/api/drivers");
         if (driversRes.ok) {
           const drivers = await driversRes.json();
           await offlineStorage.saveDrivers(drivers);
         }
-        
+
         const fuelStationsRes = await fetch("/api/fuel-stations");
         if (fuelStationsRes.ok) {
           const stations = await fuelStationsRes.json();
           await offlineStorage.saveFuelStations(stations);
         }
-        
+
         const fuelTypesRes = await fetch("/api/fuel-types");
         if (fuelTypesRes.ok) {
           const types = await fuelTypesRes.json();
           await offlineStorage.saveFuelTypes(types);
         }
-        
+
         const maintenanceTypesRes = await fetch("/api/maintenance-types");
         if (maintenanceTypesRes.ok) {
           const types = await maintenanceTypesRes.json();
           await offlineStorage.saveMaintenanceTypes(types);
         }
-        
+
         const registrationsRes = await fetch("/api/registrations");
         if (registrationsRes.ok) {
           const registrations = await registrationsRes.json();
@@ -58,28 +65,28 @@ export default function Home() {
         console.error("Erro ao salvar dados localmente:", error);
       }
     };
-    
+
     // On load, save data for offline use
     if (navigator.onLine) {
       saveDataLocally();
     }
-    
+
     // Set up event listeners for online/offline
     const handleOnline = () => {
       saveDataLocally();
     };
-    
+
     window.addEventListener('online', handleOnline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
     };
   }, []);
-  
+
   // Determine which view to show
   const showHistory = view === "history";
   const showDashboard = view === "dashboard";
-  
+
   // Fetch data, with offline capability
   const { data: vehicles = [] } = useQuery({
     queryKey: ["/api/vehicles"],
@@ -93,7 +100,7 @@ export default function Home() {
             return data;
           }
         }
-        
+
         // Fallback to offline data
         return await offlineStorage.getVehicles();
       } catch (error) {
@@ -102,11 +109,11 @@ export default function Home() {
       }
     }
   });
-  
+
   return (
     <div id="app-container" className="flex flex-col">
       {/* Removido o Header duplicado */}
-      
+
       {!navigator.onLine && (
         <div className="bg-yellow-100 px-4 py-1">
           <Alert className="border-yellow-500 bg-yellow-50">
@@ -118,14 +125,14 @@ export default function Home() {
           </Alert>
         </div>
       )}
-      
+
       <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
         {showHistory ? (
           <HistoryView />
         ) : showDashboard ? (
           <DashboardWithFilters />
         ) : (
-          <RegistrationForm />
+          <RegistrationForm editId={editId} editType={editType} mode={mode} />
         )}
       </main>
     </div>
