@@ -743,6 +743,23 @@ export class MemStorage implements IStorage {
       return newUser;
     }
   }
+
+  async getUserById(id: string): Promise<User | null> {
+    try {
+      const userId = id;
+
+      // Tentar buscar do localStorage primeiro
+      const userFromStorage = localStorage.getItem(`user_${userId}`);
+      if (userFromStorage) {
+        return JSON.parse(userFromStorage);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar usuário:', error);
+      return null;
+    }
+  }
 }
 
 export const storage = new MemStorage();
