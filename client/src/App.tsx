@@ -18,6 +18,7 @@ import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import ChecklistSimple from "@/pages/ChecklistSimple";
 import AppConfig from "@/pages/AppConfig";
+import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { useEffect, useState } from "react";
 import { syncManager } from "./services/syncManager";
@@ -34,33 +35,27 @@ export const useAuth = () => {
 
   // A função de login salva os dados no localStorage e atualiza o estado
   const login = (userData: any) => {
-    console.log("Login chamado com:", userData);
     try {
       localStorage.setItem("authenticated", "true");
       localStorage.setItem("user", JSON.stringify(userData));
       setIsAuthenticated(true);
       setUser(userData);
-      console.log("Estado de autenticação atualizado:", true);
       return true;
     } catch (error) {
-      console.error("Erro ao fazer login:", error);
       return false;
     }
   };
 
   // A função de logout limpa os dados do localStorage e atualiza o estado
   const logout = () => {
-    console.log("Logout chamado");
     try {
       localStorage.removeItem("authenticated");
       localStorage.removeItem("user");
       setIsAuthenticated(false);
       setUser(null);
       setLocation("/login");
-      console.log("Estado de autenticação atualizado:", false);
       return true;
     } catch (error) {
-      console.error("Erro ao fazer logout:", error);
       return false;
     }
   };
@@ -93,17 +88,13 @@ function PrivateRoute(props: any) {
       );
 
       if (currentRole && currentRole.permissions) {
-        // Verificar se o usuário tem a permissão necessária
         setHasAccess(currentRole.permissions[requiredPermission]);
       } else {
-        // Permissões padrão baseadas no papel do usuário
         if (userRole === "admin") {
-          setHasAccess(true); // Admin tem acesso a tudo
+          setHasAccess(true);
         } else if (userRole === "manager") {
-          // Gerente tem acesso a tudo exceto gerenciamento de usuários
           setHasAccess(requiredPermission !== "userManagement");
         } else {
-          // Usuário padrão tem acesso limitado
           const basicPermissions = ["registrations", "history", "checklists"];
           setHasAccess(basicPermissions.includes(requiredPermission));
         }
@@ -140,7 +131,6 @@ function Router() {
   const [location] = useLocation();
   const isLoginPage = location === "/login";
 
-  // Se estiver na página de login, não mostra cabeçalho nem navegação
   if (isLoginPage) {
     return (
       <div className="min-h-screen">
@@ -151,7 +141,6 @@ function Router() {
     );
   }
 
-  // Renderização normal para páginas autenticadas
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {isAuthenticated && <SideNavigation />}
@@ -159,6 +148,12 @@ function Router() {
         <div className="max-w-6xl mx-auto">
           <Switch>
             <PrivateRoute path="/" component={Welcome} />
+            {/* NOVA ROTA DE EDIÇÃO - ANTES DA DE /registros */}
+            <PrivateRoute
+              path="/registros/edit/:id"
+              component={RegistrationForm}
+              permission="registrations"
+            />
             <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
@@ -181,23 +176,15 @@ function Router() {
 }
 
 function App() {
-  // Inicializar o gerenciador de sincronização quando o aplicativo carrega
   useEffect(() => {
-    // Inicializa o gerenciador de sincronização para suporte offline
     syncManager.initialize();
-
-    // Verificar conexão e mostrar mensagens apropriadas
     const handleOnlineStatusChange = () => {
       const isOnline = navigator.onLine;
-      console.log(`Status de conexão alterado: ${isOnline ? 'online' : 'offline'}`);
+      // Você pode colocar um toast ou log aqui se quiser
     };
-
     window.addEventListener('online', handleOnlineStatusChange);
     window.addEventListener('offline', handleOnlineStatusChange);
-
-    // Verificar o status inicial
     handleOnlineStatusChange();
-
     return () => {
       window.removeEventListener('online', handleOnlineStatusChange);
       window.removeEventListener('offline', handleOnlineStatusChange);

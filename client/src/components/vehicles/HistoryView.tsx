@@ -150,8 +150,8 @@ export function HistoryView() {
   };
 
   // Edit registration
-  const handleEditRegistration = (id: number, type: string) => {
-    setLocation(`/registros/edit/${id}?type=${type}`);
+  const handleEditRegistration = (id: number) => {
+    setLocation(`/registros/edit/${id}`);
   };
 
   // Open delete confirmation
@@ -187,7 +187,6 @@ export function HistoryView() {
       setRegistrationToDelete(null);
 
     } catch (error) {
-      console.error('Erro ao excluir registro:', error);
       toast({
         title: "Erro",
         description: "Não foi possível excluir o registro. Tente novamente.",
@@ -609,14 +608,10 @@ export function HistoryView() {
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.onerror = null;
-                                    console.log("Erro ao carregar imagem:", registration.photoUrl);
-                                    // Tentar corrigir o caminho se necessário
                                     if (registration.photoUrl && !registration.photoUrl.startsWith('/')) {
                                       target.src = '/' + registration.photoUrl;
                                       return;
                                     }
-
-                                    // Se ainda falhar, mostrar mensagem de erro
                                     target.src = ""; // Limpa a src
                                     const parentElement = target.parentElement;
                                     if (parentElement) {
@@ -655,7 +650,7 @@ export function HistoryView() {
                           <div className="flex gap-2">
                             <Button 
                               variant="outline" 
-                              onClick={() => setLocation(`/registros/edit/${registration.id}?type=${registration.type}`)}
+                              onClick={() => handleEditRegistration(registration.id)}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Editar
@@ -680,7 +675,7 @@ export function HistoryView() {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 text-amber-600"
-                      onClick={() => setLocation(`/registros/edit/${registration.id}?type=${registration.type}`)}
+                      onClick={() => handleEditRegistration(registration.id)}
                       title="Editar registro"
                     >
                       <Edit className="h-4 w-4" />
@@ -792,3 +787,5 @@ export function HistoryView() {
     </Card>
   );
 }
+
+export default HistoryView;

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { z } from "zod";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { extendedRegistrationSchema } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -44,13 +44,13 @@ import { ptBR } from "date-fns/locale";
 type FormValues = z.infer<typeof extendedRegistrationSchema>;
 
 export function RegistrationForm() {
+  const { id } = useParams();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedType, setSelectedType] = useState<string>("fuel");
-  const existingPhotoUrl = ""; // Placeholder for existing photo URL
+  const [existingPhotoUrl, setExistingPhotoUrl] = useState(""); // Para preview em edição
 
-  // Form with zod validation
   const form = useForm<FormValues>({
     resolver: zodResolver(extendedRegistrationSchema),
     defaultValues: {
@@ -63,62 +63,58 @@ export function RegistrationForm() {
     },
   });
 
-  // Get watch function to track form values
   const watchType = form.watch("type");
 
   // Fetch all required data for the form
-  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({
-    queryKey: ["/api/vehicles"],
-  });
+  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({ queryKey: ["/api/vehicles"] });
+  const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({ queryKey: ["/api/drivers"] });
+  const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({ queryKey: ["/api/fuel-stations"] });
+  const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({ queryKey: ["/api/fuel-types"] });
+  const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({ queryKey: ["/api/maintenance-types"] });
 
-  const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({
-    queryKey: ["/api/drivers"],
-  });
+  // --- Buscar dados para edição, se houver ID ---
+  useEffect(() => {
+    if (id) {
+      fetch(`/api/registrations/${id}`, { credentials: "include" })
+        .then((res) => res.json())
+        .then((data) => {
+          form.reset({
+            ...data,
+            date: data.date ? new Date(data.date) : new Date(),
+            fuelCost: data.fuelCost ? data.fuelCost / 100 : undefined,
+            maintenanceCost: data.maintenanceCost ? data.maintenanceCost / 100 : undefined,
+          });
+          setSelectedType(data.type || "fuel");
+          setExistingPhotoUrl(data.photoUrl || "");
+        });
+    }
+    // eslint-disable-next-line
+  }, [id]);
 
-  const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({
-    queryKey: ["/api/fuel-stations"],
-  });
-
-  const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({
-    queryKey: ["/api/fuel-types"],
-  });
-
-  const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({
-    queryKey: ["/api/maintenance-types"],
-  });
-
-  // Handle submission
-  const createRegistration = useMutation({
+  // Mutation para criar ou editar
+  const createOrUpdateRegistration = useMutation({
     mutationFn: async (values: FormValues) => {
       const formData = new FormData();
-
-      // Convert values to the format expected by the server
       const data = {
         ...values,
-        // Convert money values from decimal to cents
         fuelCost: values.fuelCost ? Math.round(values.fuelCost * 100) : undefined,
         maintenanceCost: values.maintenanceCost ? Math.round(values.maintenanceCost * 100) : undefined,
       };
-
-      // Add data as JSON string to formData
       formData.append("data", JSON.stringify(data));
-
-      // Add file if selected
       if (selectedFile) {
         formData.append("photo", selectedFile);
       }
-
-      const res = await fetch("/api/registrations", {
-        method: "POST",
+      const url = id ? `/api/registrations/${id}` : "/api/registrations";
+      const method = id ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         body: formData,
         credentials: "include",
       });
-
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Erro ao salvar registro");
       }
-
       return res.json();
     },
     onSuccess: () => {
@@ -126,15 +122,9 @@ export function RegistrationForm() {
         title: "Sucesso!",
         description: "Registro salvo com sucesso.",
       });
-
-      // Reset form
       form.reset();
       setSelectedFile(null);
-
-      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
-
-      // Navigate to history view
       setLocation("/?view=history");
     },
     onError: (error: Error) => {
@@ -147,40 +137,31 @@ export function RegistrationForm() {
   });
 
   const onSubmit = (values: FormValues) => {
-    // Additional validation based on type
-    if (values.type === "fuel" && !selectedFile) {
+    // Validação adicional para comprovantes
+    if (
+      (values.type === "fuel" && !selectedFile && !existingPhotoUrl) ||
+      (values.type === "maintenance" && !selectedFile && !existingPhotoUrl)
+    ) {
       toast({
         title: "Erro",
-        description: "É necessário enviar um comprovante para abastecimentos.",
+        description: "É necessário enviar um comprovante para abastecimentos ou manutenções.",
         variant: "destructive",
       });
       return;
     }
-
-    if (values.type === "maintenance" && !selectedFile) {
-      toast({
-        title: "Erro",
-        description: "É necessário enviar um comprovante para manutenções.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    createRegistration.mutate(values);
+    createOrUpdateRegistration.mutate(values);
   };
 
-  // Handle type selection
   const handleTypeSelect = (type: string) => {
     form.setValue("type", type as any);
     setSelectedType(type);
   };
 
-  // Determine if forms are still loading
-  const isLoading = 
-    isLoadingVehicles || 
-    isLoadingDrivers || 
-    isLoadingFuelStations || 
-    isLoadingFuelTypes || 
+  const isLoading =
+    isLoadingVehicles ||
+    isLoadingDrivers ||
+    isLoadingFuelStations ||
+    isLoadingFuelTypes ||
     isLoadingMaintenanceTypes;
 
   if (isLoading) {
@@ -725,3 +706,5 @@ export function RegistrationForm() {
     </Card>
   );
 }
+
+export default RegistrationForm;
