@@ -159,4 +159,117 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return registration;
   }
+
+  async updateRegistration(id: number, data: any): Promise<VehicleRegistration> {
+    const [registration] = await db
+      .update(vehicleRegistrations)
+      .set(data)
+      .where(eq(vehicleRegistrations.id, id))
+      .returning();
+    return registration;
+  }
+
+  async deleteRegistration(id: number): Promise<boolean> {
+    await db.delete(vehicleRegistrations).where(eq(vehicleRegistrations.id, id));
+    return true;
+  }
+
+  // Checklist template methods
+  async getChecklistTemplates(): Promise<ChecklistTemplate[]> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistTemplates não implementado completamente');
+    return [];
+  }
+
+  async getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistTemplate não implementado completamente');
+    return undefined;
+  }
+
+  async createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.createChecklistTemplate não implementado completamente');
+    return { id: 0, ...template };
+  }
+
+  // Checklist item methods
+  async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistItems não implementado completamente');
+    return [];
+  }
+
+  async getChecklistItem(id: number): Promise<ChecklistItem | undefined> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistItem não implementado completamente');
+    return undefined;
+  }
+
+  async createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.createChecklistItem não implementado completamente');
+    return { id: 0, ...item };
+  }
+
+  // Vehicle checklist methods
+  async getVehicleChecklists(filters?: {
+    vehicleId?: number;
+    driverId?: number;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<VehicleChecklist[]> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getVehicleChecklists não implementado completamente');
+    return [];
+  }
+
+  async getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getVehicleChecklist não implementado completamente');
+    return undefined;
+  }
+
+  async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.createVehicleChecklist não implementado completamente');
+    return { id: 0, ...checklist, date: new Date() };
+  }
+
+  async updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log(`DatabaseStorage.updateVehicleChecklist: Atualizando checklist ${id}`, data);
+    return { id, ...data };
+  }
+
+  async deleteVehicleChecklist(id: number): Promise<boolean> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log(`DatabaseStorage.deleteVehicleChecklist: Excluindo checklist ${id}`);
+    return true;
+  }
+
+  // Checklist result methods
+  async getChecklistResults(checklistId: number): Promise<ChecklistResult[]> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistResults não implementado completamente');
+    return [];
+  }
+
+  async getChecklistResult(id: number): Promise<ChecklistResult | undefined> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.getChecklistResult não implementado completamente');
+    return undefined;
+  }
+
+  async createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log('DatabaseStorage.createChecklistResult não implementado completamente');
+    return { id: 0, ...result };
+  }
+
+  async deleteChecklistResults(checklistId: number): Promise<boolean> {
+    // Implementação temporária - deve ser substituída por acesso ao DB real
+    console.log(`DatabaseStorage.deleteChecklistResults: Excluindo resultados do checklist ${checklistId}`);
+    return true;
+  }
 }

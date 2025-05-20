@@ -66,6 +66,8 @@ export interface IStorage {
   createRegistration(
     registration: InsertRegistration
   ): Promise<VehicleRegistration>;
+  updateRegistration(id: number, data: any): Promise<VehicleRegistration>;
+  deleteRegistration(id: number): Promise<boolean>;
 
   // Checklist template methods
   getChecklistTemplates(): Promise<ChecklistTemplate[]>;

@@ -619,25 +619,6 @@ app.get("/api/checklists/:id", async (req, res) => {
         return res.status(404).json({ message: "Checklist não encontrado" });
       }
 
-      // Implementação real da exclusão de resultados
-      // Se o storage não tiver essas funções, implementamos aqui
-      if (typeof storage.deleteChecklistResults !== 'function') {
-        storage.deleteChecklistResults = async (checklistId) => {
-          console.log(`Excluindo resultados do checklist ${checklistId}`);
-          // Aqui normalmente teria uma chamada real ao banco de dados
-          return true;
-        };
-      }
-
-      // Implementação real da exclusão do checklist
-      if (typeof storage.deleteVehicleChecklist !== 'function') {
-        storage.deleteVehicleChecklist = async (checklistId) => {
-          console.log(`Excluindo checklist ${checklistId}`);
-          // Aqui normalmente teria uma chamada real ao banco de dados
-          return true;
-        };
-      }
-
       // Excluir os resultados relacionados ao checklist
       await storage.deleteChecklistResults(id);
 
@@ -678,22 +659,9 @@ app.get("/api/checklists/:id", async (req, res) => {
       checklistData.status = hasIssues ? 'failed' : 'complete';
 
       // Remover resultados antigos
-      if (typeof storage.deleteChecklistResults !== 'function') {
-        storage.deleteChecklistResults = async (checklistId) => {
-          console.log(`Excluindo resultados antigos do checklist ${checklistId}`);
-          return true;
-        };
-      }
       await storage.deleteChecklistResults(id);
 
       // Atualizar o checklist principal
-      if (typeof storage.updateVehicleChecklist !== 'function') {
-        storage.updateVehicleChecklist = async (checklistId, data) => {
-          console.log(`Atualizando dados do checklist ${checklistId}`, data);
-          return { id: checklistId, ...data };
-        };
-      }
-
       const updatedChecklist = await storage.updateVehicleChecklist(id, {
         vehicleId: checklistData.vehicleId,
         driverId: checklistData.driverId,
