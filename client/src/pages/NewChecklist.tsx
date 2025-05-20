@@ -481,6 +481,101 @@ export default function NewChecklist() {
     );
   }
 
+  const [isSaving, setIsSaving] = useState(false);
+  const navigate = useLocation()[1];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Previne múltiplos cliques
+    if (isSaving) return;
+
+    setIsSaving(true);
+
+    try {
+      // Verificar se todos os campos obrigatórios estão preenchidos
+      if (!form.getValues("vehicleId") || !form.getValues("driverId") || !form.getValues("templateId")) {
+        toast({
+          title: "Dados incompletos",
+          description: "Por favor, preencha todos os campos obrigatórios.",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+        return;
+      }
+
+      // Preparar o FormData para envio
+      const formData = new FormData();
+      const resultsToSend = Object.entries(results).map(([itemId, result]) => {
+        return {
+          itemId: parseInt(itemId),
+          status: result.status || "ok",
+          observation: result.observation,
+          photoUrl: result.photoUrl,
+        };
+      });
+
+      const checklistData = {
+        vehicleId: parseInt(form.getValues("vehicleId")),
+        driverId: parseInt(form.getValues("driverId")),
+        templateId: parseInt(form.getValues("templateId")),
+        odometer: parseInt(form.getValues("odometer")),
+        observations: form.getValues("observations") || null,
+        date: editMode && existingChecklist?.date ? new Date(existingChecklist.date) : new Date(),
+        status: "pending",
+        results: resultsToSend,
+      };
+
+      formData.append("data", JSON.stringify(checklistData));
+
+      // Determinar URL com base em modo de edição
+      const url = editMode
+        ? `/api/checklists/${checklistId}`
+        : "/api/checklists";
+
+      // Configurar método com base em modo de edição
+      const method = editMode ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
+        throw new Error(errorData.message || `Erro ao ${editMode ? "atualizar" : "criar"} checklist`);
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: editMode ? "Checklist atualizado" : "Checklist criado",
+        description: editMode
+          ? "O checklist foi atualizado com sucesso."
+          : "O checklist foi criado com sucesso.",
+      });
+
+      // Redirecionar para a página de detalhes do checklist após um breve delay
+      // para permitir que o toast seja exibido
+      setTimeout(() => {
+        setIsSaving(false); // Garantir que o estado é resetado antes da navegação
+        setLocation(`/checklists/${editMode ? checklistId : result.id}`);
+      }, 500);
+
+      return; // Importante: impede a execução do setIsSaving(false) no finally
+    } catch (error) {
+      console.error("Erro ao salvar checklist:", error);
+      toast({
+        title: "Erro",
+        description: `Ocorreu um erro ao ${
+          editMode ? "atualizar" : "criar"
+        } o checklist: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between">
