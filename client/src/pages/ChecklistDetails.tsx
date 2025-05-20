@@ -413,7 +413,7 @@ export default function ChecklistDetails() {
         </CardContent>
       </Card>
       
-      <div className="flex justify-end">
+      <div className="flex justify-between">
         <Button 
           variant="outline" 
           onClick={handleBack}
@@ -422,6 +422,40 @@ export default function ChecklistDetails() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar para Checklists
         </Button>
+        
+        <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            className="border-amber-600 text-amber-600 hover:bg-amber-50"
+            onClick={() => {
+              // Aqui adicionaríamos a lógica para editar
+              toast({
+                title: "Edição",
+                description: "Funcionalidade de edição será implementada em breve.",
+              });
+            }}
+          >
+            Editar
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="border-red-600 text-red-600 hover:bg-red-50"
+            onClick={() => {
+              const confirm = window.confirm("Tem certeza que deseja excluir este checklist?");
+              
+              if (confirm) {
+                // Lógica para excluir o checklist
+                toast({
+                  title: "Exclusão",
+                  description: "Funcionalidade de exclusão será implementada em breve.",
+                });
+              }
+            }}
+          >
+            Excluir
+          </Button>
+        </div>
       </div>
     </div>
   );
