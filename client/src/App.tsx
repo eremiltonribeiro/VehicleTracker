@@ -166,9 +166,9 @@ function Router() {
             <PrivateRoute path="/cadastros" component={CentralDeCadastros} permission="settings" />
             <PrivateRoute path="/configuracoes/app" component={AppConfig} permission="settings" />
             <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
-            <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
             <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
             <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
+            <PrivateRoute path="/checklists" component={Checklists} permission="checklists" />
             <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
             <Route component={NotFound} />
           </Switch>
