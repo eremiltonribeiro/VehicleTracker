@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 export function HistoryView() {
-  // Filter state
+  // Estado para filtros
   const [filters, setFilters] = useState({
     type: "all",
     vehicleId: "all",
@@ -68,26 +68,26 @@ export function HistoryView() {
     endDate: undefined as Date | undefined,
   });
 
-  // Detail view state
+  // Estado para visualização de detalhes
   const [selectedRegistration, setSelectedRegistration] = useState<any>(null);
-
-  // Photo view state
+  
+  // Estado para visualização de foto
   const [photoViewOpen, setPhotoViewOpen] = useState(false);
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
-
-  // Delete confirmation dialog state
+  
+  // Estado para diálogo de confirmação de exclusão
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [registrationToDelete, setRegistrationToDelete] = useState<number | null>(null);
 
-  // Toast hook
+  // Hook para toast
   const { toast } = useToast();
-
-  // Location hook for navigation
-  const [, setLocation] = useLocation();
-
-  // Query client for refetching data
-  const queryClient = useQueryClient();
   
+  // Hook para navegação
+  const [, setLocation] = useLocation();
+  
+  // Query client para atualização de dados
+  const queryClient = useQueryClient();
+
   // Query para buscar registros com filtros
   const { data: registrations = [], isLoading, refetch } = useQuery({
     queryKey: [
@@ -125,12 +125,11 @@ export function HistoryView() {
         return res.json();
       } catch (error) {
         console.error("Erro ao buscar registros:", error);
-        // Retornar array vazio em caso de erro
         return [];
       }
     },
   });
-  
+
   // Listener para atualização automática após sincronização
   useEffect(() => {
     function handleDataSync() {
@@ -145,39 +144,12 @@ export function HistoryView() {
     };
   }, [queryClient, refetch]);
 
-  // Fetch vehicles for filter
-
-      let url = "/api/registrations";
-      const params = new URLSearchParams();
-
-      if (type && type !== "all") params.append("type", type as string);
-      if (vehicleId && vehicleId !== "all") params.append("vehicleId", vehicleId as string);
-      if (startDate) params.append("startDate", (startDate as Date).toISOString());
-      if (endDate) params.append("endDate", (endDate as Date).toISOString());
-
-      const queryString = params.toString();
-      if (queryString) {
-        url += `?${queryString}`;
-      }
-
-      const res = await fetch(url, {
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch registrations");
-      }
-
-      return res.json();
-    },
-  });
-
-  // Fetch vehicles for filter
+  // Query para buscar veículos para filtro
   const { data: vehicles = [] } = useQuery({
     queryKey: ["/api/vehicles"],
   });
 
-  // Reset filters handler
+  // Handler para resetar filtros
   const resetFilters = () => {
     setFilters({
       type: "all",
@@ -187,29 +159,29 @@ export function HistoryView() {
     });
   };
 
-  // Open detail view
+  // Abrir visualização de detalhes
   const openDetailView = (registration: any) => {
     setSelectedRegistration(registration);
   };
 
-  // Open photo view
+  // Abrir visualização de foto
   const openPhotoView = (photoUrl: string) => {
     setCurrentPhotoUrl(photoUrl);
     setPhotoViewOpen(true);
   };
 
-  // Edit registration
+  // Editar registro
   const handleEditRegistration = (id: number) => {
     setLocation(`/registros/edit/${id}`);
   };
 
-  // Open delete confirmation
+  // Abrir confirmação de exclusão
   const openDeleteConfirmation = (id: number) => {
     setRegistrationToDelete(id);
     setDeleteDialogOpen(true);
   };
 
-  // Delete registration
+  // Excluir registro
   const handleDeleteRegistration = async () => {
     if (!registrationToDelete) return;
 
@@ -224,7 +196,7 @@ export function HistoryView() {
         
         // Remover dos dados locais
         const currentData = await offlineStorage.getOfflineDataByType("registrations") || [];
-        const updatedData = currentData.filter(r => r.id !== registrationToDelete);
+        const updatedData = currentData.filter((r: any) => r.id !== registrationToDelete);
         await offlineStorage.saveOfflineData("registrations", updatedData);
         
         toast({
@@ -233,7 +205,7 @@ export function HistoryView() {
         });
         
         // Refresh data
-        queryClient.invalidateQueries(["/api/registrations"]);
+        queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
         
         // Close dialog
         setDeleteDialogOpen(false);
@@ -267,7 +239,7 @@ export function HistoryView() {
       });
 
       // Refresh data
-      queryClient.invalidateQueries(["/api/registrations"]);
+      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
 
       // Close dialog
       setDeleteDialogOpen(false);
@@ -289,7 +261,7 @@ export function HistoryView() {
           });
           
           // Refresh data
-          queryClient.invalidateQueries(["/api/registrations"]);
+          queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
           
           // Close dialog
           setDeleteDialogOpen(false);
@@ -313,7 +285,7 @@ export function HistoryView() {
     }
   };
 
-  // Download photo
+  // Download da foto
   const handleDownloadPhoto = (photoUrl: string, registrationType: string) => {
     const link = document.createElement('a');
     link.href = photoUrl;
@@ -323,7 +295,7 @@ export function HistoryView() {
     document.body.removeChild(link);
   };
 
-  // Pagination
+  // Paginação
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -351,11 +323,11 @@ export function HistoryView() {
   return (
     <Card className="w-full">
       <CardContent className="space-y-6 pt-6">
-        {/* Conteúdo principal sem o título duplicado */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-semibold text-blue-900">Histórico de Registros</h2>
           </div>
+          
           <h3 className="text-lg font-medium text-blue-800">Filtros</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -474,10 +446,10 @@ export function HistoryView() {
           </div>
         </div>
 
-        {/* History Items */}
+        {/* Items do histórico */}
         <div className="space-y-4">
           {isLoading ? (
-            // Skeleton loading state
+            // Estado de carregamento
             Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="border border-gray-200 rounded-lg p-4">
                 <div className="flex items-start justify-between">
@@ -506,436 +478,404 @@ export function HistoryView() {
               <p className="text-gray-500">Nenhum registro encontrado.</p>
             </div>
           ) : (
-            paginatedRegistrations.map((registration: any) => (
-              <div 
-                key={registration.id} 
-                className={`border ${registration.offlinePending ? 'border-orange-300 border-dashed' : 'border-gray-200'} rounded-lg p-4 ${
-                  registration.offlinePending 
-                    ? "bg-orange-50"
-                    : registration.type === "fuel" 
-                    ? "bg-amber-50" 
-                    : registration.type === "maintenance"
-                    ? "bg-green-50"
-                    : "bg-blue-50"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center">
-                    <div className={`rounded-full ${getRegistrationTypeColor(registration.type).bg} p-2 text-white mr-3`}>
-                      {registration.type === "fuel" ? (
-                        <Fuel className="h-5 w-5" />
-                      ) : registration.type === "maintenance" ? (
-                        <Wrench className="h-5 w-5" />
-                      ) : (
-                        <MapPin className="h-5 w-5" />
-                      )}
+            <>
+              {paginatedRegistrations.map((registration: any) => (
+                <div 
+                  key={registration.id} 
+                  className={`border ${registration.offlinePending ? 'border-orange-300 border-dashed' : 'border-gray-200'} rounded-lg p-4 hover:border-blue-400 transition-colors`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <div className={`p-2 rounded-full ${
+                        registration.type === 'fuel' ? 'bg-green-100 text-green-700' :
+                        registration.type === 'maintenance' ? 'bg-red-100 text-red-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {registration.type === 'fuel' && <Fuel className="h-6 w-6" />}
+                        {registration.type === 'maintenance' && <Wrench className="h-6 w-6" />}
+                        {registration.type === 'trip' && <Route className="h-6 w-6" />}
+                      </div>
+                      <div className="ml-3">
+                        <h4 className="font-medium">
+                          {getRegistrationTypeText(registration.type)}
+                          {registration.offlinePending && (
+                            <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full">
+                              Pendente
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-sm text-gray-600">
+                          {registration.vehicleName || "Veículo não especificado"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">
-                        {getRegistrationTypeText(registration.type)}
-                      </h4>
-                      <p className="text-gray-600 text-sm">
-                        {registration.vehicle?.name} - {registration.vehicle?.plate}
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {registration.type === 'fuel' && formatCurrency(registration.fuelCost)}
+                        {registration.type === 'maintenance' && formatCurrency(registration.maintenanceCost)}
+                        {registration.type === 'trip' && `${registration.tripDistance || 0} km`}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {formatDate(registration.date)}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    {registration.offlinePending && (
-                      <span className="inline-block mb-1 px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 font-semibold">
-                        Offline / Pendente
-                      </span>
+                  
+                  <div className="mt-4 flex flex-wrap justify-between items-center text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <User className="h-3.5 w-3.5 mr-1" />
+                      <span>{registration.driverName || "Motorista não especificado"}</span>
+                    </div>
+                    
+                    {registration.type === 'fuel' && (
+                      <div className="flex items-center">
+                        <MapPin className="h-3.5 w-3.5 mr-1" />
+                        <span>{registration.fuelStationName || "Posto não especificado"}</span>
+                      </div>
                     )}
-                    {registration.type === "fuel" && (
-                      <>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(registration.fuelCost)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {registration.liters}L - {registration.fuelType?.name}
-                        </p>
-                      </>
+                    
+                    {registration.type === 'maintenance' && (
+                      <div className="flex items-center">
+                        <Wrench className="h-3.5 w-3.5 mr-1" />
+                        <span>{registration.maintenanceTypeName || "Tipo não especificado"}</span>
+                      </div>
                     )}
-                    {registration.type === "maintenance" && (
-                      <>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatCurrency(registration.maintenanceCost)}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {registration.maintenanceType?.name}
-                        </p>
-                      </>
+                    
+                    {registration.type === 'trip' && (
+                      <div className="flex items-center">
+                        <MapPin className="h-3.5 w-3.5 mr-1" />
+                        <span>{`${registration.tripOrigin || "?"} → ${registration.tripDestination || "?"}`}</span>
+                      </div>
                     )}
-                    {registration.type === "trip" && (
-                      <>
-                        <p className="text-sm font-medium text-gray-900">
-                          {registration.destination}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {registration.reason}
-                        </p>
-                      </>
-                    )}
+                    
+                    <div className="flex items-center mt-2 md:mt-0">
+                      <Calendar className="h-3.5 w-3.5 mr-1" />
+                      {registration.odometer && (
+                        <span>Hodômetro: {registration.odometer} km</span>
+                      )}
+                    </div>
+                    
+                    <div className="flex space-x-1 mt-2 md:mt-0">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        className="h-8 w-8 p-0 rounded-full"
+                        title="Ver detalhes"
+                        onClick={() => openDetailView(registration)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      
+                      {!registration.offlinePending && (
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          className="h-8 w-8 p-0 rounded-full"
+                          title="Editar"
+                          onClick={() => handleEditRegistration(registration.id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        className="h-8 w-8 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Excluir"
+                        onClick={() => openDeleteConfirmation(registration.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-3 flex justify-between items-center text-sm text-gray-600">
-                  <div className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-1" />
-                    {formatDate(registration.date)}
-                  </div>
-                  <div className="flex items-center">
-                    <Route className="h-4 w-4 mr-1" />
-                    {registration.type === "trip" 
-                      ? `${registration.initialKm} km - ${registration.finalKm} km`
-                      : `${registration.initialKm} km`}
-                  </div>
-                  <div className="flex items-center">
-                    <User className="h-4 w-4 mr-1" />
-                    {registration.driver?.name}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-1">
-                    {/* Detail button */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-blue-700"
-                          onClick={() => openDetailView(registration)}
-                          title="Ver detalhes"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-2">
-                            {registration.type === "fuel" ? (
-                              <Fuel className="h-5 w-5 text-amber-500" />
-                            ) : registration.type === "maintenance" ? (
-                              <Wrench className="h-5 w-5 text-green-600" />
-                            ) : (
-                              <MapPin className="h-5 w-5 text-blue-600" />
-                            )}
-                            {getRegistrationTypeText(registration.type)}
-                          </DialogTitle>
-                          <DialogDescription>
-                            {formatDate(registration.date)}
-                          </DialogDescription>
-                        </DialogHeader>
-
-                        <div className="space-y-4 mt-2">
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-500">Veículo</h4>
-                              <p>{registration.vehicle?.name} - {registration.vehicle?.plate}</p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-500">Motorista</h4>
-                              <p>{registration.driver?.name}</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-500">KM Inicial</h4>
-                              <p>{registration.initialKm} km</p>
-                            </div>
-                            {registration.finalKm && (
-                              <div>
-                                <h4 className="text-sm font-medium text-gray-500">KM Final</h4>
-                                <p>{registration.finalKm} km</p>
-                              </div>
-                            )}
-                          </div>
-
-                          {registration.type === "fuel" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Posto</h4>
-                                  <p>{registration.fuelStation?.name}</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Combustível</h4>
-                                  <p>{registration.fuelType?.name}</p>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Litros</h4>
-                                  <p>{registration.liters} L</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Valor</h4>
-                                  <p>{formatCurrency(registration.fuelCost)}</p>
-                                </div>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Tanque Completo</h4>
-                                  <p>{registration.fullTank ? "Sim" : "Não"}</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">ARLA</h4>
-                                  <p>{registration.arla ? "Sim" : "Não"}</p>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {registration.type === "maintenance" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Tipo</h4>
-                                  <p>{registration.maintenanceType?.name}</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Valor</h4>
-                                  <p>{formatCurrency(registration.maintenanceCost)}</p>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {registration.type === "trip" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Destino</h4>
-                                  <p>{registration.destination}</p>
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-500">Motivo</h4>
-                                  <p>{registration.reason}</p>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {registration.observations && (
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-500">Observações</h4>
-                              <p className="text-sm text-gray-700">{registration.observations}</p>
-                            </div>
-                          )}
-
-                          {registration.photoUrl && (
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-500 mb-2">Comprovante</h4>
-                              <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 group">
-                                <img 
-                                  src={registration.photoUrl} 
-                                  alt="Comprovante" 
-                                  className="absolute inset-0 w-full h-full object-contain cursor-pointer"
-                                  onClick={() => {
-                                    if (registration.photoUrl) {
-                                      openPhotoView(registration.photoUrl);
-                                    }
-                                  }}
-                                  onError={async (e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.onerror = null;
-                                    
-                                    // Tenta recuperar de diferentes formas
-                                    if (registration.offlinePending && registration.photoUrl) {
-                                      try {
-                                        // Tenta recuperar a imagem do IndexedDB como blob/buffer
-                                        const photoData = await offlineStorage.getOfflinePhotoData(registration.id);
-                                        if (photoData) {
-                                          // Converter ArrayBuffer para Blob e depois para data URL
-                                          const blob = new Blob([photoData]);
-                                          const dataUrl = URL.createObjectURL(blob);
-                                          target.src = dataUrl;
-                                          return;
-                                        }
-                                      } catch (err) {
-                                        console.error("Erro ao recuperar foto offline:", err);
-                                      }
-                                    }
-                                    
-                                    // Tenta adicionar barra no início se não houver
-                                    if (registration.photoUrl && !registration.photoUrl.startsWith('/') && 
-                                        !registration.photoUrl.startsWith('data:') && 
-                                        !registration.photoUrl.startsWith('blob:')) {
-                                      target.src = '/' + registration.photoUrl;
-                                      return;
-                                    }
-                                    
-                                    // Falhou em todas as tentativas
-                                    target.src = ""; // Limpa a src
-                                    const parentElement = target.parentElement;
-                                    if (parentElement) {
-                                      parentElement.innerHTML = '<div class="absolute inset-0 flex items-center justify-center text-gray-400">Imagem não disponível ou corrompida</div>';
-                                    }
-                                  }}
-                                />
-                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      size="icon" 
-                                      variant="secondary"
-                                      className="h-9 w-9"
-                                      onClick={() => openPhotoView(registration.photoUrl)}
-                                      title="Ampliar"
-                                    >
-                                      <Maximize2 className="h-5 w-5" />
-                                    </Button>
-                                    <Button 
-                                      size="icon" 
-                                      variant="secondary"
-                                      className="h-9 w-9"
-                                      onClick={() => handleDownloadPhoto(registration.photoUrl, registration.type)}
-                                      title="Baixar"
-                                    >
-                                      <Download className="h-5 w-5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <DialogFooter className="mt-4 flex justify-between">
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              onClick={() => handleEditRegistration(registration.id)}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Editar
-                            </Button>
-                            <Button 
-                              variant="destructive" 
-                              onClick={() => openDeleteConfirmation(registration.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </Button>
-                          </div>
-                          <DialogClose asChild>
-                            <Button variant="secondary">Fechar</Button>
-                          </DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Edit button */}
+              ))}
+              
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-4 gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  {Array.from({ length: totalPages }).map((_, index) => (
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-amber-600"
-                      onClick={() => handleEditRegistration(registration.id)}
-                      title={registration.offlinePending ? "Não é possível editar registros pendentes" : "Editar registro"}
-                      disabled={registration.offlinePending}
+                      key={index}
+                      variant={currentPage === index + 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(index + 1)}
+                      className={`w-8 ${currentPage === index + 1 ? 'bg-blue-700 text-white' : ''}`}
                     >
-                      <Edit className="h-4 w-4" />
+                      {index + 1}
                     </Button>
-
-                    {/* Delete button */}
+                  ))}
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </CardContent>
+      
+      {/* Diálogo de detalhes do registro */}
+      {selectedRegistration && (
+        <Dialog open={!!selectedRegistration} onOpenChange={(open) => !open && setSelectedRegistration(null)}>
+          <DialogContent className="max-w-md mx-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <div className={`p-1 rounded-full mr-2 ${
+                  selectedRegistration.type === 'fuel' ? 'bg-green-100 text-green-700' :
+                  selectedRegistration.type === 'maintenance' ? 'bg-red-100 text-red-700' :
+                  'bg-blue-100 text-blue-700'
+                }`}>
+                  {selectedRegistration.type === 'fuel' && <Fuel className="h-5 w-5" />}
+                  {selectedRegistration.type === 'maintenance' && <Wrench className="h-5 w-5" />}
+                  {selectedRegistration.type === 'trip' && <Route className="h-5 w-5" />}
+                </div>
+                <span>
+                  {getRegistrationTypeText(selectedRegistration.type)}
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                {formatDate(selectedRegistration.date)}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <Label className="text-gray-500">Veículo</Label>
+                <p className="font-medium">{selectedRegistration.vehicleName || "Não especificado"}</p>
+              </div>
+              
+              <div>
+                <Label className="text-gray-500">Motorista</Label>
+                <p className="font-medium">{selectedRegistration.driverName || "Não especificado"}</p>
+              </div>
+              
+              <div>
+                <Label className="text-gray-500">Hodômetro</Label>
+                <p className="font-medium">{selectedRegistration.odometer ? `${selectedRegistration.odometer} km` : "Não especificado"}</p>
+              </div>
+              
+              {selectedRegistration.type === 'fuel' && (
+                <>
+                  <div>
+                    <Label className="text-gray-500">Posto</Label>
+                    <p className="font-medium">{selectedRegistration.fuelStationName || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Combustível</Label>
+                    <p className="font-medium">{selectedRegistration.fuelTypeName || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Quantidade</Label>
+                    <p className="font-medium">{selectedRegistration.fuelAmount ? `${selectedRegistration.fuelAmount} L` : "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Valor por litro</Label>
+                    <p className="font-medium">{selectedRegistration.fuelPricePerLiter ? formatCurrency(selectedRegistration.fuelPricePerLiter) : "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Valor total</Label>
+                    <p className="font-medium text-green-700">{formatCurrency(selectedRegistration.fuelCost)}</p>
+                  </div>
+                </>
+              )}
+              
+              {selectedRegistration.type === 'maintenance' && (
+                <>
+                  <div>
+                    <Label className="text-gray-500">Tipo de manutenção</Label>
+                    <p className="font-medium">{selectedRegistration.maintenanceTypeName || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Local</Label>
+                    <p className="font-medium">{selectedRegistration.maintenanceLocation || "Não especificado"}</p>
+                  </div>
+                  
+                  <div className="col-span-2">
+                    <Label className="text-gray-500">Descrição</Label>
+                    <p className="font-medium">{selectedRegistration.maintenanceDescription || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Valor total</Label>
+                    <p className="font-medium text-red-700">{formatCurrency(selectedRegistration.maintenanceCost)}</p>
+                  </div>
+                </>
+              )}
+              
+              {selectedRegistration.type === 'trip' && (
+                <>
+                  <div>
+                    <Label className="text-gray-500">Origem</Label>
+                    <p className="font-medium">{selectedRegistration.tripOrigin || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Destino</Label>
+                    <p className="font-medium">{selectedRegistration.tripDestination || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Distância</Label>
+                    <p className="font-medium">{selectedRegistration.tripDistance ? `${selectedRegistration.tripDistance} km` : "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Finalidade</Label>
+                    <p className="font-medium">{selectedRegistration.tripPurpose || "Não especificado"}</p>
+                  </div>
+                </>
+              )}
+              
+              {selectedRegistration.notes && (
+                <div className="col-span-2">
+                  <Label className="text-gray-500">Observações</Label>
+                  <p className="font-medium">{selectedRegistration.notes}</p>
+                </div>
+              )}
+            </div>
+            
+            {/* Imagem do comprovante */}
+            {selectedRegistration.receiptPhoto && (
+              <div className="mt-3">
+                <Label className="text-gray-500 mb-2 block">Comprovante</Label>
+                <div className="relative border rounded-md p-2 bg-gray-50">
+                  <div className="relative h-48 w-full">
+                    <img
+                      src={selectedRegistration.receiptPhoto}
+                      alt="Comprovante"
+                      className="object-contain w-full h-full"
+                    />
+                  </div>
+                  <div className="absolute top-3 right-3 flex space-x-1">
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-red-600"
-                      onClick={() => openDeleteConfirmation(registration.id)}
-                      title="Excluir registro"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 w-7 p-0 rounded-full"
+                      onClick={() => openPhotoView(selectedRegistration.receiptPhoto)}
+                      title="Ver em tamanho real"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 w-7 p-0 rounded-full"
+                      onClick={() => handleDownloadPhoto(selectedRegistration.receiptPhoto, selectedRegistration.type)}
+                      title="Baixar"
+                    >
+                      <Download className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
               </div>
-            ))
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center space-x-2 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-
-              <span className="text-sm text-gray-600">
-                Página {currentPage} de {totalPages}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardContent>
-
-      {/* Visualizador de imagem em tela cheia */}
-      <Dialog open={photoViewOpen} onOpenChange={setPhotoViewOpen}>
-        <DialogContent className="max-w-5xl h-[90vh] p-0 overflow-hidden">
-          <div className="relative w-full h-full flex items-center justify-center bg-black bg-opacity-90">
-            {currentPhotoUrl && (
-              <img 
-                src={currentPhotoUrl} 
-                alt="Visualização do comprovante" 
-                className="max-w-full max-h-full object-contain"
-              />
             )}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="absolute top-2 right-2 text-white hover:bg-white hover:bg-opacity-20"
+            
+            <DialogFooter className="mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedRegistration(null)}
+              >
+                Fechar
+              </Button>
+              
+              {!selectedRegistration.offlinePending && (
+                <Button
+                  onClick={() => {
+                    setSelectedRegistration(null);
+                    handleEditRegistration(selectedRegistration.id);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar
+                </Button>
+              )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      
+      {/* Diálogo de visualização de foto */}
+      <Dialog open={photoViewOpen} onOpenChange={setPhotoViewOpen}>
+        <DialogContent className="max-w-3xl mx-auto p-2">
+          <div className="absolute right-4 top-4 flex space-x-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 rounded-full"
+              onClick={() => handleDownloadPhoto(currentPhotoUrl || '', 'receipt')}
+              title="Baixar"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 rounded-full"
               onClick={() => setPhotoViewOpen(false)}
               title="Fechar"
             >
-              <X className="h-6 w-6" />
+              <X className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="absolute bottom-4 right-4 text-white hover:bg-white hover:bg-opacity-20"
-              onClick={() => currentPhotoUrl && handleDownloadPhoto(currentPhotoUrl, "registro")}
-              title="Baixar imagem"
-            >
-              <Download className="h-6 w-6" />
-            </Button>
+          </div>
+          <div className="flex items-center justify-center min-h-[60vh]">
+            {currentPhotoUrl && (
+              <img
+                src={currentPhotoUrl}
+                alt="Comprovante em tamanho real"
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Confirmação de exclusão */}
+      
+      {/* Diálogo de confirmação de exclusão */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar exclusão</DialogTitle>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 flex-col sm:flex-row sm:justify-between gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setDeleteDialogOpen(false)}
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setRegistrationToDelete(null);
+              }}
             >
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteRegistration}
             >
-              Confirmar exclusão
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -943,5 +883,3 @@ export function HistoryView() {
     </Card>
   );
 }
-
-export default HistoryView;
