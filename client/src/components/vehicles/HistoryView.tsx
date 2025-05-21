@@ -575,7 +575,7 @@ export function HistoryView() {
                       <>
                         <div className="flex items-center">
                           <MapPin className="h-3.5 w-3.5 mr-1" />
-                          <span>{`${registration.tripOrigin || "?"} → ${registration.tripDestination || "?"}`}</span>
+                          <span>{`${registration.origin || "?"} → ${registration.destination || "?"}`}</span>
                         </div>
                         <div className="flex items-center mt-1">
                           <TrendingUp className="h-3.5 w-3.5 mr-1 text-green-600" />
@@ -787,22 +787,27 @@ export function HistoryView() {
                 <>
                   <div>
                     <Label className="text-gray-500">Origem</Label>
-                    <p className="font-medium">{selectedRegistration.tripOrigin || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.origin || "Não especificado"}</p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Destino</Label>
-                    <p className="font-medium">{selectedRegistration.tripDestination || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.destination || "Não especificado"}</p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Distância</Label>
-                    <p className="font-medium">{selectedRegistration.tripDistance ? `${selectedRegistration.tripDistance} km` : "Não especificado"}</p>
+                    <p className="font-medium">
+                      {selectedRegistration.tripDistance ? `${selectedRegistration.tripDistance} km` : 
+                      (selectedRegistration.finalKm && selectedRegistration.initialKm) ? 
+                      `${selectedRegistration.finalKm - selectedRegistration.initialKm} km` : 
+                      "Não especificado"}
+                    </p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Finalidade</Label>
-                    <p className="font-medium">{selectedRegistration.tripPurpose || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.reason || "Não especificado"}</p>
                   </div>
                 </>
               )}
