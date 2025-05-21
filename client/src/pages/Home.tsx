@@ -20,11 +20,20 @@ export default function Home({ defaultView = "dashboard", editId, editType, mode
   const [location, setLocation] = useLocation();
   const params = location.split("/");
   const view = params[params.length - 1];
-  // Se a rota for apenas "/registros", definir a visualização como padrão
-  const activeView = view === "registros" ? defaultView : 
-                     view === "history" ? "history" : 
-                     view === "dashboard" ? "dashboard" : 
-                     defaultView;
+  
+  // Lógica corrigida para determinar a visualização ativa
+  let activeView;
+  
+  if (location === "/registros") {
+    // Se a URL for exatamente /registros, mostra o formulário de registro (não dashboard)
+    activeView = "form";
+  } else if (location === "/registros/history") {
+    activeView = "history";
+  } else if (location === "/registros/dashboard") {
+    activeView = "dashboard";
+  } else {
+    activeView = defaultView;
+  }
 
   // Monitor network status for offline functionality
   useEffect(() => {
@@ -91,6 +100,7 @@ export default function Home({ defaultView = "dashboard", editId, editType, mode
   // Determine which view to show
   const showHistory = activeView === "history";
   const showDashboard = activeView === "dashboard";
+  const showForm = activeView === "form";
 
   // Fetch data, with offline capability
   const { data: vehicles = [] } = useQuery({
@@ -137,6 +147,7 @@ export default function Home({ defaultView = "dashboard", editId, editType, mode
         ) : showDashboard ? (
           <DashboardWithFilters />
         ) : (
+          // Por padrão, exibe o formulário de registro
           <RegistrationForm editId={editId} editType={editType} mode={mode} />
         )}
       </main>
