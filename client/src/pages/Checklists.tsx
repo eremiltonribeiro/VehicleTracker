@@ -83,7 +83,8 @@ export default function Checklists() {
   
   const handleNewChecklist = () => {
     console.log("Navegando para /checklists/new");
-    setLocation("/checklists/new");
+    // Usar redirecionamento direto para evitar problemas de navegação
+    window.location.href = "/checklists/new";
   };
   
   const handleViewChecklist = (id: number) => {

@@ -121,67 +121,65 @@ export default function NewChecklist() {
 
   // Carregar dados iniciais
 
-  // Função para carregar um checklist existente
-  const loadExistingChecklist = async (id: number) => {
-    try {
-      const response = await fetch(`/api/checklists/${id}`);
-
-      if (!response.ok) {
-        throw new Error("Erro ao carregar dados do checklist");
-      }
-
-      const checklistData = await response.json();
-      console.log("Checklist carregado para edição:", checklistData);
-
-      // Armazenar os dados completos do checklist
-      setExistingChecklist(checklistData);
-
-      // Preencher o formulário com os dados existentes
-      form.setValue("vehicleId", checklistData.vehicleId.toString());
-      form.setValue("driverId", checklistData.driverId.toString());
-      form.setValue("templateId", checklistData.templateId.toString());
-      form.setValue("odometer", checklistData.odometer ? checklistData.odometer.toString() : "0");
-      form.setValue("observations", checklistData.observations || "");
-
-      // Carregar os itens do template primeiro
-      await loadTemplateItems(checklistData.templateId);
-
-      // Carregar os resultados do checklist
-      if (checklistData.results && checklistData.results.length > 0) {
-        const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
-
-        checklistData.results.forEach((result: any) => {
-          resultsMap[result.itemId] = {
-            status: result.status,
-            observation: result.observation,
-            photoUrl: result.photoUrl
-          };
-        });
-
-        setResults(resultsMap);
-      }
-
-      // Depois de carregar os dados, podemos ir direto para os itens
-      setBaseFormComplete(true);
-      setSelectedTab("items");
-
-    } catch (error) {
-      console.error("Erro ao carregar checklist para edição:", error);
-      toast({
-        title: "Erro ao carregar",
-        description: "Não foi possível carregar os dados do checklist para edição",
-        variant: "destructive"
-      });
-    }
-  };
-
   useEffect(() => {
-    loadInitialData();
+    const loadInitialDataAndChecklist = async () => {
+      await loadInitialData();
+      
+      // Se estiver no modo de edição, carregar dados do checklist existente
+      if (editMode && checklistId) {
+        try {
+          const response = await fetch(`/api/checklists/edit/${checklistId}`);
 
-    // Se estiver no modo de edição, carregar dados do checklist existente
-    if (editMode && checklistId) {
-      loadExistingChecklist(checklistId);
-    }
+          if (!response.ok) {
+            throw new Error("Erro ao carregar dados do checklist");
+          }
+
+          const checklistData = await response.json();
+          console.log("Checklist carregado para edição:", checklistData);
+
+          // Armazenar os dados completos do checklist
+          setExistingChecklist(checklistData);
+
+          // Preencher o formulário com os dados existentes
+          form.setValue("vehicleId", checklistData.vehicleId.toString());
+          form.setValue("driverId", checklistData.driverId.toString());
+          form.setValue("templateId", checklistData.templateId.toString());
+          form.setValue("odometer", checklistData.odometer ? checklistData.odometer.toString() : "0");
+          form.setValue("observations", checklistData.observations || "");
+
+          // Carregar os itens do template primeiro
+          await loadTemplateItems(checklistData.templateId);
+
+          // Carregar os resultados do checklist
+          if (checklistData.results && checklistData.results.length > 0) {
+            const resultsMap: { [key: number]: { status: string; observation: string | null; photoUrl: string | null } } = {};
+
+            checklistData.results.forEach((result: any) => {
+              resultsMap[result.itemId] = {
+                status: result.status,
+                observation: result.observation,
+                photoUrl: result.photoUrl
+              };
+            });
+
+            setResults(resultsMap);
+          }
+
+          // Depois de carregar os dados, podemos ir direto para os itens
+          setBaseFormComplete(true);
+          setSelectedTab("items");
+        } catch (error) {
+          console.error("Erro ao carregar checklist para edição:", error);
+          toast({
+            title: "Erro ao carregar",
+            description: "Não foi possível carregar os dados do checklist para edição",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    loadInitialDataAndChecklist();
   }, [editMode, checklistId]);
 
   // Carregar dados quando o template muda
