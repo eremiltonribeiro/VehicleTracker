@@ -128,6 +128,9 @@ class SyncManager {
       this.syncPendingOperations();
     }
     
+    // Cachear a página atual para uso offline
+    this.cacheCurrentPage();
+    
     // Configura a sincronização periódica
     if (this.intervalId === null) {
       this.intervalId = window.setInterval(() => {
@@ -135,6 +138,34 @@ class SyncManager {
           this.syncPendingOperations();
         }
       }, this.syncInterval);
+    }
+    
+    // Adiciona listener para mudanças de rota para cachear novas páginas
+    window.addEventListener('popstate', () => this.cacheCurrentPage());
+    
+    // Para frameworks SPA como React com routing, podemos usar um MutationObserver
+    // para detectar mudanças no DOM que indicam mudança de página
+    const observer = new MutationObserver(() => {
+      this.cacheCurrentPage();
+    });
+    
+    // Observa mudanças no corpo da página
+    observer.observe(document.body, { 
+      childList: true, 
+      subtree: true 
+    });
+  }
+  
+  // Função para cachear a página atual
+  private cacheCurrentPage() {
+    if (this.isOnline && navigator.serviceWorker.controller) {
+      // Envia mensagem para o service worker cachear esta página
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CACHE_PAGE',
+        url: window.location.pathname
+      });
+      
+      console.log(`Solicitando cache da página: ${window.location.pathname}`);
     }
   }
 

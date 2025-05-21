@@ -177,6 +177,7 @@ function Router() {
 
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSync, setPendingSync] = useState(0);
 
   useEffect(() => {
     // Inicializa o gerenciador de sincronização
@@ -187,11 +188,45 @@ function App() {
       setIsOnline(online);
       console.log(`Status da conexão alterado: ${online ? 'online' : 'offline'}`);
     });
+    
+    // Função para verificar operações pendentes
+    const checkPendingOps = async () => {
+      if (window.indexedDB) {
+        try {
+          const db = await window.indexedDB.open('granduvale_offline_db', 1);
+          db.onsuccess = () => {
+            const transaction = db.result.transaction(['pendingOperations'], 'readonly');
+            const store = transaction.objectStore('pendingOperations');
+            const countRequest = store.count();
+            
+            countRequest.onsuccess = () => {
+              setPendingSync(countRequest.result);
+            };
+          };
+        } catch (err) {
+          console.error('Erro ao verificar operações pendentes:', err);
+        }
+      }
+    };
+    
+    // Verificar operações pendentes inicialmente e a cada 30 segundos
+    checkPendingOps();
+    const intervalId = setInterval(checkPendingOps, 30000);
+    
+    // Adicionar listener para mensagens do service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && (event.data.type === 'SYNC_COMPLETED' || event.data.type === 'SYNC_SUCCESS')) {
+          checkPendingOps();
+        }
+      });
+    }
 
-    // Limpa o listener quando o componente é desmontado
+    // Limpa listeners e intervalos quando o componente é desmontado
     return () => {
       unsubscribe();
       syncManager.stop();
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -199,7 +234,19 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        {!isOnline && (
+          <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
+            Você está offline. Os dados serão sincronizados quando a conexão for restabelecida.
+          </div>
+        )}
+        {isOnline && pendingSync > 0 && (
+          <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
+            Sincronizando {pendingSync} operações pendentes...
+          </div>
+        )}
+        <div className={`${(!isOnline || (isOnline && pendingSync > 0)) ? 'pt-10' : ''}`}>
+          <Router />
+        </div>
       </TooltipProvider>
     </QueryClientProvider>
   );

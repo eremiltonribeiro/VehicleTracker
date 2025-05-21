@@ -1,14 +1,25 @@
-// Nome do cache
-const CACHE_NAME = 'gestao-frota-v2';
-const DATA_CACHE_NAME = 'gestao-frota-data-v2';
 
-// Arquivos para pré-cache
+// Nome do cache
+const CACHE_NAME = 'gestao-frota-v3';
+const DATA_CACHE_NAME = 'gestao-frota-data-v3';
+
+// Arquivos para pré-cache (arquivos essenciais)
 const urlsToCache = [
   '/',
   '/index.html',
+  '/offline.html',
   '/manifest.json',
   '/assets/index.css',
   '/assets/index.js'
+];
+
+// Páginas principais que devem ser cacheadas para acesso offline
+const pagesToCache = [
+  '/',
+  '/registros',
+  '/checklists',
+  '/relatorios',
+  '/configuracoes'
 ];
 
 // Instalação do Service Worker
@@ -19,7 +30,27 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Cache aberto com sucesso');
+        // Adiciona todos os arquivos essenciais ao cache
         return cache.addAll(urlsToCache);
+      })
+      .then(() => {
+        // Adiciona todas as páginas principais ao cache
+        return caches.open(CACHE_NAME).then(cache => {
+          return Promise.all(
+            pagesToCache.map(url => {
+              return fetch(url, { credentials: 'same-origin' })
+                .then(response => {
+                  if (!response.ok) {
+                    throw new Error(`Falha ao buscar ${url}: ${response.status}`);
+                  }
+                  return cache.put(url, response);
+                })
+                .catch(error => {
+                  console.error(`Erro ao cachear ${url}:`, error);
+                });
+            })
+          );
+        });
       })
       .catch(error => {
         console.error('Erro ao abrir cache:', error);
@@ -46,8 +77,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Estratégia de cache: Cache First com Network Fallback para arquivos estáticos
-// Network First com Cache Fallback para APIs
+// Estratégia de cache: Network First com Cache Fallback para navegação
+// Cache First para assets estáticos
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
@@ -84,6 +115,36 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
+  // Estratégia para navegação (HTML)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      // Tenta primeiro na rede
+      fetch(event.request)
+        .then(response => {
+          // Se for sucesso, armazena no cache e retorna
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Se falhar, busca no cache
+          return caches.match(event.request)
+            .then(cachedResponse => {
+              // Se estiver no cache, retorna
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              
+              // Se não estiver no cache, retorna a página offline
+              return caches.match('/offline.html');
+            });
+        })
+    );
+    return;
+  }
+  
   // Para recursos estáticos, usar Cache First
   event.respondWith(
     caches.match(event.request)
@@ -112,17 +173,23 @@ self.addEventListener('fetch', (event) => {
           .catch(error => {
             console.error('Fetch falhou:', error);
             
-            // Para navegação, retornar a página offline
-            if (event.request.mode === 'navigate') {
-              return caches.match('/offline.html')
-                .then(response => {
-                  return response || new Response('Você está offline e a página não está disponível.', {
-                    headers: { 'Content-Type': 'text/html' }
-                  });
-                });
+            // Para arquivos CSS ou JS, retorna uma resposta vazia com o tipo correto
+            if (event.request.destination === 'style') {
+              return new Response('', { headers: { 'Content-Type': 'text/css' } });
             }
             
-            // Propagar o erro para outros tipos de solicitação
+            if (event.request.destination === 'script') {
+              return new Response('', { headers: { 'Content-Type': 'text/javascript' } });
+            }
+            
+            // Para imagens, retorna uma imagem padrão ou um SVG vazio
+            if (event.request.destination === 'image') {
+              return new Response(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="14">Imagem não disponível</text></svg>',
+                { headers: { 'Content-Type': 'image/svg+xml' } }
+              );
+            }
+            
             throw error;
           });
       })
@@ -144,6 +211,17 @@ self.addEventListener('message', (event) => {
     event.ports[0].postMessage({
       status: 'success',
       message: 'Registro armazenado para sincronização posterior'
+    });
+  }
+  
+  // Adicionar páginas ao cache manualmente
+  if (event.data && event.data.type === 'CACHE_PAGE') {
+    const pageUrl = event.data.url;
+    caches.open(CACHE_NAME).then(cache => {
+      fetch(pageUrl).then(response => {
+        cache.put(pageUrl, response);
+        console.log(`Página ${pageUrl} adicionada ao cache`);
+      });
     });
   }
 });
@@ -269,116 +347,3 @@ async function getPendingItemsFromClient() {
     setTimeout(() => resolve([]), 3000);
   });
 }
-// Nome do cache
-const CACHE_NAME = 'granduvale-v1';
-
-// Lista de recursos que devem ser cacheados
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/offline.html',
-  '/manifest.json',
-  // Adicione todos os arquivos estáticos importantes
-];
-
-// Instala o service worker
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Cache aberto com sucesso');
-        return cache.addAll(urlsToCache);
-      })
-      .then(() => self.skipWaiting())
-  );
-});
-
-// Ativa o service worker
-self.addEventListener('activate', (event) => {
-  const cacheWhitelist = [CACHE_NAME];
-  
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            // Remove caches antigos
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
-
-// Intercepta requisições
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  
-  // Ignora requisições para a API
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Retorna do cache se disponível
-        if (response) {
-          return response;
-        }
-        
-        // Caso contrário, faz a requisição à rede
-        return fetch(event.request)
-          .then((networkResponse) => {
-            // Se não for uma requisição GET, não vamos cachear
-            if (event.request.method !== 'GET') {
-              return networkResponse;
-            }
-            
-            // Precisamos clonar a resposta para armazenar no cache
-            const responseToCache = networkResponse.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-              
-            return networkResponse;
-          })
-          .catch(() => {
-            // Se falhar, retorna a página offline para navegação
-            if (event.request.mode === 'navigate') {
-              return caches.match('/offline.html');
-            }
-            
-            // Para imagens, pode retornar uma imagem padrão
-            if (event.request.destination === 'image') {
-              return new Response(
-                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="14">Imagem não disponível</text></svg>',
-                {
-                  headers: { 'Content-Type': 'image/svg+xml' }
-                }
-              );
-            }
-            
-            // Para outros recursos, retorna uma resposta vazia
-            return new Response('Recurso não disponível offline.', {
-              headers: { 'Content-Type': 'text/plain' }
-            });
-          });
-      })
-  );
-});
-
-// Escuta mensagens para sincronização
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.action === 'SYNC_NOW') {
-    // Notificar o app para sincronizar
-    self.clients.matchAll().then((clients) => {
-      clients.forEach((client) => {
-        client.postMessage({ action: 'DO_SYNC' });
-      });
-    });
-  }
-});
