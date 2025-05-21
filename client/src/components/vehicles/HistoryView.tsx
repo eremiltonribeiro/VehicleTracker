@@ -30,6 +30,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit,
+  TrendingUp,
   Trash2,
   Eye,
   Download,
