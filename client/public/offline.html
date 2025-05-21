@@ -112,3 +112,75 @@
   </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Granduvale - Modo Offline</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f7f7f7;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      padding: 2rem;
+      text-align: center;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #2563eb;
+      margin-bottom: 1rem;
+    }
+    p {
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .icon {
+      font-size: 48px;
+      margin-bottom: 1rem;
+    }
+    .button {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    .button:hover {
+      background-color: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Você está offline</h1>
+    <p>Não foi possível conectar à internet, mas você ainda pode usar o aplicativo. Suas alterações serão sincronizadas automaticamente quando a conexão for restabelecida.</p>
+    <a class="button" href="/">Voltar ao aplicativo</a>
+  </div>
+  
+  <script>
+    // Verifica periodicamente se a conexão foi restabelecida
+    setInterval(function() {
+      if (navigator.onLine) {
+        window.location.reload();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>

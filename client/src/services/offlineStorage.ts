@@ -1,414 +1,375 @@
-import localforage from 'localforage';
 
-// Configuração do armazenamento offline
-localforage.config({
-  name: 'GranduvaleVehicleManager',
-  storeName: 'vehicle_manager_data'
-});
-
-/**
- * Serviço para gerenciar o armazenamento offline de dados
- * Isso permite que o aplicativo funcione sem conexão com a internet
- */
-export const offlineStorage = {
-  /**
-   * Salva registros de veículos para uso offline
-   */
-  async saveRegistrations(registrations: any[]): Promise<void> {
-    try {
-      await localforage.setItem('registrations', registrations);
-    } catch (error) {
-      console.error('Erro ao salvar registros offline:', error);
-    }
-  },
-
-  /**
-   * Recupera registros de veículos armazenados offline
-   */
-  async getRegistrations(): Promise<any[]> {
-    try {
-      const registrations = await localforage.getItem('registrations');
-      return registrations as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar registros offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Salva um único registro de veículo
-   * Se estiver offline, marca o registro para sincronização futura
-   */
-  async saveRegistration(registration: any): Promise<{success: boolean, offline: boolean, id: number}> {
-    try {
-      const existingRegistrations = await this.getRegistrations();
-      
-      // Gerar um ID temporário para novos registros offline
-      if (!registration.id) {
-        registration.id = Date.now(); // ID temporário baseado em timestamp
-      }
-      
-      // Marcar o registro como offline se não houver conexão
-      const isOffline = !navigator.onLine;
-      if (isOffline) {
-        registration.offlineCreated = true;
-        registration.offlinePending = true;
-        registration.offlineTimestamp = new Date().toISOString();
-      }
-      
-      // Verificar se o registro já existe
-      const existingIndex = existingRegistrations.findIndex(
-        (r) => r.id === registration.id
-      );
-      
-      if (existingIndex >= 0) {
-        // Atualizar registro existente
-        existingRegistrations[existingIndex] = registration;
-      } else {
-        // Adicionar novo registro
-        existingRegistrations.push(registration);
-      }
-      
-      // Salvar todos os registros
-      await this.saveRegistrations(existingRegistrations);
-      
-      // Se tiver offline e service worker estiver disponível, agendar sincronização
-      if (isOffline && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        try {
-          // Comunicar com o Service Worker para registrar sincronização
-          this.notifyServiceWorkerAboutPendingRegistration(registration);
-        } catch (swError) {
-          console.error('Erro ao agendar sincronização com Service Worker:', swError);
-        }
-      }
-      
-      return {
-        success: true,
-        offline: isOffline,
-        id: registration.id
-      };
-    } catch (error) {
-      console.error('Erro ao salvar registro individual:', error);
-      return {
-        success: false,
-        offline: !navigator.onLine,
-        id: registration.id || 0
-      };
-    }
-  },
+// Classe para gerenciar o armazenamento offline usando IndexedDB
+class OfflineStorage {
+  private dbName = 'granduvale_offline_db';
+  private dbVersion = 1;
+  private db: IDBDatabase | null = null;
   
-  /**
-   * Notifica o Service Worker sobre um registro pendente
-   */
-  notifyServiceWorkerAboutPendingRegistration(registration: any): Promise<any> {
+  constructor() {
+    this.initDatabase();
+  }
+  
+  // Inicializa o banco de dados
+  private async initDatabase(): Promise<void> {
+    if (this.db) return;
+    
     return new Promise((resolve, reject) => {
-      // Criar canal de mensagem para comunicação bidirecional
-      const messageChannel = new MessageChannel();
+      const request = indexedDB.open(this.dbName, this.dbVersion);
       
-      // Configurar o handler de mensagem de resposta
-      messageChannel.port1.onmessage = (event) => {
-        if (event.data && event.data.status === 'success') {
-          resolve(event.data);
-        } else {
-          reject(new Error('Falha ao registrar sincronização'));
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        
+        // Armazena operações pendentes
+        if (!db.objectStoreNames.contains('pendingOperations')) {
+          const store = db.createObjectStore('pendingOperations', { keyPath: 'id' });
+          store.createIndex('timestamp', 'timestamp', { unique: false });
+          store.createIndex('status', 'status', { unique: false });
+        }
+        
+        // Armazena dados offline (cache de entidades)
+        if (!db.objectStoreNames.contains('offlineData')) {
+          const store = db.createObjectStore('offlineData', { keyPath: 'id' });
+          store.createIndex('type', 'type', { unique: false });
+          store.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+        
+        // Armazena imagens/arquivos
+        if (!db.objectStoreNames.contains('offlineFiles')) {
+          const store = db.createObjectStore('offlineFiles', { keyPath: 'id' });
+          store.createIndex('entityId', 'entityId', { unique: false });
+          store.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
       
-      // Enviar mensagem para o Service Worker (verificando se o controller existe)
-      if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'STORE_OFFLINE_REGISTRATION',
-          registration
-        }, [messageChannel.port2]);
-      } else {
-        reject(new Error('Service Worker não está controlando a página'));
-      }
-      
-      // Timeout para evitar bloqueio indefinido
-      setTimeout(() => reject(new Error('Timeout ao comunicar com Service Worker')), 3000);
-    });
-  },
-  
-  /**
-   * Obtém registros pendentes que foram criados offline
-   */
-  async getPendingRegistrations(): Promise<any[]> {
-    try {
-      const allRegistrations = await this.getRegistrations();
-      return allRegistrations.filter(reg => reg.offlinePending === true);
-    } catch (error) {
-      console.error('Erro ao obter registros pendentes:', error);
-      return [];
-    }
-  },
-  
-  /**
-   * Remove a marcação de pendente de um registro específico
-   */
-  async markRegistrationSynced(id: number): Promise<boolean> {
-    try {
-      const allRegistrations = await this.getRegistrations();
-      const index = allRegistrations.findIndex(reg => reg.id === id);
-      
-      if (index >= 0) {
-        allRegistrations[index].offlinePending = false;
-        allRegistrations[index].syncedAt = new Date().toISOString();
-        await this.saveRegistrations(allRegistrations);
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Erro ao marcar registro como sincronizado:', error);
-      return false;
-    }
-  },
-
-  /**
-   * Salva lista de veículos para uso offline
-   */
-  async saveVehicles(vehicles: any[]): Promise<void> {
-    try {
-      await localforage.setItem('vehicles', vehicles);
-    } catch (error) {
-      console.error('Erro ao salvar veículos offline:', error);
-    }
-  },
-
-  /**
-   * Recupera veículos armazenados offline
-   */
-  async getVehicles(): Promise<any[]> {
-    try {
-      const vehicles = await localforage.getItem('vehicles');
-      return vehicles as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar veículos offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Salva lista de motoristas para uso offline
-   */
-  async saveDrivers(drivers: any[]): Promise<void> {
-    try {
-      await localforage.setItem('drivers', drivers);
-    } catch (error) {
-      console.error('Erro ao salvar motoristas offline:', error);
-    }
-  },
-
-  /**
-   * Recupera motoristas armazenados offline
-   */
-  async getDrivers(): Promise<any[]> {
-    try {
-      const drivers = await localforage.getItem('drivers');
-      return drivers as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar motoristas offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Salva lista de postos de combustível para uso offline
-   */
-  async saveFuelStations(stations: any[]): Promise<void> {
-    try {
-      await localforage.setItem('fuelStations', stations);
-    } catch (error) {
-      console.error('Erro ao salvar postos offline:', error);
-    }
-  },
-
-  /**
-   * Recupera postos de combustível armazenados offline
-   */
-  async getFuelStations(): Promise<any[]> {
-    try {
-      const stations = await localforage.getItem('fuelStations');
-      return stations as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar postos offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Salva lista de tipos de combustível para uso offline
-   */
-  async saveFuelTypes(types: any[]): Promise<void> {
-    try {
-      await localforage.setItem('fuelTypes', types);
-    } catch (error) {
-      console.error('Erro ao salvar tipos de combustível offline:', error);
-    }
-  },
-
-  /**
-   * Recupera tipos de combustível armazenados offline
-   */
-  async getFuelTypes(): Promise<any[]> {
-    try {
-      const types = await localforage.getItem('fuelTypes');
-      return types as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar tipos de combustível offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Salva lista de tipos de manutenção para uso offline
-   */
-  async saveMaintenanceTypes(types: any[]): Promise<void> {
-    try {
-      await localforage.setItem('maintenanceTypes', types);
-    } catch (error) {
-      console.error('Erro ao salvar tipos de manutenção offline:', error);
-    }
-  },
-
-  /**
-   * Recupera tipos de manutenção armazenados offline
-   */
-  async getMaintenanceTypes(): Promise<any[]> {
-    try {
-      const types = await localforage.getItem('maintenanceTypes');
-      return types as any[] || [];
-    } catch (error) {
-      console.error('Erro ao recuperar tipos de manutenção offline:', error);
-      return [];
-    }
-  },
-
-  /**
-   * Sincroniza os dados do armazenamento local com o servidor quando online
-   */
-  async syncWithServer(): Promise<{success: boolean, syncedCount: number, errors: any[]}> {
-    // Se estiver offline, não podemos sincronizar
-    if (!navigator.onLine) {
-      return {
-        success: false,
-        syncedCount: 0,
-        errors: [{message: 'Dispositivo está offline. Não é possível sincronizar.'}]
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
+        console.log('IndexedDB inicializado com sucesso');
+        resolve();
       };
+      
+      request.onerror = (event) => {
+        console.error('Erro ao inicializar IndexedDB:', (event.target as IDBOpenDBRequest).error);
+        reject((event.target as IDBOpenDBRequest).error);
+      };
+    });
+  }
+  
+  // Garante que o banco de dados está inicializado
+  private async ensureDbReady(): Promise<IDBDatabase> {
+    if (!this.db) {
+      await this.initDatabase();
     }
     
-    try {
-      // Buscar todos os registros pendentes
-      const pendingRegistrations = await this.getPendingRegistrations();
-      
-      if (pendingRegistrations.length === 0) {
-        return {
-          success: true,
-          syncedCount: 0,
-          errors: []
-        };
-      }
-      
-      console.log(`Iniciando sincronização de ${pendingRegistrations.length} registros pendentes`);
-      
-      // Sincronizar cada registro pendente
-      const syncResults = await Promise.allSettled(pendingRegistrations.map(async (reg) => {
-        try {
-          // Enviar para API
-          const response = await fetch('/api/registrations', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ...reg,
-              // Remover propriedades específicas do modo offline
-              offlineCreated: undefined,
-              offlinePending: undefined,
-              offlineTimestamp: undefined
-            })
-          });
-          
-          if (response.ok) {
-            // Se a sincronização for bem-sucedida, atualizar status no armazenamento local
-            await this.markRegistrationSynced(reg.id);
-            return {
-              success: true,
-              id: reg.id
-            };
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            return {
-              success: false,
-              id: reg.id,
-              error: errorData.message || 'Erro ao sincronizar com o servidor'
-            };
-          }
-        } catch (error) {
-          console.error(`Erro ao sincronizar registro ${reg.id}:`, error);
-          return {
-            success: false,
-            id: reg.id,
-            error: error instanceof Error ? error.message : 'Erro desconhecido'
-          };
-        }
-      }));
-      
-      // Registrar os sucessos e falhas
-      const successfulSyncs = syncResults.filter(r => r.status === 'fulfilled' && (r.value as any).success);
-      const failedSyncs = syncResults.filter(r => r.status === 'rejected' || !(r.value as any).success);
-      
-      const errors = failedSyncs.map(r => {
-        if (r.status === 'rejected') {
-          return r.reason;
-        } else {
-          return (r.value as any).error;
-        }
-      });
-      
-      return {
-        success: errors.length === 0,
-        syncedCount: successfulSyncs.length,
-        errors
-      };
-    } catch (error) {
-      console.error('Erro ao sincronizar com servidor:', error);
-      return {
-        success: false,
-        syncedCount: 0,
-        errors: [error]
-      };
+    if (!this.db) {
+      throw new Error('Não foi possível inicializar o banco de dados offline');
     }
-  },
-
-  /**
-   * Verifica se o dispositivo está online
-   */
-  isOnline(): boolean {
-    return navigator.onLine;
-  },
-
-  /**
-   * Salva uma imagem no armazenamento local
-   */
-  async saveImage(id: string, imageData: string): Promise<void> {
-    try {
-      await localforage.setItem(`image_${id}`, imageData);
-    } catch (error) {
-      console.error('Erro ao salvar imagem localmente:', error);
-    }
-  },
-
-  /**
-   * Recupera uma imagem do armazenamento local
-   */
-  async getImage(id: string): Promise<string | null> {
-    try {
-      const imageData = await localforage.getItem(`image_${id}`);
-      return imageData as string;
-    } catch (error) {
-      console.error('Erro ao recuperar imagem local:', error);
-      return null;
-    }
+    
+    return this.db;
   }
-};
+  
+  // Armazena uma operação pendente
+  public async savePendingOperation(operation: any): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['pendingOperations'], 'readwrite');
+      const store = transaction.objectStore('pendingOperations');
+      
+      const request = store.put(operation);
+      
+      request.onsuccess = () => {
+        console.log(`Operação ${operation.id} salva com sucesso para sincronização futura`);
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        console.error('Erro ao salvar operação pendente:', (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Atualiza o status de uma operação
+  public async updateOperationStatus(id: string, status: string, errorMessage?: string): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['pendingOperations'], 'readwrite');
+      const store = transaction.objectStore('pendingOperations');
+      
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        const operation = getRequest.result;
+        if (operation) {
+          operation.status = status;
+          if (errorMessage) {
+            operation.errorMessage = errorMessage;
+          }
+          
+          const updateRequest = store.put(operation);
+          
+          updateRequest.onsuccess = () => {
+            resolve();
+          };
+          
+          updateRequest.onerror = (event) => {
+            reject((event.target as IDBRequest).error);
+          };
+        } else {
+          reject(new Error(`Operação ${id} não encontrada`));
+        }
+      };
+      
+      getRequest.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Atualiza o contador de tentativas de uma operação
+  public async updateOperationRetry(id: string, retryCount: number, errorMessage?: string): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['pendingOperations'], 'readwrite');
+      const store = transaction.objectStore('pendingOperations');
+      
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        const operation = getRequest.result;
+        if (operation) {
+          operation.retryCount = retryCount;
+          operation.status = 'pending'; // Reseta para pendente para tentar novamente
+          if (errorMessage) {
+            operation.errorMessage = errorMessage;
+          }
+          
+          const updateRequest = store.put(operation);
+          
+          updateRequest.onsuccess = () => {
+            resolve();
+          };
+          
+          updateRequest.onerror = (event) => {
+            reject((event.target as IDBRequest).error);
+          };
+        } else {
+          reject(new Error(`Operação ${id} não encontrada`));
+        }
+      };
+      
+      getRequest.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Remove uma operação pendente
+  public async removePendingOperation(id: string): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['pendingOperations'], 'readwrite');
+      const store = transaction.objectStore('pendingOperations');
+      
+      const request = store.delete(id);
+      
+      request.onsuccess = () => {
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Obtém todas as operações pendentes
+  public async getPendingOperations(): Promise<any[]> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['pendingOperations'], 'readonly');
+      const store = transaction.objectStore('pendingOperations');
+      
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Armazena dados offline (cache)
+  public async saveOfflineData(type: string, data: any): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    // Garante que temos um ID único
+    if (!data.id) {
+      data.id = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    }
+    
+    // Adiciona tipo e timestamp
+    data.type = type;
+    data.timestamp = Date.now();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineData'], 'readwrite');
+      const store = transaction.objectStore('offlineData');
+      
+      const request = store.put(data);
+      
+      request.onsuccess = () => {
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Obtém dados offline por tipo
+  public async getOfflineDataByType(type: string): Promise<any[]> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineData'], 'readonly');
+      const store = transaction.objectStore('offlineData');
+      const index = store.index('type');
+      
+      const request = index.getAll(type);
+      
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Salva um arquivo offline
+  public async saveOfflineFile(entityId: string, file: File): Promise<string> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      // Converte o arquivo para um ArrayBuffer
+      const reader = new FileReader();
+      
+      reader.onload = async (event) => {
+        if (!event.target || !event.target.result) {
+          reject(new Error('Falha ao ler o arquivo'));
+          return;
+        }
+        
+        const fileData = {
+          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+          entityId,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          data: event.target.result,
+          timestamp: Date.now()
+        };
+        
+        const transaction = db.transaction(['offlineFiles'], 'readwrite');
+        const store = transaction.objectStore('offlineFiles');
+        
+        const request = store.put(fileData);
+        
+        request.onsuccess = () => {
+          resolve(fileData.id);
+        };
+        
+        request.onerror = (event) => {
+          reject((event.target as IDBRequest).error);
+        };
+      };
+      
+      reader.onerror = (event) => {
+        reject(new Error('Erro ao ler o arquivo: ' + (event.target?.error?.message || 'Erro desconhecido')));
+      };
+      
+      reader.readAsArrayBuffer(file);
+    });
+  }
+  
+  // Obtém um arquivo offline
+  public async getOfflineFile(id: string): Promise<{ data: ArrayBuffer, name: string, type: string }> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineFiles'], 'readonly');
+      const store = transaction.objectStore('offlineFiles');
+      
+      const request = store.get(id);
+      
+      request.onsuccess = () => {
+        if (request.result) {
+          resolve({
+            data: request.result.data,
+            name: request.result.name,
+            type: request.result.type
+          });
+        } else {
+          reject(new Error(`Arquivo ${id} não encontrado`));
+        }
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Obtém arquivos por entidade
+  public async getOfflineFilesByEntity(entityId: string): Promise<any[]> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineFiles'], 'readonly');
+      const store = transaction.objectStore('offlineFiles');
+      const index = store.index('entityId');
+      
+      const request = index.getAll(entityId);
+      
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Remove um arquivo offline
+  public async removeOfflineFile(id: string): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineFiles'], 'readwrite');
+      const store = transaction.objectStore('offlineFiles');
+      
+      const request = store.delete(id);
+      
+      request.onsuccess = () => {
+        resolve();
+      };
+      
+      request.onerror = (event) => {
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+}
+
+export const offlineStorage = new OfflineStorage();

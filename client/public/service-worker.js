@@ -269,3 +269,116 @@ async function getPendingItemsFromClient() {
     setTimeout(() => resolve([]), 3000);
   });
 }
+// Nome do cache
+const CACHE_NAME = 'granduvale-v1';
+
+// Lista de recursos que devem ser cacheados
+const urlsToCache = [
+  '/',
+  '/index.html',
+  '/offline.html',
+  '/manifest.json',
+  // Adicione todos os arquivos estáticos importantes
+];
+
+// Instala o service worker
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('Cache aberto com sucesso');
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => self.skipWaiting())
+  );
+});
+
+// Ativa o service worker
+self.addEventListener('activate', (event) => {
+  const cacheWhitelist = [CACHE_NAME];
+  
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            // Remove caches antigos
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Intercepta requisições
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Ignora requisições para a API
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+  
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Retorna do cache se disponível
+        if (response) {
+          return response;
+        }
+        
+        // Caso contrário, faz a requisição à rede
+        return fetch(event.request)
+          .then((networkResponse) => {
+            // Se não for uma requisição GET, não vamos cachear
+            if (event.request.method !== 'GET') {
+              return networkResponse;
+            }
+            
+            // Precisamos clonar a resposta para armazenar no cache
+            const responseToCache = networkResponse.clone();
+            
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+              
+            return networkResponse;
+          })
+          .catch(() => {
+            // Se falhar, retorna a página offline para navegação
+            if (event.request.mode === 'navigate') {
+              return caches.match('/offline.html');
+            }
+            
+            // Para imagens, pode retornar uma imagem padrão
+            if (event.request.destination === 'image') {
+              return new Response(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="14">Imagem não disponível</text></svg>',
+                {
+                  headers: { 'Content-Type': 'image/svg+xml' }
+                }
+              );
+            }
+            
+            // Para outros recursos, retorna uma resposta vazia
+            return new Response('Recurso não disponível offline.', {
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          });
+      })
+  );
+});
+
+// Escuta mensagens para sincronização
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'SYNC_NOW') {
+    // Notificar o app para sincronizar
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((client) => {
+        client.postMessage({ action: 'DO_SYNC' });
+      });
+    });
+  }
+});

@@ -20,8 +20,8 @@ import ChecklistSimple from "@/pages/ChecklistSimple";
 import AppConfig from "@/pages/AppConfig";
 import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
-import { useEffect, useState } from "react";
-import { syncManager } from "./services/syncManager";
+import { useEffect, useState } from 'react';
+import { syncManager } from './services/syncManager';
 
 // Context para gerenciar estado de autenticação
 export const useAuth = () => {
@@ -176,18 +176,22 @@ function Router() {
 }
 
 function App() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
   useEffect(() => {
-    syncManager.initialize();
-    const handleOnlineStatusChange = () => {
-      const isOnline = navigator.onLine;
-      // Você pode colocar um toast ou log aqui se quiser
-    };
-    window.addEventListener('online', handleOnlineStatusChange);
-    window.addEventListener('offline', handleOnlineStatusChange);
-    handleOnlineStatusChange();
+    // Inicializa o gerenciador de sincronização
+    syncManager.start();
+
+    // Monitora mudanças no status online/offline
+    const unsubscribe = syncManager.addConnectionListener((online) => {
+      setIsOnline(online);
+      console.log(`Status da conexão alterado: ${online ? 'online' : 'offline'}`);
+    });
+
+    // Limpa o listener quando o componente é desmontado
     return () => {
-      window.removeEventListener('online', handleOnlineStatusChange);
-      window.removeEventListener('offline', handleOnlineStatusChange);
+      unsubscribe();
+      syncManager.stop();
     };
   }, []);
 
