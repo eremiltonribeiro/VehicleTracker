@@ -155,9 +155,9 @@ function Router() {
               component={RegistrationForm}
               permission="registrations"
             />
-            <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
             <PrivateRoute path="/registros/history" component={Home} permission="history" />
+            <PrivateRoute path="/registros" component={Home} permission="registrations" />
             <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
             <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
             <PrivateRoute path="/cadastros" component={CentralDeCadastros} permission="settings" />

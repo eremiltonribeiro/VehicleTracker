@@ -19,7 +19,12 @@ interface HomeProps {
 export default function Home({ defaultView = "dashboard", editId, editType, mode }: HomeProps) {
   const [location, setLocation] = useLocation();
   const params = location.split("/");
-  const view = params[params.length - 1] === "registros" ? null : params[params.length - 1];
+  const view = params[params.length - 1];
+  // Se a rota for apenas "/registros", definir a visualização como padrão
+  const activeView = view === "registros" ? defaultView : 
+                     view === "history" ? "history" : 
+                     view === "dashboard" ? "dashboard" : 
+                     defaultView;
 
   // Monitor network status for offline functionality
   useEffect(() => {
@@ -84,8 +89,8 @@ export default function Home({ defaultView = "dashboard", editId, editType, mode
   }, []);
 
   // Determine which view to show
-  const showHistory = view === "history";
-  const showDashboard = view === "dashboard";
+  const showHistory = activeView === "history";
+  const showDashboard = activeView === "dashboard";
 
   // Fetch data, with offline capability
   const { data: vehicles = [] } = useQuery({

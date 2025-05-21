@@ -43,7 +43,13 @@ import { ptBR } from "date-fns/locale";
 
 type FormValues = z.infer<typeof extendedRegistrationSchema>;
 
-export function RegistrationForm() {
+interface RegistrationFormProps {
+  editId?: string;
+  editType?: string | null;
+  mode?: "edit" | "view";
+}
+
+export function RegistrationForm({ editId, editType, mode }: RegistrationFormProps) {
   const { id } = useParams();
   const [location, setLocation] = useLocation();
   const { toast } = useToast();
