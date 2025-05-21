@@ -173,7 +173,13 @@ export function HistoryView() {
 
   // Editar registro
   const handleEditRegistration = (id: number) => {
-    setLocation(`/registros/edit/${id}`);
+    console.log(`Editando registro com ID: ${id}`);
+    try {
+      setLocation(`/registros/edit/${id}`);
+      console.log(`Navegação para edição realizada com sucesso`);
+    } catch (error) {
+      console.error("Erro ao navegar para edição:", error);
+    }
   };
 
   // Abrir confirmação de exclusão
@@ -225,13 +231,23 @@ export function HistoryView() {
     
     // Se é um registro normal (não offline)
     try {
+      console.log(`Tentando excluir registro com ID: ${registrationToDelete}`);
       const response = await fetch(`/api/registrations/${registrationToDelete}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
+      // Log da resposta para debug
+      console.log(`Resposta do servidor:`, response.status, response.statusText);
+      
+      const responseData = await response.text();
+      console.log(`Dados da resposta:`, responseData);
+      
       if (!response.ok){
-        throw new Error('Falha ao excluir o registro');
+        throw new Error(`Falha ao excluir o registro: ${response.status} ${response.statusText}`);
       }
 
       toast({

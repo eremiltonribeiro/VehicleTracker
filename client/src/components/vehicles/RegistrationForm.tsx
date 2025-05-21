@@ -127,30 +127,47 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
         fuelTypeId: values.fuelTypeId ? Number(values.fuelTypeId) : undefined,
         maintenanceTypeId: values.maintenanceTypeId ? Number(values.maintenanceTypeId) : undefined,
       };
+      
+      console.log(`Preparando ${id ? 'edição' : 'criação'} de registro:`, data);
+      
       formData.append("data", JSON.stringify(data));
       if (selectedFile) {
         formData.append("photo", selectedFile);
       }
+      
       const url = id ? `/api/registrations/${id}` : "/api/registrations";
       const method = id ? "PUT" : "POST";
       
-      console.log("Enviando dados:", data);
+      console.log(`Enviando requisição ${method} para ${url}`);
       
-      const res = await fetch(url, {
-        method,
-        body: formData,
-        credentials: "include",
-      });
-      
-      if (!res.ok) {
-        const error = await res.json();
-        console.error("Erro na resposta:", error);
-        throw new Error(error.message || "Erro ao salvar registro");
+      try {
+        const res = await fetch(url, {
+          method,
+          body: formData,
+          credentials: "include",
+        });
+        
+        console.log(`Resposta do servidor:`, res.status, res.statusText);
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Erro na resposta:", errorText);
+          let errorObj;
+          try {
+            errorObj = JSON.parse(errorText);
+          } catch (e) {
+            errorObj = { message: errorText };
+          }
+          throw new Error(errorObj.message || `Erro ao ${id ? 'atualizar' : 'criar'} registro (${res.status})`);
+        }
+        
+        const responseData = await res.json();
+        console.log("Dados da resposta:", responseData);
+        return responseData;
+      } catch (error) {
+        console.error("Erro na requisição:", error);
+        throw error;
       }
-      
-      const result = await res.json();
-      console.log("Resposta recebida:", result);
-      return result;
     },
     onSuccess: () => {
       toast({
