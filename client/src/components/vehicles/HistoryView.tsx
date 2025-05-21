@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { offlineStorage } from "@/services/offlineStorage";
+import { syncManager } from "@/services/syncManager";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -85,6 +87,20 @@ export function HistoryView() {
 
   // Query client for refetching data
   const queryClient = useQueryClient();
+  
+  // Listener para atualização automática após sincronização
+  useEffect(() => {
+    function handleDataSync() {
+      console.log("Evento de sincronização detectado, atualizando dados");
+      queryClient.invalidateQueries(["/api/registrations"]);
+      refetch();
+    }
+    
+    window.addEventListener("data-synchronized", handleDataSync);
+    return () => {
+      window.removeEventListener("data-synchronized", handleDataSync);
+    };
+  }, [queryClient, refetch]);
 
   // Query for fetching registrations with filters
   const { data: registrations = [], isLoading, refetch } = useQuery({
@@ -164,6 +180,44 @@ export function HistoryView() {
   const handleDeleteRegistration = async () => {
     if (!registrationToDelete) return;
 
+    // Encontrar o registro completo pelo ID
+    const registrationToDeleteObj = registrations.find(r => r.id === registrationToDelete);
+    
+    // Verificar se é um registro offline pendente
+    if (registrationToDeleteObj?.offlinePending) {
+      try {
+        // Remover operação pendente do IndexedDB
+        await offlineStorage.removePendingOperation(`temp_${registrationToDelete}`);
+        
+        // Remover dos dados locais
+        const currentData = await offlineStorage.getOfflineDataByType("registrations") || [];
+        const updatedData = currentData.filter(r => r.id !== registrationToDelete);
+        await offlineStorage.saveOfflineData("registrations", updatedData);
+        
+        toast({
+          title: "Registro excluído",
+          description: "O registro pendente foi removido localmente.",
+        });
+        
+        // Refresh data
+        queryClient.invalidateQueries(["/api/registrations"]);
+        
+        // Close dialog
+        setDeleteDialogOpen(false);
+        setRegistrationToDelete(null);
+        
+      } catch (error) {
+        console.error("Erro ao excluir registro offline:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível excluir o registro offline. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+    
+    // Se é um registro normal (não offline)
     try {
       const response = await fetch(`/api/registrations/${registrationToDelete}`, {
         method: 'DELETE',
@@ -187,6 +241,37 @@ export function HistoryView() {
       setRegistrationToDelete(null);
 
     } catch (error) {
+      // Se estiver offline, tenta enfileirar a exclusão
+      if (!navigator.onLine) {
+        try {
+          await syncManager.interceptRequest(
+            `/api/registrations/${registrationToDelete}`, 
+            'DELETE', 
+            null
+          );
+          
+          toast({
+            title: "Operação enfileirada",
+            description: "A exclusão será processada quando estiver online.",
+          });
+          
+          // Refresh data
+          queryClient.invalidateQueries(["/api/registrations"]);
+          
+          // Close dialog
+          setDeleteDialogOpen(false);
+          setRegistrationToDelete(null);
+          
+        } catch (offlineError) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível enfileirar a exclusão. Tente novamente.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+      
       toast({
         title: "Erro",
         description: "Não foi possível excluir o registro. Tente novamente.",
@@ -222,6 +307,13 @@ export function HistoryView() {
         currentPage * itemsPerPage
       )
     : [];
+    
+  // Verifica se a página atual está vazia e se devemos voltar para a anterior
+  useEffect(() => {
+    if (paginatedRegistrations.length === 0 && currentPage > 1 && registrations.length > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  }, [paginatedRegistrations.length, currentPage, registrations.length]);
 
   return (
     <Card className="w-full">
@@ -384,8 +476,10 @@ export function HistoryView() {
             paginatedRegistrations.map((registration: any) => (
               <div 
                 key={registration.id} 
-                className={`border border-gray-200 rounded-lg p-4 ${
-                  registration.type === "fuel" 
+                className={`border ${registration.offlinePending ? 'border-orange-300 border-dashed' : 'border-gray-200'} rounded-lg p-4 ${
+                  registration.offlinePending 
+                    ? "bg-orange-50"
+                    : registration.type === "fuel" 
                     ? "bg-amber-50" 
                     : registration.type === "maintenance"
                     ? "bg-green-50"
@@ -413,6 +507,11 @@ export function HistoryView() {
                     </div>
                   </div>
                   <div className="text-right">
+                    {registration.offlinePending && (
+                      <span className="inline-block mb-1 px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 font-semibold">
+                        Offline / Pendente
+                      </span>
+                    )}
                     {registration.type === "fuel" && (
                       <>
                         <p className="text-sm font-medium text-gray-900">
@@ -605,13 +704,36 @@ export function HistoryView() {
                                       openPhotoView(registration.photoUrl);
                                     }
                                   }}
-                                  onError={(e) => {
+                                  onError={async (e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.onerror = null;
-                                    if (registration.photoUrl && !registration.photoUrl.startsWith('/')) {
+                                    
+                                    // Tenta recuperar de diferentes formas
+                                    if (registration.offlinePending && registration.photoUrl) {
+                                      try {
+                                        // Tenta recuperar a imagem do IndexedDB como blob/buffer
+                                        const photoData = await offlineStorage.getOfflinePhotoData(registration.id);
+                                        if (photoData) {
+                                          // Converter ArrayBuffer para Blob e depois para data URL
+                                          const blob = new Blob([photoData]);
+                                          const dataUrl = URL.createObjectURL(blob);
+                                          target.src = dataUrl;
+                                          return;
+                                        }
+                                      } catch (err) {
+                                        console.error("Erro ao recuperar foto offline:", err);
+                                      }
+                                    }
+                                    
+                                    // Tenta adicionar barra no início se não houver
+                                    if (registration.photoUrl && !registration.photoUrl.startsWith('/') && 
+                                        !registration.photoUrl.startsWith('data:') && 
+                                        !registration.photoUrl.startsWith('blob:')) {
                                       target.src = '/' + registration.photoUrl;
                                       return;
                                     }
+                                    
+                                    // Falhou em todas as tentativas
                                     target.src = ""; // Limpa a src
                                     const parentElement = target.parentElement;
                                     if (parentElement) {
@@ -676,7 +798,8 @@ export function HistoryView() {
                       variant="ghost"
                       className="h-8 w-8 text-amber-600"
                       onClick={() => handleEditRegistration(registration.id)}
-                      title="Editar registro"
+                      title={registration.offlinePending ? "Não é possível editar registros pendentes" : "Editar registro"}
+                      disabled={registration.offlinePending}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
