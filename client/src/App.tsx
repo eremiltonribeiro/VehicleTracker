@@ -3,6 +3,7 @@ import { Switch, Route, useLocation, useRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/hooks/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
@@ -229,6 +230,79 @@ function App() {
       clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    // Registrar o service worker quando o componente montar
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('Service Worker registrado com sucesso:', registration.scope);
+          })
+          .catch(error => {
+            console.error('Falha ao registrar Service Worker:', error);
+          });
+      });
+    }
+
+    // Configurar listener para mensagens do Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data.type === 'START_SYNC') {
+          // Iniciar sincronização quando solicitado pelo service worker
+          syncManager.syncPendingOperations();
+        }
+      });
+    }
+
+    // Verificar dados pendentes na inicialização
+    syncManager.checkPendingOperations();
+
+    // Registrar ouvintes para mudanças de status de conexão
+    const handleOnlineStatus = (isOnline: boolean) => {
+      setIsOnline(isOnline);
+
+      // Notificar o usuário sobre o status da conexão
+      if (isOnline) {
+        toast({
+          title: "Você está online",
+          description: "Seus dados serão sincronizados automaticamente.",
+          duration: 3000,
+        });
+      } else {
+        toast({
+          title: "Você está offline",
+          description: "Seus dados serão salvos localmente e sincronizados quando a conexão for restaurada.",
+          duration: 5000,
+          variant: "destructive"
+        });
+      }
+    };
+
+    // Registrar listener para notificações de sincronização
+    const handleSyncStatus = (hasPendingOperations: boolean) => {
+      if (hasPendingOperations && isOnline) {
+        toast({
+          title: "Sincronizando dados",
+          description: "Estamos enviando suas alterações para o servidor...",
+          duration: 3000,
+        });
+      }
+    };
+
+    // Adicionar listeners ao syncManager
+    syncManager.addOnlineStatusListener(handleOnlineStatus);
+    syncManager.addSyncListener(handleSyncStatus);
+
+    // Definir status inicial
+    setIsOnline(syncManager.getOnlineStatus());
+
+    // Limpar event listeners ao desmontar o componente
+    return () => {
+      syncManager.removeOnlineStatusListener(handleOnlineStatus);
+      syncManager.removeSyncListener(handleSyncStatus);
+    };
+  }, [isOnline]);
 
   return (
     <QueryClientProvider client={queryClient}>

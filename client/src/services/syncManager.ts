@@ -2,6 +2,410 @@
 import { offlineStorage } from './offlineStorage';
 
 // Tipos para as operações pendentes
+interface PendingOperation {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  entity: string;
+  url: string;
+  method: string;
+  payload: any;
+  files?: any[];
+  status: 'pending' | 'syncing' | 'error' | 'completed';
+  retryCount: number;
+  error?: string;
+  timestamp: number;
+}
+
+// Classe para gerenciar sincronização
+class SyncManager {
+  private isOnline: boolean = navigator.onLine;
+  private isSyncing: boolean = false;
+  private syncListeners: Array<(status: boolean) => void> = [];
+  private onlineStatusListeners: Array<(status: boolean) => void> = [];
+  
+  constructor() {
+    // Inicializa os event listeners para status de conexão
+    window.addEventListener('online', this.handleOnlineStatus);
+    window.addEventListener('offline', this.handleOnlineStatus);
+    
+    // Verifica se há operações pendentes periodicamente
+    setInterval(() => this.checkPendingOperations(), 30000); // A cada 30 segundos
+    
+    // Verifica se a conexão está realmente ativa
+    this.checkRealOnlineStatus();
+  }
+  
+  // Verifica se a conexão está realmente ativa fazendo um ping ao servidor
+  private async checkRealOnlineStatus() {
+    if (!navigator.onLine) {
+      this.updateOnlineStatus(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/ping', { 
+        method: 'HEAD',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      this.updateOnlineStatus(response.ok);
+    } catch (error) {
+      console.log('Erro ao verificar conexão:', error);
+      this.updateOnlineStatus(false);
+    }
+    
+    // Reagendar verificação
+    setTimeout(() => this.checkRealOnlineStatus(), 60000); // A cada minuto
+  }
+  
+  // Atualiza o status online e notifica listeners
+  private updateOnlineStatus(status: boolean) {
+    if (this.isOnline !== status) {
+      this.isOnline = status;
+      console.log(`Status de conexão alterado: ${status ? 'Online' : 'Offline'}`);
+      
+      // Notifica listeners
+      this.onlineStatusListeners.forEach(listener => listener(status));
+      
+      // Se ficou online, tenta sincronizar
+      if (status) {
+        this.syncPendingOperations();
+      }
+    }
+  }
+  
+  // Handler para eventos online/offline
+  private handleOnlineStatus = () => {
+    console.log(`Evento de navegador: ${navigator.onLine ? 'Online' : 'Offline'}`);
+    if (navigator.onLine) {
+      // Verificação adicional da conexão real
+      this.checkRealOnlineStatus();
+    } else {
+      this.updateOnlineStatus(false);
+    }
+  }
+  
+  // Verifica se há operações pendentes e tenta sincronizar se estiver online
+  public async checkPendingOperations() {
+    const pendingOps = await offlineStorage.getPendingOperations();
+    
+    if (pendingOps.length > 0) {
+      console.log(`Existem ${pendingOps.length} operações pendentes de sincronização`);
+      
+      // Notifica os listeners
+      this.syncListeners.forEach(listener => listener(true));
+      
+      // Se estiver online, tenta sincronizar
+      if (this.isOnline && !this.isSyncing) {
+        this.syncPendingOperations();
+      }
+    } else {
+      // Notifica que não há operações pendentes
+      this.syncListeners.forEach(listener => listener(false));
+    }
+  }
+  
+  // Intercepta requisições para lidar com modo offline
+  public async interceptRequest(url: string, method: string, body: any, files?: any[]): Promise<any> {
+    // Se estiver offline, salva a operação para sincronização posterior
+    if (!this.isOnline) {
+      console.log(`Interceptando requisição offline: ${method} ${url}`);
+      
+      // Gera um ID único
+      const id = Math.random().toString(36).substring(2, 15) + 
+                 Math.random().toString(36).substring(2, 15) + 
+                 Date.now().toString();
+      
+      // Extrai a entidade da URL (ex: /api/registrations -> registrations)
+      const entity = url.replace(/^\/api\//, '').split('/')[0];
+      
+      // Cria o objeto de operação pendente
+      const pendingOp: PendingOperation = {
+        id,
+        type: method === 'POST' ? 'create' : method === 'PUT' ? 'update' : 'delete',
+        entity,
+        url,
+        method,
+        payload: body,
+        files: files || [],
+        status: 'pending',
+        retryCount: 0,
+        timestamp: Date.now()
+      };
+      
+      // Salva a operação pendente
+      await offlineStorage.savePendingOperation(id, pendingOp);
+      
+      // Se for uma operação de criação, também salvar os dados localmente
+      // para que apareçam na interface mesmo offline
+      if (method === 'POST' || method === 'PUT') {
+        // Para criação, adicionamos uma fake ID temporária
+        if (method === 'POST') {
+          body.id = `temp_${id}`;
+          body.offlinePending = true;
+        }
+        
+        // Salva os dados localmente para acesso offline
+        const currentData = await offlineStorage.getOfflineDataByType(entity) || [];
+        
+        if (method === 'POST') {
+          // Adiciona o novo item
+          await offlineStorage.saveOfflineData(entity, [...currentData, body]);
+        } else if (method === 'PUT') {
+          // Atualiza o item existente
+          const updatedData = currentData.map((item: any) => 
+            item.id === body.id ? {...item, ...body, offlinePending: true} : item
+          );
+          await offlineStorage.saveOfflineData(entity, updatedData);
+        }
+      } else if (method === 'DELETE') {
+        // Para exclusão, remove do cache local também
+        const itemId = url.split('/').pop();
+        const currentData = await offlineStorage.getOfflineDataByType(entity) || [];
+        const filteredData = currentData.filter((item: any) => item.id !== Number(itemId));
+        await offlineStorage.saveOfflineData(entity, filteredData);
+      }
+      
+      // Se for upload de arquivo, salvar o arquivo no storage
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          await offlineStorage.saveOfflineFile(id, file);
+        }
+      }
+      
+      // Notifica que há operações pendentes
+      this.syncListeners.forEach(listener => listener(true));
+      
+      // Retorna uma resposta simulada
+      return {
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ 
+          success: true, 
+          id: body.id || `temp_${id}`, 
+          message: 'Operação salva para sincronização posterior',
+          offlinePending: true
+        })
+      };
+    }
+    
+    // Se estiver online, faz a requisição normalmente
+    try {
+      // Preparar FormData se houver arquivos
+      let requestOptions: RequestInit = {
+        method,
+        headers: {}
+      };
+      
+      if (files && files.length > 0) {
+        // Há arquivos, enviar como FormData
+        const formData = new FormData();
+        
+        // Adicionar o payload como um campo data
+        formData.append('data', JSON.stringify(body));
+        
+        // Adicionar os arquivos
+        files.forEach((file, index) => {
+          formData.append('photo', file);
+        });
+        
+        requestOptions.body = formData;
+      } else if (body) {
+        // Sem arquivos, enviar como JSON
+        requestOptions.headers = {
+          'Content-Type': 'application/json'
+        };
+        requestOptions.body = JSON.stringify(body);
+      }
+      
+      // Fazer a requisição
+      const response = await fetch(url, requestOptions);
+      
+      if (!response.ok) {
+        throw new Error(`Erro na requisição: ${response.status} ${response.statusText}`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Erro na requisição:', error);
+      throw error;
+    }
+  }
+  
+  // Sincroniza operações pendentes
+  public async syncPendingOperations() {
+    if (this.isSyncing || !this.isOnline) {
+      return;
+    }
+    
+    try {
+      this.isSyncing = true;
+      console.log('Iniciando sincronização de operações pendentes...');
+      
+      // Obtém todas as operações pendentes
+      const pendingOps = await offlineStorage.getPendingOperations();
+      
+      if (pendingOps.length === 0) {
+        console.log('Nenhuma operação pendente para sincronizar');
+        this.isSyncing = false;
+        return;
+      }
+      
+      console.log(`Encontradas ${pendingOps.length} operações pendentes`);
+      
+      // Processa cada operação pendente
+      for (const op of pendingOps) {
+        try {
+          console.log(`Sincronizando operação: ${op.id} - ${op.method} ${op.url}`);
+          
+          // Atualiza status para sincronizando
+          await offlineStorage.updateOperationStatus(op.id, 'syncing');
+          
+          // Prepara os dados para envio
+          let requestBody;
+          
+          // Se houver arquivos, prepara um FormData
+          if (op.files && op.files.length > 0) {
+            const formData = new FormData();
+            
+            // Adiciona os dados como campo 'data'
+            formData.append('data', JSON.stringify(op.payload));
+            
+            // Recupera e adiciona os arquivos
+            for (let i = 0; i < op.files.length; i++) {
+              const fileData = await offlineStorage.getOfflineFile(op.id);
+              if (fileData) {
+                const file = new File([fileData], `file-${i}.jpg`, { type: 'image/jpeg' });
+                formData.append('photo', file);
+              }
+            }
+            
+            requestBody = formData;
+          } else {
+            // Sem arquivos, usa JSON normal
+            requestBody = op.payload;
+          }
+          
+          // Faz a requisição
+          const response = await fetch(op.url, {
+            method: op.method,
+            body: op.files && op.files.length > 0 ? requestBody : JSON.stringify(requestBody),
+            headers: op.files && op.files.length > 0 ? {} : {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Erro na sincronização: ${response.status} ${response.statusText}`);
+          }
+          
+          // Se chegou aqui, operação concluída com sucesso
+          await offlineStorage.updateOperationStatus(op.id, 'completed');
+          
+          // Limpa arquivos associados, se houver
+          if (op.files && op.files.length > 0) {
+            await offlineStorage.removeOfflineFile(op.id);
+          }
+          
+          // Remove a operação da lista de pendentes
+          await offlineStorage.removePendingOperation(op.id);
+          
+          console.log(`Operação ${op.id} sincronizada com sucesso`);
+          
+          // Atualiza o cache local após sincronização bem-sucedida
+          await this.refreshLocalCache(op.entity);
+        } catch (error) {
+          console.error(`Erro ao sincronizar operação ${op.id}:`, error);
+          
+          // Incrementa o contador de tentativas
+          const newRetryCount = (op.retryCount || 0) + 1;
+          const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+          
+          await offlineStorage.updateOperationRetry(
+            op.id, 
+            newRetryCount, 
+            errorMessage
+          );
+          
+          // Se ultrapassou limite de tentativas, marcar como erro
+          if (newRetryCount >= 5) {
+            await offlineStorage.updateOperationStatus(op.id, 'error');
+          }
+        }
+      }
+      
+      // Verifica se ainda há operações pendentes
+      const remainingOps = await offlineStorage.getPendingOperations();
+      this.syncListeners.forEach(listener => listener(remainingOps.length > 0));
+      
+    } catch (error) {
+      console.error('Erro geral na sincronização:', error);
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+  
+  // Atualiza o cache local após sincronização
+  private async refreshLocalCache(entityType: string) {
+    try {
+      // Faz uma requisição para obter os dados atualizados do servidor
+      const response = await fetch(`/api/${entityType}`);
+      
+      if (response.ok) {
+        const freshData = await response.json();
+        
+        // Salva os dados atualizados no cache local
+        await offlineStorage.saveOfflineData(entityType, freshData);
+        
+        console.log(`Cache local de ${entityType} atualizado com sucesso`);
+      }
+    } catch (error) {
+      console.error(`Erro ao atualizar cache local de ${entityType}:`, error);
+    }
+  }
+  
+  // Retorna o status atual da conexão
+  public getOnlineStatus(): boolean {
+    return this.isOnline;
+  }
+  
+  // Adiciona listener para alterações no status de sincronização
+  public addSyncListener(listener: (hasPendingOperations: boolean) => void) {
+    this.syncListeners.push(listener);
+  }
+  
+  // Remove listener de sincronização
+  public removeSyncListener(listener: (hasPendingOperations: boolean) => void) {
+    const index = this.syncListeners.indexOf(listener);
+    if (index !== -1) {
+      this.syncListeners.splice(index, 1);
+    }
+  }
+  
+  // Adiciona listener para alterações no status online
+  public addOnlineStatusListener(listener: (isOnline: boolean) => void) {
+    this.onlineStatusListeners.push(listener);
+  }
+  
+  // Remove listener de status online
+  public removeOnlineStatusListener(listener: (isOnline: boolean) => void) {
+    const index = this.onlineStatusListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onlineStatusListeners.splice(index, 1);
+    }
+  }
+  
+  // Força a sincronização manualmente
+  public forceSyncNow() {
+    if (this.isOnline && !this.isSyncing) {
+      this.syncPendingOperations();
+    }
+  }
+}
+
+// Exporta uma instância única do SyncManager
+export const syncManager = new SyncManager();es
 type PendingOperation = {
   id: string;
   url: string;
