@@ -542,10 +542,21 @@ export function HistoryView() {
                     )}
                     
                     {registration.type === 'trip' && (
-                      <div className="flex items-center">
-                        <MapPin className="h-3.5 w-3.5 mr-1" />
-                        <span>{`${registration.tripOrigin || "?"} → ${registration.tripDestination || "?"}`}</span>
-                      </div>
+                      <>
+                        <div className="flex items-center">
+                          <MapPin className="h-3.5 w-3.5 mr-1" />
+                          <span>{`${registration.tripOrigin || "?"} → ${registration.tripDestination || "?"}`}</span>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <TrendingUp className="h-3.5 w-3.5 mr-1 text-green-600" />
+                          <span className="text-green-600 font-medium">
+                            {registration.tripDistance ? `${registration.tripDistance} km percorridos` : 
+                             (registration.finalKm && registration.initialKm) ? 
+                             `${registration.finalKm - registration.initialKm} km percorridos` : 
+                             "Distância não especificada"}
+                          </span>
+                        </div>
+                      </>
                     )}
                     
                     {registration.type === 'fuel' ? (
