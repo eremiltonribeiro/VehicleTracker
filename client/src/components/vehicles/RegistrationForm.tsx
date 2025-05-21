@@ -71,12 +71,27 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
 
   const watchType = form.watch("type");
 
-  // Fetch all required data for the form
-  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({ queryKey: ["/api/vehicles"] });
-  const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({ queryKey: ["/api/drivers"] });
-  const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({ queryKey: ["/api/fuel-stations"] });
-  const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({ queryKey: ["/api/fuel-types"] });
-  const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({ queryKey: ["/api/maintenance-types"] });
+  // Fetch all required data for the form with staleTime to evitar recarregamentos desnecessários
+  const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({ 
+    queryKey: ["/api/vehicles"], 
+    staleTime: 60000 // 1 minuto
+  });
+  const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({ 
+    queryKey: ["/api/drivers"],
+    staleTime: 60000
+  });
+  const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({ 
+    queryKey: ["/api/fuel-stations"],
+    staleTime: 60000
+  });
+  const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({ 
+    queryKey: ["/api/fuel-types"],
+    staleTime: 60000
+  });
+  const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({ 
+    queryKey: ["/api/maintenance-types"],
+    staleTime: 60000
+  });
 
   // --- Buscar dados para edição, se houver ID ---
   useEffect(() => {
@@ -105,6 +120,12 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
         ...values,
         fuelCost: values.fuelCost ? Math.round(values.fuelCost * 100) : undefined,
         maintenanceCost: values.maintenanceCost ? Math.round(values.maintenanceCost * 100) : undefined,
+        // Certifique-se de que os IDs sejam convertidos para números
+        vehicleId: values.vehicleId ? Number(values.vehicleId) : undefined,
+        driverId: values.driverId ? Number(values.driverId) : undefined,
+        fuelStationId: values.fuelStationId ? Number(values.fuelStationId) : undefined,
+        fuelTypeId: values.fuelTypeId ? Number(values.fuelTypeId) : undefined,
+        maintenanceTypeId: values.maintenanceTypeId ? Number(values.maintenanceTypeId) : undefined,
       };
       formData.append("data", JSON.stringify(data));
       if (selectedFile) {
@@ -112,16 +133,24 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
       }
       const url = id ? `/api/registrations/${id}` : "/api/registrations";
       const method = id ? "PUT" : "POST";
+      
+      console.log("Enviando dados:", data);
+      
       const res = await fetch(url, {
         method,
         body: formData,
         credentials: "include",
       });
+      
       if (!res.ok) {
         const error = await res.json();
+        console.error("Erro na resposta:", error);
         throw new Error(error.message || "Erro ao salvar registro");
       }
-      return res.json();
+      
+      const result = await res.json();
+      console.log("Resposta recebida:", result);
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -131,9 +160,10 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
       form.reset();
       setSelectedFile(null);
       queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
-      setLocation("/?view=history");
+      setLocation("/registros/history"); // URL corrigida para o histórico
     },
     onError: (error: Error) => {
+      console.error("Erro ao salvar registro:", error);
       toast({
         title: "Erro",
         description: error.message,
