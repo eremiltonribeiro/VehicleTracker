@@ -1,4 +1,4 @@
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import path from "path";
@@ -17,7 +17,6 @@ import {
   insertMaintenanceTypeSchema
 } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { DatabaseStorage } from "./dbStorage";
 
 // Setup upload directory
 const uploadsDir = path.join(process.cwd(), "dist/public/uploads");
@@ -43,7 +42,6 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    // Accept only images
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
@@ -53,10 +51,7 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Configurar middleware para parsing de JSON
   app.use(express.json());
-
-  // Configurar autenticação
   await setupAuth(app);
 
   // Endpoint para obter usuário atual
@@ -70,7 +65,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Falha ao buscar usuário" });
     }
   });
-  // API routes for vehicle management
+
+  // GET - Listar veículos
   app.get("/api/vehicles", async (req, res) => {
     try {
       const vehicles = await storage.getVehicles();
@@ -80,45 +76,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST - Criar veículo
   app.post("/api/vehicles", upload.single('image'), async (req, res) => {
     try {
       const vehicleData = req.body;
 
-      // Converter valores numéricos
-      if (vehicleData.year) {
-        vehicleData.year = parseInt(vehicleData.year);
-      }
+      if (vehicleData.year) vehicleData.year = parseInt(vehicleData.year);
 
-      // Log dos dados recebidos para debug
-      console.log("Dados do veículo recebidos:", vehicleData);
+      // Validar dados
+      insertVehicleSchema.parse(vehicleData);
 
-      try {
-        // Validar dados
-        insertVehicleSchema.parse(vehicleData);
+      if (req.file) vehicleData.imageUrl = `/uploads/${req.file.filename}`;
 
-        // Se houver imagem, adicionar URL à informação do veículo
-        if (req.file) {
-          vehicleData.imageUrl = `/uploads/${req.file.filename}`;
-        }
-
-        const vehicle = await storage.createVehicle(vehicleData);
-        res.status(201).json(vehicle);
-      } catch (validationError: any) {
-        if (validationError instanceof z.ZodError) {
-          console.error("Erro de validação:", validationError.errors);
-          return res.status(400).json({ 
-            message: "Erro de validação", 
-            errors: validationError.errors.map(e => e.message) 
-          });
-        }
-        throw validationError;
-      }
+      const vehicle = await storage.createVehicle(vehicleData);
+      res.status(201).json(vehicle);
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Erro de validação", 
+          errors: error.errors.map(e => e.message) 
+        });
+      }
       console.error("Erro ao criar veículo:", error);
       res.status(500).json({ message: "Ocorreu um erro ao cadastrar o veículo. Tente novamente." });
     }
   });
 
+  // PUT - Atualizar veículo
+  app.put("/api/vehicles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vehicleData = req.body;
+
+      // Se quiser validar: insertVehicleSchema.parse(vehicleData);
+
+      const vehicle = await storage.updateVehicle(id, vehicleData);
+      if (!vehicle) {
+        return res.status(404).json({ message: "Veículo não encontrado" });
+      }
+      res.status(200).json(vehicle);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE - Excluir veículo
+  app.delete("/api/vehicles/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteVehicle(id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Veículo não encontrado" });
+      }
+      res.status(200).json({ message: "Veículo excluído com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
   app.get("/api/drivers", async (req, res) => {
     try {
       const drivers = await storage.getDrivers();
