@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Switch, Route, useLocation, useRouter } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -20,7 +21,6 @@ import ChecklistSimple from "@/pages/ChecklistSimple";
 import AppConfig from "@/pages/AppConfig";
 import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
-import { useEffect, useState } from 'react';
 import { syncManager } from './services/syncManager';
 
 // Context para gerenciar estado de autenticação
@@ -188,7 +188,7 @@ function App() {
       setIsOnline(online);
       console.log(`Status da conexão alterado: ${online ? 'online' : 'offline'}`);
     });
-    
+
     // Função para verificar operações pendentes
     const checkPendingOps = async () => {
       if (window.indexedDB) {
@@ -198,7 +198,7 @@ function App() {
             const transaction = db.result.transaction(['pendingOperations'], 'readonly');
             const store = transaction.objectStore('pendingOperations');
             const countRequest = store.count();
-            
+
             countRequest.onsuccess = () => {
               setPendingSync(countRequest.result);
             };
@@ -208,11 +208,11 @@ function App() {
         }
       }
     };
-    
+
     // Verificar operações pendentes inicialmente e a cada 30 segundos
     checkPendingOps();
     const intervalId = setInterval(checkPendingOps, 30000);
-    
+
     // Adicionar listener para mensagens do service worker
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.addEventListener('message', (event) => {

@@ -210,26 +210,102 @@ class OfflineStorage {
   public async saveOfflineData(type: string, data: any): Promise<void> {
     const db = await this.ensureDbReady();
     
+    // Se data for um array, salvar cada item individualmente
+    if (Array.isArray(data)) {
+      console.log(`Salvando array de dados tipo ${type} (${data.length} itens)`);
+      
+      // Primeiro, remover dados antigos deste tipo
+      await this.clearDataByType(type);
+      
+      // Depois, adicionar os novos
+      const promises = data.map(item => this.saveOfflineDataItem(type, item));
+      await Promise.all(promises);
+      return;
+    }
+    
+    // Caso contrário, salvar como item único
+    await this.saveOfflineDataItem(type, data);
+  }
+  
+  // Salva um único item de dados
+  private async saveOfflineDataItem(type: string, data: any): Promise<void> {
+    const db = await this.ensureDbReady();
+    
     // Garante que temos um ID único
     if (!data.id) {
       data.id = `${type}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     }
     
-    // Adiciona tipo e timestamp
-    data.type = type;
-    data.timestamp = Date.now();
+    // Formatar ID para garantir compatibilidade com IndexedDB
+    // IndexedDB aceita chaves numéricas ou strings, mas não ambos no mesmo store
+    const recordId = `${type}_${data.id}`;
+    
+    // Criar uma cópia do objeto com os metadados adicionais
+    const record = {
+      ...data,
+      _id: recordId,  // ID para indexedDB
+      id: data.id,    // Mantém o ID original
+      _type: type,    // Prefixo para ajudar na consulta
+      _timestamp: Date.now() // Quando foi armazenado
+    };
     
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['offlineData'], 'readwrite');
       const store = transaction.objectStore('offlineData');
       
-      const request = store.put(data);
+      const request = store.put(record);
       
       request.onsuccess = () => {
         resolve();
       };
       
       request.onerror = (event) => {
+        console.error(`Erro ao salvar dados offline tipo ${type}:`, (event.target as IDBRequest).error);
+        reject((event.target as IDBRequest).error);
+      };
+    });
+  }
+  
+  // Remove todos os dados de um determinado tipo
+  public async clearDataByType(type: string): Promise<void> {
+    const db = await this.ensureDbReady();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['offlineData'], 'readwrite');
+      const store = transaction.objectStore('offlineData');
+      const index = store.index('type');
+      
+      // Primeiro, obter todos os IDs dos registros deste tipo
+      const getRequest = index.getAllKeys(type);
+      
+      getRequest.onsuccess = async () => {
+        const keys = getRequest.result;
+        
+        if (keys && keys.length > 0) {
+          console.log(`Removendo ${keys.length} registros do tipo ${type}`);
+          
+          try {
+            // Excluir cada registro individualmente
+            for (const key of keys) {
+              await new Promise<void>((resolveDelete, rejectDelete) => {
+                const deleteRequest = store.delete(key);
+                
+                deleteRequest.onsuccess = () => resolveDelete();
+                deleteRequest.onerror = (e) => rejectDelete((e.target as IDBRequest).error);
+              });
+            }
+            
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        } else {
+          // Nenhum registro para excluir
+          resolve();
+        }
+      };
+      
+      getRequest.onerror = (event) => {
         reject((event.target as IDBRequest).error);
       };
     });
@@ -247,13 +323,72 @@ class OfflineStorage {
       const request = index.getAll(type);
       
       request.onsuccess = () => {
-        resolve(request.result || []);
+        const results = request.result || [];
+        
+        // Remover os campos internos antes de retornar
+        const cleanResults = results.map(item => {
+          // Criar uma cópia sem os campos de metadados
+          const { _id, _type, _timestamp, ...cleanItem } = item;
+          return cleanItem;
+        });
+        
+        resolve(cleanResults);
       };
       
       request.onerror = (event) => {
+        console.error(`Erro ao buscar dados offline tipo ${type}:`, (event.target as IDBRequest).error);
         reject((event.target as IDBRequest).error);
       };
     });
+  }
+  
+  // Métodos auxiliares específicos para entidades comuns
+  public async saveRegistrations(data: any[]): Promise<void> {
+    return this.saveOfflineData('registrations', data);
+  }
+  
+  public async getRegistrations(): Promise<any[]> {
+    return this.getOfflineDataByType('registrations');
+  }
+  
+  public async saveVehicles(data: any[]): Promise<void> {
+    return this.saveOfflineData('vehicles', data);
+  }
+  
+  public async getVehicles(): Promise<any[]> {
+    return this.getOfflineDataByType('vehicles');
+  }
+  
+  public async saveDrivers(data: any[]): Promise<void> {
+    return this.saveOfflineData('drivers', data);
+  }
+  
+  public async getDrivers(): Promise<any[]> {
+    return this.getOfflineDataByType('drivers');
+  }
+  
+  public async saveFuelStations(data: any[]): Promise<void> {
+    return this.saveOfflineData('fuel-stations', data);
+  }
+  
+  public async getFuelStations(): Promise<any[]> {
+    return this.getOfflineDataByType('fuel-stations');
+  }
+  
+  public async saveFuelTypes(data: any[]): Promise<void> {
+    return this.saveOfflineData('fuel-types', data);
+  }
+  
+  public async getFuelTypes(): Promise<any[]> {
+    return this.getOfflineDataByType('fuel-types');
+  }
+  
+  public async saveMaintenanceTypes(data: any[]): Promise<void> {
+    return this.saveOfflineData('maintenance-types', data);
+  }
+  
+  public async getMaintenanceTypes(): Promise<any[]> {
+    return this.getOfflineDataByType('maintenance-types');
   }
   
   // Salva um arquivo offline

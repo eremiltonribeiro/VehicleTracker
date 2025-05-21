@@ -311,12 +311,16 @@ class SyncManager {
       
       // Processa as operações em ordem de timestamp (mais antigas primeiro)
       const sortedOperations = operations.sort((a, b) => a.timestamp - b.timestamp);
+      let successCount = 0;
       
       for (const operation of sortedOperations) {
         // Atualiza status
         await offlineStorage.updateOperationStatus(operation.id, 'processing');
         
         try {
+          let response;
+          console.log(`Sincronizando operação: ${operation.url} (${operation.method})`, operation.body);
+          
           if (operation.files && operation.files.length > 0) {
             // Processa operação com arquivos usando FormData
             const formData = new FormData();
@@ -332,31 +336,48 @@ class SyncManager {
               formData.append(`file${index}`, file);
             });
             
-            const response = await fetch(operation.url, {
+            response = await fetch(operation.url, {
               method: operation.method,
-              body: formData
+              body: formData,
+              // Evita cache para garantir que o request seja feito
+              headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+              }
             });
-            
-            if (!response.ok) {
-              throw new Error(`Erro na sincronização: ${response.status}`);
-            }
           } else {
             // Operação sem arquivos
-            const response = await fetch(operation.url, {
+            response = await fetch(operation.url, {
               method: operation.method,
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
               },
               body: operation.body ? JSON.stringify(operation.body) : undefined
             });
-            
-            if (!response.ok) {
-              throw new Error(`Erro na sincronização: ${response.status}`);
-            }
           }
+          
+          if (!response.ok) {
+            throw new Error(`Erro na sincronização: ${response.status} - ${await response.text()}`);
+          }
+          
+          // Pegue a resposta para atualizar o cache local
+          const responseData = await response.json();
+          console.log(`Resposta recebida para operação ${operation.id}:`, responseData);
           
           // Operação concluída com sucesso, remove da fila
           await offlineStorage.removePendingOperation(operation.id);
+          
+          // Notificar o sistema que um item foi sincronizado (isso ajuda a atualizar a UI)
+          window.dispatchEvent(new CustomEvent('offline-sync-success', { 
+            detail: { 
+              operation, 
+              response: responseData 
+            }
+          }));
+          
+          successCount++;
           console.log(`Operação ${operation.id} sincronizada com sucesso`);
         } catch (error) {
           console.error(`Erro ao sincronizar operação ${operation.id}:`, error);
@@ -375,13 +396,32 @@ class SyncManager {
               'error', 
               error instanceof Error ? error.message : 'Erro desconhecido'
             );
+            
+            // Notificar o sistema que um item falhou permanentemente
+            window.dispatchEvent(new CustomEvent('offline-sync-error', { 
+              detail: { 
+                operation,
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+              }
+            }));
           }
         }
       }
       
       // Conta quantas operações ainda estão pendentes após a sincronização
       const remainingOperations = await offlineStorage.getPendingOperations();
-      console.log(`Sincronização concluída. ${operations.length - remainingOperations.length}/${operations.length} operações sincronizadas.`);
+      console.log(`Sincronização concluída. ${successCount}/${operations.length} operações sincronizadas.`);
+      
+      // Se sincronizamos com sucesso, recarregue os dados das páginas
+      if (successCount > 0) {
+        // Dispara um evento para que os componentes que usam dados saibam que devem recarregar
+        window.dispatchEvent(new CustomEvent('data-synchronized', { 
+          detail: { count: successCount }
+        }));
+        
+        // Invalidar caches do React Query para forçar recarga de dados
+        window.dispatchEvent(new CustomEvent('invalidate-queries'));
+      }
       
       // Atualiza a UI
       this.updateOfflineUI(true);
