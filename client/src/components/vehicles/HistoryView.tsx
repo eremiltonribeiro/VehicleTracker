@@ -88,21 +88,7 @@ export function HistoryView() {
   // Query client for refetching data
   const queryClient = useQueryClient();
   
-  // Listener para atualização automática após sincronização
-  useEffect(() => {
-    function handleDataSync() {
-      console.log("Evento de sincronização detectado, atualizando dados");
-      queryClient.invalidateQueries(["/api/registrations"]);
-      refetch();
-    }
-    
-    window.addEventListener("data-synchronized", handleDataSync);
-    return () => {
-      window.removeEventListener("data-synchronized", handleDataSync);
-    };
-  }, [queryClient, refetch]);
-
-  // Query for fetching registrations with filters
+  // Query para buscar registros com filtros
   const { data: registrations = [], isLoading, refetch } = useQuery({
     queryKey: [
       "/api/registrations", 
@@ -113,6 +99,53 @@ export function HistoryView() {
     ],
     queryFn: async ({ queryKey }) => {
       const [_, type, vehicleId, startDate, endDate] = queryKey;
+
+      let url = "/api/registrations";
+      const params = new URLSearchParams();
+
+      if (type && type !== "all") params.append("type", type as string);
+      if (vehicleId && vehicleId !== "all") params.append("vehicleId", vehicleId as string);
+      if (startDate) params.append("startDate", (startDate as Date).toISOString());
+      if (endDate) params.append("endDate", (endDate as Date).toISOString());
+
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+
+      try {
+        const res = await fetch(url, {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch registrations");
+        }
+
+        return res.json();
+      } catch (error) {
+        console.error("Erro ao buscar registros:", error);
+        // Retornar array vazio em caso de erro
+        return [];
+      }
+    },
+  });
+  
+  // Listener para atualização automática após sincronização
+  useEffect(() => {
+    function handleDataSync() {
+      console.log("Evento de sincronização detectado, atualizando dados");
+      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      refetch();
+    }
+    
+    window.addEventListener("data-synchronized", handleDataSync);
+    return () => {
+      window.removeEventListener("data-synchronized", handleDataSync);
+    };
+  }, [queryClient, refetch]);
+
+  // Fetch vehicles for filter
 
       let url = "/api/registrations";
       const params = new URLSearchParams();
