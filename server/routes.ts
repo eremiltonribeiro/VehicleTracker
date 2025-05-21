@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import path from "path";
@@ -54,19 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   await setupAuth(app);
 
-  // Endpoint para obter usuário atual
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserById(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Erro ao buscar usuário:", error);
-      res.status(500).json({ message: "Falha ao buscar usuário" });
-    }
-  });
-
-  // GET - Listar veículos
+  // ---------------- VEÍCULOS ----------------
   app.get("/api/vehicles", async (req, res) => {
     try {
       const vehicles = await storage.getVehicles();
@@ -76,64 +64,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST - Criar veículo
   app.post("/api/vehicles", upload.single('image'), async (req, res) => {
     try {
       const vehicleData = req.body;
-
       if (vehicleData.year) vehicleData.year = parseInt(vehicleData.year);
-
-      // Validar dados
       insertVehicleSchema.parse(vehicleData);
-
       if (req.file) vehicleData.imageUrl = `/uploads/${req.file.filename}`;
-
       const vehicle = await storage.createVehicle(vehicleData);
       res.status(201).json(vehicle);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Erro de validação", 
-          errors: error.errors.map(e => e.message) 
-        });
+        return res.status(400).json({ message: error.errors.map(e => e.message) });
       }
-      console.error("Erro ao criar veículo:", error);
-      res.status(500).json({ message: "Ocorreu um erro ao cadastrar o veículo. Tente novamente." });
+      res.status(500).json({ message: error.message });
     }
   });
 
-  // PUT - Atualizar veículo
   app.put("/api/vehicles/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const vehicleData = req.body;
-
-      // Se quiser validar: insertVehicleSchema.parse(vehicleData);
-
-      const vehicle = await storage.updateVehicle(id, vehicleData);
-      if (!vehicle) {
-        return res.status(404).json({ message: "Veículo não encontrado" });
-      }
-      res.status(200).json(vehicle);
+      const vehicle = await storage.updateVehicle(id, req.body);
+      if (!vehicle) return res.status(404).json({ message: "Veículo não encontrado" });
+      res.json(vehicle);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  // DELETE - Excluir veículo
   app.delete("/api/vehicles/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteVehicle(id);
-
-      if (!deleted) {
-        return res.status(404).json({ message: "Veículo não encontrado" });
-      }
-      res.status(200).json({ message: "Veículo excluído com sucesso" });
+      if (!deleted) return res.status(404).json({ message: "Veículo não encontrado" });
+      res.json({ message: "Veículo excluído com sucesso" });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
+
+
+  // ---------------- MOTORISTAS ----------------
   app.get("/api/drivers", async (req, res) => {
     try {
       const drivers = await storage.getDrivers();
@@ -146,30 +116,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/drivers", upload.single('image'), async (req, res) => {
     try {
       const driverData = req.body;
-
-      // Validar dados
       insertDriverSchema.parse(driverData);
-
-      // Se houver imagem, adicionar URL à informação do motorista
-      if (req.file) {
-        driverData.imageUrl = `/uploads/${req.file.filename}`;
-      }
-
+      if (req.file) driverData.imageUrl = `/uploads/${req.file.filename}`;
       const driver = await storage.createDriver(driverData);
       res.status(201).json(driver);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        return res.status(400).json({ message: error.errors.map(e => e.message) });
       }
-      console.error("Erro ao criar motorista:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
+  app.put("/api/drivers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const driver = await storage.updateDriver(id, req.body);
+      if (!driver) return res.status(404).json({ message: "Motorista não encontrado" });
+      res.json(driver);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/drivers/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDriver(id);
+      if (!deleted) return res.status(404).json({ message: "Motorista não encontrado" });
+      res.json({ message: "Motorista excluído com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
+  // ---------------- POSTOS DE COMBUSTÍVEL ----------------
   app.get("/api/fuel-stations", async (req, res) => {
     try {
-      const fuelStations = await storage.getFuelStations();
-      res.json(fuelStations);
+      const stations = await storage.getFuelStations();
+      res.json(stations);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -178,25 +164,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fuel-stations", async (req, res) => {
     try {
       const stationData = req.body;
-
-      // Validar dados
       insertFuelStationSchema.parse(stationData);
-
       const station = await storage.createFuelStation(stationData);
       res.status(201).json(station);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        return res.status(400).json({ message: error.errors.map(e => e.message) });
       }
-      console.error("Erro ao criar posto de combustível:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
+  app.put("/api/fuel-stations/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const station = await storage.updateFuelStation(id, req.body);
+      if (!station) return res.status(404).json({ message: "Posto não encontrado" });
+      res.json(station);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/fuel-stations/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteFuelStation(id);
+      if (!deleted) return res.status(404).json({ message: "Posto não encontrado" });
+      res.json({ message: "Posto excluído com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
+  // ---------------- TIPOS DE COMBUSTÍVEL ----------------
   app.get("/api/fuel-types", async (req, res) => {
     try {
-      const fuelTypes = await storage.getFuelTypes();
-      res.json(fuelTypes);
+      const types = await storage.getFuelTypes();
+      res.json(types);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -205,31 +211,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/fuel-types", async (req, res) => {
     try {
       const typeData = { name: req.body.name };
-
-      // Validar dados usando o schema
-      try {
-        insertFuelTypeSchema.parse(typeData);
-      } catch (validationError: any) {
-        return res.status(400).json({ 
-          message: "Erro de validação", 
-          errors: validationError.errors 
-        });
-      }
-
+      insertFuelTypeSchema.parse(typeData);
       const fuelType = await storage.createFuelType(typeData);
       res.status(201).json(fuelType);
     } catch (error: any) {
-      console.error("Erro ao criar tipo de combustível:", error);
-      res.status(500).json({ 
-        message: "Ocorreu um erro ao cadastrar o tipo de combustível"
-      });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors.map(e => e.message) });
+      }
+      res.status(500).json({ message: error.message });
     }
   });
 
+  app.put("/api/fuel-types/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const type = await storage.updateFuelType(id, req.body);
+      if (!type) return res.status(404).json({ message: "Tipo de combustível não encontrado" });
+      res.json(type);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/fuel-types/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteFuelType(id);
+      if (!deleted) return res.status(404).json({ message: "Tipo de combustível não encontrado" });
+      res.json({ message: "Tipo de combustível excluído com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
+  // ---------------- TIPOS DE MANUTENÇÃO ----------------
   app.get("/api/maintenance-types", async (req, res) => {
     try {
-      const maintenanceTypes = await storage.getMaintenanceTypes();
-      res.json(maintenanceTypes);
+      const types = await storage.getMaintenanceTypes();
+      res.json(types);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
@@ -238,21 +258,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/maintenance-types", async (req, res) => {
     try {
       const typeData = req.body;
-
-      // Validar dados
       insertMaintenanceTypeSchema.parse(typeData);
-
       const maintenanceType = await storage.createMaintenanceType(typeData);
       res.status(201).json(maintenanceType);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
+        return res.status(400).json({ message: error.errors.map(e => e.message) });
       }
-      console.error("Erro ao criar tipo de manutenção:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
+  app.put("/api/maintenance-types/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const type = await storage.updateMaintenanceType(id, req.body);
+      if (!type) return res.status(404).json({ message: "Tipo de manutenção não encontrado" });
+      res.json(type);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete("/api/maintenance-types/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteMaintenanceType(id);
+      if (!deleted) return res.status(404).json({ message: "Tipo de manutenção não encontrado" });
+      res.json({ message: "Tipo de manutenção excluído com sucesso" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
   // Get registrations with optional filters
   app.get("/api/registrations", async (req, res) => {
     try {

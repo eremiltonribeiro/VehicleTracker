@@ -34,28 +34,36 @@ export interface IStorage {
   getVehicles(): Promise<Vehicle[]>;
   getVehicle(id: number): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
-  updateVehicle(id: number, data: any): Promise<Vehicle>;        // ADICIONADO
-  deleteVehicle(id: number): Promise<boolean>;                   // ADICIONADO
+  updateVehicle(id: number, data: any): Promise<Vehicle>;
+  deleteVehicle(id: number): Promise<boolean>;
 
   // Driver methods
   getDrivers(): Promise<Driver[]>;
   getDriver(id: number): Promise<Driver | undefined>;
   createDriver(driver: InsertDriver): Promise<Driver>;
+  updateDriver(id: number, data: any): Promise<Driver>;
+  deleteDriver(id: number): Promise<boolean>;
 
   // Fuel station methods
   getFuelStations(): Promise<FuelStation[]>;
   getFuelStation(id: number): Promise<FuelStation | undefined>;
   createFuelStation(fuelStation: InsertFuelStation): Promise<FuelStation>;
+  updateFuelStation(id: number, data: any): Promise<FuelStation>;
+  deleteFuelStation(id: number): Promise<boolean>;
 
   // Fuel type methods
   getFuelTypes(): Promise<FuelType[]>;
   getFuelType(id: number): Promise<FuelType | undefined>;
   createFuelType(fuelType: InsertFuelType): Promise<FuelType>;
+  updateFuelType(id: number, data: any): Promise<FuelType>;
+  deleteFuelType(id: number): Promise<boolean>;
 
   // Maintenance type methods
   getMaintenanceTypes(): Promise<MaintenanceType[]>;
   getMaintenanceType(id: number): Promise<MaintenanceType | undefined>;
   createMaintenanceType(maintenanceType: InsertMaintenanceType): Promise<MaintenanceType>;
+  updateMaintenanceType(id: number, data: any): Promise<MaintenanceType>;
+  deleteMaintenanceType(id: number): Promise<boolean>;
 
   // Vehicle registration methods
   getRegistrations(filters?: {
@@ -155,15 +163,10 @@ export class MemStorage implements IStorage {
   }
 
   private initializeData() {
-    // ... (mantém igual ao seu exemplo original)
-    // Se quiser posso resumir aqui, mas para não cortar nada, vou deixar igual você enviou.
-    // (todas as inserções de veículos, motoristas, etc)
-    // ...
-    // (código igual ao seu, sem alterações)
-    // ...
+    // ... (Seu código original de inserção de dados iniciais)
   }
 
-  // User methods
+  // --- User methods ---
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -179,7 +182,7 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  // Vehicle methods
+  // --- Vehicle methods ---
   async getVehicles(): Promise<Vehicle[]> {
     return Array.from(this.vehicles.values());
   }
@@ -192,28 +195,20 @@ export class MemStorage implements IStorage {
     this.vehicles.set(id, vehicle);
     return vehicle;
   }
-  // ----------- ADICIONE ESTES MÉTODOS -----------
   async updateVehicle(id: number, data: any): Promise<Vehicle> {
     const existingVehicle = this.vehicles.get(id);
-    if (!existingVehicle) {
-      throw new Error(`Veículo com ID ${id} não encontrado`);
-    }
+    if (!existingVehicle) throw new Error(`Veículo com ID ${id} não encontrado`);
     const updatedVehicle: Vehicle = { ...existingVehicle, ...data, id };
     this.vehicles.set(id, updatedVehicle);
     return updatedVehicle;
   }
   async deleteVehicle(id: number): Promise<boolean> {
     const exists = this.vehicles.has(id);
-    if (!exists) {
-      throw new Error(`Veículo com ID ${id} não encontrado`);
-    }
+    if (!exists) throw new Error(`Veículo com ID ${id} não encontrado`);
     return this.vehicles.delete(id);
   }
-  // ---------------------------------------------
 
-  // (os demais métodos continuam iguais ao seu código original...)
-
-  // Driver methods
+  // --- Driver methods ---
   async getDrivers(): Promise<Driver[]> {
     return Array.from(this.drivers.values());
   }
@@ -226,24 +221,46 @@ export class MemStorage implements IStorage {
     this.drivers.set(id, driver);
     return driver;
   }
+  async updateDriver(id: number, data: any): Promise<Driver> {
+    const existingDriver = this.drivers.get(id);
+    if (!existingDriver) throw new Error(`Motorista com ID ${id} não encontrado`);
+    const updatedDriver: Driver = { ...existingDriver, ...data, id };
+    this.drivers.set(id, updatedDriver);
+    return updatedDriver;
+  }
+  async deleteDriver(id: number): Promise<boolean> {
+    const exists = this.drivers.has(id);
+    if (!exists) throw new Error(`Motorista com ID ${id} não encontrado`);
+    return this.drivers.delete(id);
+  }
 
-  // Fuel station methods
+  // --- Fuel station methods ---
   async getFuelStations(): Promise<FuelStation[]> {
     return Array.from(this.fuelStations.values());
   }
   async getFuelStation(id: number): Promise<FuelStation | undefined> {
     return this.fuelStations.get(id);
   }
-  async createFuelStation(
-    insertFuelStation: InsertFuelStation
-  ): Promise<FuelStation> {
+  async createFuelStation(insertFuelStation: InsertFuelStation): Promise<FuelStation> {
     const id = this.fuelStationCurrentId++;
     const fuelStation: FuelStation = { ...insertFuelStation, id };
     this.fuelStations.set(id, fuelStation);
     return fuelStation;
   }
+  async updateFuelStation(id: number, data: any): Promise<FuelStation> {
+    const existing = this.fuelStations.get(id);
+    if (!existing) throw new Error(`Posto com ID ${id} não encontrado`);
+    const updated: FuelStation = { ...existing, ...data, id };
+    this.fuelStations.set(id, updated);
+    return updated;
+  }
+  async deleteFuelStation(id: number): Promise<boolean> {
+    const exists = this.fuelStations.has(id);
+    if (!exists) throw new Error(`Posto com ID ${id} não encontrado`);
+    return this.fuelStations.delete(id);
+  }
 
-  // Fuel type methods
+  // --- Fuel type methods ---
   async getFuelTypes(): Promise<FuelType[]> {
     return Array.from(this.fuelTypes.values());
   }
@@ -256,39 +273,53 @@ export class MemStorage implements IStorage {
     this.fuelTypes.set(id, fuelType);
     return fuelType;
   }
+  async updateFuelType(id: number, data: any): Promise<FuelType> {
+    const existing = this.fuelTypes.get(id);
+    if (!existing) throw new Error(`Tipo de combustível com ID ${id} não encontrado`);
+    const updated: FuelType = { ...existing, ...data, id };
+    this.fuelTypes.set(id, updated);
+    return updated;
+  }
+  async deleteFuelType(id: number): Promise<boolean> {
+    const exists = this.fuelTypes.has(id);
+    if (!exists) throw new Error(`Tipo de combustível com ID ${id} não encontrado`);
+    return this.fuelTypes.delete(id);
+  }
 
-  // Maintenance type methods
+  // --- Maintenance type methods ---
   async getMaintenanceTypes(): Promise<MaintenanceType[]> {
     return Array.from(this.maintenanceTypes.values());
   }
   async getMaintenanceType(id: number): Promise<MaintenanceType | undefined> {
     return this.maintenanceTypes.get(id);
   }
-  async createMaintenanceType(
-    insertMaintenanceType: InsertMaintenanceType
-  ): Promise<MaintenanceType> {
+  async createMaintenanceType(insertMaintenanceType: InsertMaintenanceType): Promise<MaintenanceType> {
     const id = this.maintenanceTypeCurrentId++;
     const maintenanceType: MaintenanceType = { ...insertMaintenanceType, id };
     this.maintenanceTypes.set(id, maintenanceType);
     return maintenanceType;
   }
-
-  // Vehicle registration methods
-  async updateRegistration(id: number, data: any): Promise<VehicleRegistration> {
-    const existingRegistration = this.registrations.get(id);
-    if (!existingRegistration) {
-      throw new Error(`Registro com ID ${id} não encontrado`);
-    }
-    const updatedRegistration: VehicleRegistration = { 
-      ...existingRegistration,
-      ...data,
-      id // Garantir que o ID não seja alterado
-    };
-    this.registrations.set(id, updatedRegistration);
-    console.log(`Registro ${id} atualizado com sucesso:`, updatedRegistration);
-    return updatedRegistration;
+  async updateMaintenanceType(id: number, data: any): Promise<MaintenanceType> {
+    const existing = this.maintenanceTypes.get(id);
+    if (!existing) throw new Error(`Tipo de manutenção com ID ${id} não encontrado`);
+    const updated: MaintenanceType = { ...existing, ...data, id };
+    this.maintenanceTypes.set(id, updated);
+    return updated;
+  }
+  async deleteMaintenanceType(id: number): Promise<boolean> {
+    const exists = this.maintenanceTypes.has(id);
+    if (!exists) throw new Error(`Tipo de manutenção com ID ${id} não encontrado`);
+    return this.maintenanceTypes.delete(id);
   }
 
+  // --- Vehicle registration methods ---
+  async updateRegistration(id: number, data: any): Promise<VehicleRegistration> {
+    const existingRegistration = this.registrations.get(id);
+    if (!existingRegistration) throw new Error(`Registro com ID ${id} não encontrado`);
+    const updatedRegistration: VehicleRegistration = { ...existingRegistration, ...data, id };
+    this.registrations.set(id, updatedRegistration);
+    return updatedRegistration;
+  }
   async getRegistrations(filters?: {
     type?: string;
     vehicleId?: number;
@@ -296,42 +327,18 @@ export class MemStorage implements IStorage {
     endDate?: Date;
   }): Promise<VehicleRegistration[]> {
     let registrations = Array.from(this.registrations.values());
-
     if (filters) {
-      if (filters.type) {
-        registrations = registrations.filter((reg) => reg.type === filters.type);
-      }
-
-      if (filters.vehicleId) {
-        registrations = registrations.filter(
-          (reg) => reg.vehicleId === filters.vehicleId
-        );
-      }
-
-      if (filters.startDate) {
-        registrations = registrations.filter(
-          (reg) => new Date(reg.date) >= filters.startDate!
-        );
-      }
-
-      if (filters.endDate) {
-        registrations = registrations.filter(
-          (reg) => new Date(reg.date) <= filters.endDate!
-        );
-      }
+      if (filters.type) registrations = registrations.filter((reg) => reg.type === filters.type);
+      if (filters.vehicleId) registrations = registrations.filter((reg) => reg.vehicleId === filters.vehicleId);
+      if (filters.startDate) registrations = registrations.filter((reg) => new Date(reg.date) >= filters.startDate!);
+      if (filters.endDate) registrations = registrations.filter((reg) => new Date(reg.date) <= filters.endDate!);
     }
-    // Sort by date (newest first)
-    return registrations.sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    return registrations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
-
   async getRegistration(id: number): Promise<VehicleRegistration | undefined> {
     return this.registrations.get(id);
   }
-  async createRegistration(
-    insertRegistration: InsertRegistration
-  ): Promise<VehicleRegistration> {
+  async createRegistration(insertRegistration: InsertRegistration): Promise<VehicleRegistration> {
     const id = this.registrationCurrentId++;
     const registration: VehicleRegistration = { ...insertRegistration, id };
     this.registrations.set(id, registration);
@@ -339,15 +346,11 @@ export class MemStorage implements IStorage {
   }
   async deleteRegistration(id: number): Promise<boolean> {
     const exists = this.registrations.has(id);
-    if (!exists) {
-      throw new Error(`Registro com ID ${id} não encontrado`);
-    }
-    const result = this.registrations.delete(id);
-    console.log(`Registro ${id} excluído: ${result}`);
-    return result;
+    if (!exists) throw new Error(`Registro com ID ${id} não encontrado`);
+    return this.registrations.delete(id);
   }
 
-  // Checklist template methods
+  // --- Checklist template methods ---
   async getChecklistTemplates(): Promise<ChecklistTemplate[]> {
     return Array.from(this.checklistTemplates.values());
   }
@@ -361,7 +364,7 @@ export class MemStorage implements IStorage {
     return checklistTemplate;
   }
 
-  // Checklist item methods
+  // --- Checklist item methods ---
   async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
     return Array.from(this.checklistItems.values())
       .filter(item => item.templateId === templateId)
@@ -377,7 +380,7 @@ export class MemStorage implements IStorage {
     return checklistItem;
   }
 
-  // Vehicle checklist methods
+  // --- Vehicle checklist methods ---
   async getVehicleChecklists(filters?: {
     vehicleId?: number;
     driverId?: number;
@@ -385,42 +388,27 @@ export class MemStorage implements IStorage {
     endDate?: Date;
   }): Promise<VehicleChecklist[]> {
     let checklists = Array.from(this.vehicleChecklists.values());
-
     if (filters) {
-      if (filters.vehicleId) {
-        checklists = checklists.filter(c => c.vehicleId === filters.vehicleId);
-      }
-      if (filters.driverId) {
-        checklists = checklists.filter(c => c.driverId === filters.driverId);
-      }
-      if (filters.startDate) {
-        checklists = checklists.filter(c => new Date(c.date) >= filters.startDate!);
-      }
-      if (filters.endDate) {
-        checklists = checklists.filter(c => new Date(c.date) <= filters.endDate!);
-      }
+      if (filters.vehicleId) checklists = checklists.filter(c => c.vehicleId === filters.vehicleId);
+      if (filters.driverId) checklists = checklists.filter(c => c.driverId === filters.driverId);
+      if (filters.startDate) checklists = checklists.filter(c => new Date(c.date) >= filters.startDate!);
+      if (filters.endDate) checklists = checklists.filter(c => new Date(c.date) <= filters.endDate!);
     }
-    return checklists.sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    return checklists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
   async getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined> {
     return this.vehicleChecklists.get(id);
   }
   async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
     const id = this.vehicleChecklistCurrentId++;
-    if (!checklist.date) {
-      checklist.date = new Date();
-    }
+    if (!checklist.date) checklist.date = new Date();
     const vehicleChecklist: VehicleChecklist = { ...checklist, id };
     this.vehicleChecklists.set(id, vehicleChecklist);
     return vehicleChecklist;
   }
   async updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist> {
     const existingChecklist = this.vehicleChecklists.get(id);
-    if (!existingChecklist) {
-      throw new Error(`Checklist with id ${id} not found`);
-    }
+    if (!existingChecklist) throw new Error(`Checklist with id ${id} not found`);
     const updatedChecklist: VehicleChecklist = { ...existingChecklist, ...data, id };
     this.vehicleChecklists.set(id, updatedChecklist);
     return updatedChecklist;
@@ -429,10 +417,9 @@ export class MemStorage implements IStorage {
     return this.vehicleChecklists.delete(id);
   }
 
-  // Checklist result methods
+  // --- Checklist result methods ---
   async getChecklistResults(checklistId: number): Promise<ChecklistResult[]> {
-    return Array.from(this.checklistResults.values())
-      .filter(result => result.checklistId === checklistId);
+    return Array.from(this.checklistResults.values()).filter(result => result.checklistId === checklistId);
   }
   async getChecklistResult(id: number): Promise<ChecklistResult | undefined> {
     return this.checklistResults.get(id);
@@ -453,23 +440,21 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  // Implementação para Replit Auth
+  // --- Replit Auth ---
   async getUser(id: string): Promise<User | undefined> {
     const numId = parseInt(id);
     return this.users.get(numId);
   }
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const existingUser = Array.from(this.users.values())
-      .find(user => user.id === userData.id);
-
+    const existingUser = Array.from(this.users.values()).find(user => user.id === userData.id);
     if (existingUser) {
       const updatedUser = { ...existingUser, ...userData, updatedAt: new Date() };
       this.users.set(parseInt(updatedUser.id), updatedUser);
       return updatedUser;
     } else {
       const newUserId = userData.id || this.userCurrentId.toString();
-      const newUser: User = { 
-        ...userData, 
+      const newUser: User = {
+        ...userData,
         id: newUserId,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -482,7 +467,9 @@ export class MemStorage implements IStorage {
   async getUserById(id: string): Promise<User | null> {
     try {
       const userId = id;
-      const userFromStorage = localStorage.getItem(`user_${userId}`);
+      // Tentar buscar do localStorage primeiro (padrão do seu exemplo)
+      // No NodeJS isso não existe, mas ok, mantém a compatibilidade do código
+      const userFromStorage = typeof localStorage !== "undefined" ? localStorage.getItem(`user_${userId}`) : null;
       if (userFromStorage) {
         return JSON.parse(userFromStorage);
       }
