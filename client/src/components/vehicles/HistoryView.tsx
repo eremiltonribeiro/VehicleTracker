@@ -658,12 +658,12 @@ export function HistoryView() {
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <Label className="text-gray-500">Veículo</Label>
-                <p className="font-medium">{selectedRegistration.vehicleName || "Não especificado"}</p>
+                <p className="font-medium">{selectedRegistration.vehicle ? `${selectedRegistration.vehicle.name} - ${selectedRegistration.vehicle.plate}` : "Não especificado"}</p>
               </div>
               
               <div>
                 <Label className="text-gray-500">Motorista</Label>
-                <p className="font-medium">{selectedRegistration.driverName || "Não especificado"}</p>
+                <p className="font-medium">{selectedRegistration.driver ? selectedRegistration.driver.name : "Não especificado"}</p>
               </div>
               
               <div>
@@ -675,22 +675,26 @@ export function HistoryView() {
                 <>
                   <div>
                     <Label className="text-gray-500">Posto</Label>
-                    <p className="font-medium">{selectedRegistration.fuelStationName || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.fuelStation ? selectedRegistration.fuelStation.name : "Não especificado"}</p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Combustível</Label>
-                    <p className="font-medium">{selectedRegistration.fuelTypeName || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.fuelType ? selectedRegistration.fuelType.name : "Não especificado"}</p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Quantidade</Label>
-                    <p className="font-medium">{selectedRegistration.fuelAmount ? `${selectedRegistration.fuelAmount} L` : "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.liters ? `${selectedRegistration.liters} L` : "Não especificado"}</p>
                   </div>
                   
                   <div>
                     <Label className="text-gray-500">Valor por litro</Label>
-                    <p className="font-medium">{selectedRegistration.fuelPricePerLiter ? formatCurrency(selectedRegistration.fuelPricePerLiter) : "Não especificado"}</p>
+                    <p className="font-medium">
+                      {selectedRegistration.liters && selectedRegistration.fuelCost ? 
+                        formatCurrency(Math.round(selectedRegistration.fuelCost / selectedRegistration.liters) / 100) : 
+                        "Não especificado"}
+                    </p>
                   </div>
                   
                   <div>
@@ -704,7 +708,7 @@ export function HistoryView() {
                 <>
                   <div>
                     <Label className="text-gray-500">Tipo de manutenção</Label>
-                    <p className="font-medium">{selectedRegistration.maintenanceTypeName || "Não especificado"}</p>
+                    <p className="font-medium">{selectedRegistration.maintenanceType ? selectedRegistration.maintenanceType.name : "Não especificado"}</p>
                   </div>
                   
                   <div>
