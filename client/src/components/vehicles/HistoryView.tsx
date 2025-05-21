@@ -505,7 +505,7 @@ export function HistoryView() {
                           )}
                         </h4>
                         <p className="text-sm text-gray-600">
-                          {registration.vehicleName || "Veículo não especificado"}
+                          {registration.vehicle ? `${registration.vehicle.name} - ${registration.vehicle.plate}` : "Veículo não especificado"}
                         </p>
                       </div>
                     </div>
@@ -524,20 +524,20 @@ export function HistoryView() {
                   <div className="mt-4 flex flex-wrap justify-between items-center text-sm text-gray-500">
                     <div className="flex items-center">
                       <User className="h-3.5 w-3.5 mr-1" />
-                      <span>{registration.driverName || "Motorista não especificado"}</span>
+                      <span>{registration.driver ? registration.driver.name : "Motorista não especificado"}</span>
                     </div>
                     
                     {registration.type === 'fuel' && (
                       <div className="flex items-center">
-                        <MapPin className="h-3.5 w-3.5 mr-1" />
-                        <span>{registration.fuelStationName || "Posto não especificado"}</span>
+                        <Fuel className="h-3.5 w-3.5 mr-1" />
+                        <span>{registration.fuelStation ? registration.fuelStation.name : "Posto não especificado"}</span>
                       </div>
                     )}
                     
                     {registration.type === 'maintenance' && (
                       <div className="flex items-center">
                         <Wrench className="h-3.5 w-3.5 mr-1" />
-                        <span>{registration.maintenanceTypeName || "Tipo não especificado"}</span>
+                        <span>{registration.maintenanceType ? registration.maintenanceType.name : "Tipo não especificado"}</span>
                       </div>
                     )}
                     
@@ -548,12 +548,19 @@ export function HistoryView() {
                       </div>
                     )}
                     
-                    <div className="flex items-center mt-2 md:mt-0">
-                      <Calendar className="h-3.5 w-3.5 mr-1" />
-                      {registration.odometer && (
-                        <span>Hodômetro: {registration.odometer} km</span>
-                      )}
-                    </div>
+                    {registration.type === 'fuel' ? (
+                      <div className="flex items-center mt-2 md:mt-0">
+                        <Calendar className="h-3.5 w-3.5 mr-1" />
+                        <span>{registration.liters ? `${registration.liters} litros` : "Quantidade não especificada"}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center mt-2 md:mt-0">
+                        <Calendar className="h-3.5 w-3.5 mr-1" />
+                        {registration.initialKm && (
+                          <span>Hodômetro: {registration.initialKm} km</span>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="flex space-x-1 mt-2 md:mt-0">
                       <Button 
@@ -666,10 +673,17 @@ export function HistoryView() {
                 <p className="font-medium">{selectedRegistration.driver ? selectedRegistration.driver.name : "Não especificado"}</p>
               </div>
               
-              <div>
-                <Label className="text-gray-500">Hodômetro</Label>
-                <p className="font-medium">{selectedRegistration.odometer ? `${selectedRegistration.odometer} km` : "Não especificado"}</p>
-              </div>
+              {selectedRegistration.type === 'fuel' ? (
+                <div>
+                  <Label className="text-gray-500">Quilometragem atual</Label>
+                  <p className="font-medium">{selectedRegistration.initialKm ? `${selectedRegistration.initialKm} km` : "Não especificado"}</p>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-gray-500">Hodômetro</Label>
+                  <p className="font-medium">{selectedRegistration.initialKm ? `${selectedRegistration.initialKm} km` : "Não especificado"}</p>
+                </div>
+              )}
               
               {selectedRegistration.type === 'fuel' && (
                 <>
