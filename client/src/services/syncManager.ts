@@ -23,6 +23,7 @@ class SyncManager {
   private maxRetries: number = 3;
   private syncInterval: number = 30000; // 30 segundos
   private intervalId: number | null = null;
+  private mutationObserver: MutationObserver | null = null;
   private syncListeners: Array<(hasPendingOperations: boolean) => void> = [];
   private onlineStatusListeners: Array<(isOnline: boolean) => void> = [];
 
@@ -160,12 +161,16 @@ class SyncManager {
 
     // Para frameworks SPA como React com routing, podemos usar um MutationObserver
     // para detectar mudanças no DOM que indicam mudança de página
-    const observer = new MutationObserver(() => {
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+    }
+    
+    this.mutationObserver = new MutationObserver(() => {
       this.cacheCurrentPage();
     });
 
     // Observa mudanças no corpo da página
-    observer.observe(document.body, { 
+    this.mutationObserver.observe(document.body, { 
       childList: true, 
       subtree: true 
     });
@@ -189,6 +194,12 @@ class SyncManager {
     if (this.intervalId !== null) {
       window.clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    
+    // Desconectar o MutationObserver para evitar vazamentos de memória
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
     }
   }
 
@@ -268,7 +279,10 @@ class SyncManager {
         // Para exclusão, remove do cache local também
         const itemId = url.split('/').pop();
         const currentData = await offlineStorage.getOfflineDataByType(entity) || [];
-        const filteredData = currentData.filter((item: any) => item.id !== Number(itemId));
+        // Usa comparação não estrita (!=) para lidar com IDs de string e número
+        const filteredData = currentData.filter((item: any) => 
+          item.id != itemId // Comparação não estrita para lidar com diferenças de tipo
+        );
         await offlineStorage.saveOfflineData(entity, filteredData);
       }
 
@@ -358,6 +372,11 @@ class SyncManager {
     // Extrai a entidade da URL (ex: /api/registrations -> registrations)
     const entity = url.replace(/^\/api\//, '').split('/')[0];
 
+    // Garantir que files sempre seja uma matriz de tipo File ou undefined
+    const validatedFiles = files && Array.isArray(files) 
+      ? files.filter(file => file instanceof File) 
+      : undefined;
+
     const operation: PendingOperation = {
       id,
       type: method === 'POST' ? 'create' : method === 'PUT' ? 'update' : 'delete',
@@ -366,7 +385,7 @@ class SyncManager {
       method,
       payload: body,
       timestamp: Date.now(),
-      files,
+      files: validatedFiles,
       retryCount: 0,
       status: 'pending'
     };
