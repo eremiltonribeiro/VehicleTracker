@@ -673,6 +673,24 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
 
                 <FormField
                   control={form.control}
+                  name="origin"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Origem <span className="text-red-500">*</span></FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ex: Belo Horizonte - MG" 
+                          {...field} 
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="destination"
                   render={({ field }) => (
                     <FormItem>
