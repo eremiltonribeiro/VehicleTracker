@@ -96,17 +96,40 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
   // --- Buscar dados para edição, se houver ID ---
   useEffect(() => {
     if (id) {
+      console.log(`Buscando dados do registro ${id} para edição`);
       fetch(`/api/registrations/${id}`, { credentials: "include" })
-        .then((res) => res.json())
+        .then((res) => {
+          console.log(`Resposta da API:`, res.status, res.statusText);
+          if (!res.ok) {
+            throw new Error(`Erro ao buscar registro: ${res.status} ${res.statusText}`);
+          }
+          return res.json();
+        })
         .then((data) => {
+          console.log(`Dados recebidos para edição:`, data);
+          // Certifique-se de que todos os campos necessários estão presentes
           form.reset({
             ...data,
+            type: data.type || "fuel",
             date: data.date ? new Date(data.date) : new Date(),
+            vehicleId: data.vehicleId?.toString() || "",
+            driverId: data.driverId?.toString() || "",
             fuelCost: data.fuelCost ? data.fuelCost / 100 : undefined,
             maintenanceCost: data.maintenanceCost ? data.maintenanceCost / 100 : undefined,
+            fuelStationId: data.fuelStationId?.toString() || undefined,
+            fuelTypeId: data.fuelTypeId?.toString() || undefined,
+            maintenanceTypeId: data.maintenanceTypeId?.toString() || undefined,
           });
           setSelectedType(data.type || "fuel");
           setExistingPhotoUrl(data.photoUrl || "");
+        })
+        .catch((error) => {
+          console.error(`Erro ao carregar dados para edição:`, error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do registro. Tente novamente.",
+            variant: "destructive",
+          });
         });
     }
     // eslint-disable-next-line

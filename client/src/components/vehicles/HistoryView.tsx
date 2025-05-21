@@ -191,9 +191,11 @@ export function HistoryView() {
   // Excluir registro
   const handleDeleteRegistration = async () => {
     if (!registrationToDelete) return;
+    
+    console.log("Iniciando exclusão do registro ID:", registrationToDelete);
 
     // Encontrar o registro completo pelo ID
-    const registrationToDeleteObj = registrations.find(r => r.id === registrationToDelete);
+    const registrationToDeleteObj = registrations.find((r: any) => r.id === registrationToDelete);
     
     // Verificar se é um registro offline pendente
     if (registrationToDeleteObj?.offlinePending) {
@@ -232,37 +234,47 @@ export function HistoryView() {
     // Se é um registro normal (não offline)
     try {
       console.log(`Tentando excluir registro com ID: ${registrationToDelete}`);
+      
+      // Usar fetch para enviar uma requisição DELETE para o endpoint
       const response = await fetch(`/api/registrations/${registrationToDelete}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Accept': 'application/json'
         }
       });
 
       // Log da resposta para debug
       console.log(`Resposta do servidor:`, response.status, response.statusText);
       
-      const responseData = await response.text();
-      console.log(`Dados da resposta:`, responseData);
+      let responseText;
+      try {
+        responseText = await response.text();
+        console.log(`Texto da resposta:`, responseText);
+      } catch (e) {
+        console.error("Erro ao ler resposta como texto:", e);
+      }
       
-      if (!response.ok){
+      if (!response.ok) {
         throw new Error(`Falha ao excluir o registro: ${response.status} ${response.statusText}`);
       }
 
+      // Exibir mensagem de sucesso
       toast({
         title: "Registro excluído",
         description: "O registro foi excluído com sucesso!",
       });
 
-      // Refresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      // Atualizar dados na interface
+      refetch();
 
-      // Close dialog
+      // Fechar diálogo de confirmação
       setDeleteDialogOpen(false);
       setRegistrationToDelete(null);
 
     } catch (error) {
+      console.error("Erro completo:", error);
+      
       // Se estiver offline, tenta enfileirar a exclusão
       if (!navigator.onLine) {
         try {
@@ -278,13 +290,14 @@ export function HistoryView() {
           });
           
           // Refresh data
-          queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+          refetch();
           
           // Close dialog
           setDeleteDialogOpen(false);
           setRegistrationToDelete(null);
           
         } catch (offlineError) {
+          console.error("Erro ao enfileirar operação offline:", offlineError);
           toast({
             title: "Erro",
             description: "Não foi possível enfileirar a exclusão. Tente novamente.",
@@ -296,7 +309,7 @@ export function HistoryView() {
       
       toast({
         title: "Erro",
-        description: "Não foi possível excluir o registro. Tente novamente.",
+        description: "Não foi possível excluir o registro. Verifique o console para mais detalhes.",
         variant: "destructive",
       });
     }
