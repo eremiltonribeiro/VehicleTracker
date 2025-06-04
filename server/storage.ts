@@ -21,7 +21,9 @@ import {
   VehicleChecklist,
   InsertVehicleChecklist,
   ChecklistResult,
-  InsertChecklistResult
+  InsertChecklistResult,
+  Role,
+  InsertRole,
 } from "@shared/schema";
 
 // Extend the storage interface with CRUD methods
@@ -106,10 +108,23 @@ export interface IStorage {
   getChecklistResult(id: number): Promise<ChecklistResult | undefined>;
   createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult>;
   deleteChecklistResults(checklistId: number): Promise<boolean>;
+
+  // Role methods
+  getRoles(): Promise<Role[]>;
+  getRole(id: number): Promise<Role | undefined>;
+  createRole(roleData: InsertRole): Promise<Role>;
+  updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role>;
+  deleteRole(id: number): Promise<boolean>;
+
+  // Extended User methods
+  getAllUsers(): Promise<User[]>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  deleteUser(id: string): Promise<boolean>;
+  updateUserPassword(id: string, passwordHash: string): Promise<User | undefined>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
+  private users: Map<string, User>; // User ID is varchar in schema
   private vehicles: Map<number, Vehicle>;
   private drivers: Map<number, Driver>;
   private fuelStations: Map<number, FuelStation>;
@@ -120,8 +135,9 @@ export class MemStorage implements IStorage {
   private checklistItems: Map<number, ChecklistItem>;
   private vehicleChecklists: Map<number, VehicleChecklist>;
   private checklistResults: Map<number, ChecklistResult>;
+  private roles: Map<number, Role>; // Added for MemStorage
 
-  private userCurrentId: number;
+  private userCurrentId: number; // This might be less relevant if user IDs are strings from Replit Auth
   private vehicleCurrentId: number;
   private driverCurrentId: number;
   private fuelStationCurrentId: number;
@@ -132,9 +148,10 @@ export class MemStorage implements IStorage {
   private checklistItemCurrentId: number;
   private vehicleChecklistCurrentId: number;
   private checklistResultCurrentId: number;
+  private roleCurrentId: number; // Added for MemStorage
 
   constructor() {
-    this.users = new Map();
+    this.users = new Map(); // Keyed by string user ID
     this.vehicles = new Map();
     this.drivers = new Map();
     this.fuelStations = new Map();
@@ -145,8 +162,9 @@ export class MemStorage implements IStorage {
     this.checklistItems = new Map();
     this.vehicleChecklists = new Map();
     this.checklistResults = new Map();
+    this.roles = new Map(); // Initialize roles map
 
-    this.userCurrentId = 1;
+    this.userCurrentId = 1; // Potentially for numeric IDs if ever needed internally
     this.vehicleCurrentId = 1;
     this.driverCurrentId = 1;
     this.fuelStationCurrentId = 1;
@@ -157,6 +175,7 @@ export class MemStorage implements IStorage {
     this.checklistItemCurrentId = 1;
     this.vehicleChecklistCurrentId = 1;
     this.checklistResultCurrentId = 1;
+    this.roleCurrentId = 1; // Initialize roleCurrentId
 
     // Add initial data
     this.initializeData();
@@ -164,23 +183,35 @@ export class MemStorage implements IStorage {
 
   private initializeData() {
     // ... (Seu código original de inserção de dados iniciais)
+    // Add initial roles for MemStorage
+    this.createRole({ name: "admin", description: "Administrator", permissions: JSON.stringify({ dashboard: true, userManagement: true, settings: true }) });
+    this.createRole({ name: "user", description: "Regular User", permissions: JSON.stringify({ dashboard: true }) });
   }
 
-  // --- User methods ---
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
-  }
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userCurrentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
+  // --- User methods (MemStorage specific, not all in IStorage) ---
+  // The IStorage getUser(id: string) is implemented by the Replit Auth specific method later
+  // This getUser(id: number) is a legacy from before User.id became varchar.
+  // It can be removed or aliased if strictly numeric ID access is needed for MemStorage.
+  // For now, it will cause a type error due to conflicting signatures if we don't rename or remove.
+  // Let's remove this one to avoid conflict with the IStorage signature.
+  // async getUser(id: number): Promise<User | undefined> {
+  //   return this.users.get(id);
+  // }
+
+  // getUserByUsername and createUser are not part of IStorage.
+  // User schema does not have 'username'. 'InsertUser' is not a defined type.
+  // These methods are likely legacy and should be removed or updated if functionality is truly needed.
+  // async getUserByUsername(username: string): Promise<User | undefined> {
+  //   return Array.from(this.users.values()).find(
+  //     (user) => (user as any).username === username // User type doesn't have username
+  //   );
+  // }
+  // async createUser(insertUser: UpsertUser): Promise<User> { // Changed InsertUser to UpsertUser
+  //   const id = this.userCurrentId++; // This assumes numeric, sequential IDs. Replit IDs are strings.
+  //   const user: User = { ...insertUser, id: id.toString(), createdAt: new Date(), updatedAt: new Date() }; // Ensure ID is string
+  //   this.users.set(user.id, user);
+  //   return user;
+  // }
 
   // --- Vehicle methods ---
   async getVehicles(): Promise<Vehicle[]> {
@@ -440,30 +471,113 @@ export class MemStorage implements IStorage {
     return true;
   }
 
-  // --- Replit Auth ---
-  async getUser(id: string): Promise<User | undefined> {
-    const numId = parseInt(id);
-    return this.users.get(numId);
+  // --- Role methods (for MemStorage) ---
+  async getRoles(): Promise<Role[]> {
+    return Array.from(this.roles.values());
   }
-  async upsertUser(userData: UpsertUser): Promise<User> {
-    const existingUser = Array.from(this.users.values()).find(user => user.id === userData.id);
+  async getRole(id: number): Promise<Role | undefined> {
+    return this.roles.get(id);
+  }
+  async createRole(roleData: InsertRole): Promise<Role> {
+    const id = this.roleCurrentId++;
+    const newRole: Role = { ...roleData, id };
+    this.roles.set(id, newRole);
+    return newRole;
+  }
+  async updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role> {
+    const existingRole = this.roles.get(id);
+    if (!existingRole) throw new Error(`Role with ID ${id} not found`);
+    const updatedRole = { ...existingRole, ...roleData, id };
+    this.roles.set(id, updatedRole);
+    return updatedRole;
+  }
+  async deleteRole(id: number): Promise<boolean> {
+    const isRoleInUse = Array.from(this.users.values()).some(user => user.roleId === id);
+    if (isRoleInUse) {
+      throw new Error("Role is currently in use and cannot be deleted.");
+    }
+    return this.roles.delete(id);
+  }
+
+  // --- Replit Auth (implements IStorage user methods) ---
+  async getUser(id: string): Promise<User | undefined> { // Implements IStorage.getUser
+    return this.users.get(id);
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> { // Implements IStorage.upsertUser
+    if (!userData.id) {
+      throw new Error("User ID is required for upsertUser.");
+    }
+
+    let finalUserData = { ...userData };
+    const existingUser = this.users.get(finalUserData.id);
+
+    if (!existingUser && !finalUserData.roleId) { // New user and no roleId provided
+      const defaultRoleName = "Motorista";
+      const defaultRole = Array.from(this.roles.values()).find(r => r.name === defaultRoleName);
+      if (defaultRole) {
+        finalUserData.roleId = defaultRole.id;
+        console.log(`MemStorage: Assigning default role "${defaultRoleName}" (ID: ${defaultRole.id}) to new user ${finalUserData.id}`);
+      } else {
+        console.error(`MemStorage: Default role "${defaultRoleName}" not found. New user ${finalUserData.id} created without a role.`);
+      }
+    }
+
+    if (!existingUser && finalUserData.passwordHash === undefined) {
+      finalUserData.passwordHash = null; // Explicitly null for new Replit users
+    }
+
     if (existingUser) {
-      const updatedUser = { ...existingUser, ...userData, updatedAt: new Date() };
-      this.users.set(parseInt(updatedUser.id), updatedUser);
-      return updatedUser;
-    } else {
-      const newUserId = userData.id || this.userCurrentId.toString();
-      const newUser: User = {
-        ...userData,
-        id: newUserId,
-        createdAt: new Date(),
+      const updatedUser: User = {
+        ...existingUser,
+        ...finalUserData,
+        passwordHash: finalUserData.passwordHash !== undefined ? finalUserData.passwordHash : existingUser.passwordHash,
         updatedAt: new Date()
       };
-      this.users.set(parseInt(newUserId), newUser);
-      this.userCurrentId = Math.max(this.userCurrentId, parseInt(newUserId) + 1);
+      this.users.set(updatedUser.id, updatedUser);
+      return updatedUser;
+    } else {
+      const newUser: User = {
+        id: finalUserData.id,
+        email: finalUserData.email,
+        firstName: finalUserData.firstName,
+        lastName: finalUserData.lastName,
+        profileImageUrl: finalUserData.profileImageUrl,
+        passwordHash: finalUserData.passwordHash,
+        roleId: finalUserData.roleId,
+        createdAt: finalUserData.createdAt || new Date(),
+        updatedAt: new Date(),
+      };
+      this.users.set(newUser.id, newUser);
       return newUser;
     }
   }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    return this.users.delete(id);
+  }
+
+  async updateUserPassword(id: string, passwordHash: string): Promise<User | undefined> {
+    const user = this.users.get(id);
+    if (user) {
+      user.passwordHash = passwordHash;
+      user.updatedAt = new Date();
+      this.users.set(id, user);
+      return user;
+    }
+    return undefined;
+  }
+
+  // This method is not part of IStorage and seems specific to a previous implementation
+  // For now, I'll keep it, but it might need review.
   async getUserById(id: string): Promise<User | null> {
     try {
       const userId = id;
