@@ -19,13 +19,25 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").default("user").notNull(),
+  passwordHash: varchar("password_hash"), // For users created manually / not via Replit Auth
+  roleId: integer("role_id").references(() => roles.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Roles table
+export const roles = pgTable("roles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").unique().notNull(),
+  description: text("description"),
+  permissions: text("permissions").notNull(), // Storing JSON as text, will parse in application layer. Drizzle doesn't have jsonb for sqlite by default.
+});
+
+export type InsertRole = typeof roles.$inferInsert;
+export type Role = typeof roles.$inferSelect;
 
 // Vehicles table
 export const vehicles = pgTable("vehicles", {

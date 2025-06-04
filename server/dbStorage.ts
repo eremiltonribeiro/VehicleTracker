@@ -22,6 +22,9 @@ import {
   VehicleRegistration,
   vehicleRegistrations,
   InsertRegistration,
+  Role,
+  roles,
+  InsertRole,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
@@ -33,15 +36,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    let finalUserData = { ...userData };
+
+    // Check if it's an insert or update by trying to fetch the user first
+    // This is how Replit Auth's `verify` function implicitly works with our upsert.
+    // If `storage.upsertUser` is called directly for creating a user (e.g. admin panel),
+    // this logic will also apply if `roleId` is not preset in `userData`.
+    const existingUser = await this.getUser(finalUserData.id);
+
+    if (!existingUser && !finalUserData.roleId) { // This is a new user and no roleId is provided
+      try {
+        const defaultRoleName = "Motorista"; // Or "Default User", "Usuário"
+        const [defaultRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, defaultRoleName));
+        if (defaultRole) {
+          finalUserData.roleId = defaultRole.id;
+          console.log(`Assigning default role "${defaultRoleName}" (ID: ${defaultRole.id}) to new user ${finalUserData.id}`);
+        } else {
+          console.error(`Default role "${defaultRoleName}" not found. New user ${finalUserData.id} will be created without a role or with roleId ${finalUserData.roleId}.`);
+        }
+      } catch (error) {
+        console.error("Error fetching default role for new user:", error);
+      }
+    }
+
+    // For users authenticated via Replit (typical case for this upsert from replitAuth.ts),
+    // passwordHash should not be set from userData unless explicitly intended (e.g. admin created user).
+    // The `replitAuth.ts` `upsertUser` call does not provide `passwordHash`.
+    // If `finalUserData.passwordHash` is undefined, it will be stored as NULL.
+    if (!existingUser && finalUserData.passwordHash === undefined) {
+        finalUserData.passwordHash = null; // Explicitly set to null for new Replit users
+    }
+
+
+    // Prepare data for insert or update
+    const valuesToSet: UpsertUser = {
+      id: finalUserData.id, // PK
+      email: finalUserData.email,
+      firstName: finalUserData.firstName,
+      lastName: finalUserData.lastName,
+      profileImageUrl: finalUserData.profileImageUrl,
+      passwordHash: finalUserData.passwordHash,
+      roleId: finalUserData.roleId,
+      createdAt: existingUser ? existingUser.createdAt : (finalUserData.createdAt || new Date()), // Preserve original createdAt
+      updatedAt: new Date(),
+    };
+
+    // Define what fields to update in case of conflict (user already exists)
+    const onConflictSet: Partial<UpsertUser> = {
+      email: finalUserData.email,
+      firstName: finalUserData.firstName,
+      lastName: finalUserData.lastName,
+      profileImageUrl: finalUserData.profileImageUrl,
+      roleId: finalUserData.roleId, // Allow role update if provided
+      updatedAt: new Date(),
+    };
+    // Only update passwordHash if it's explicitly provided in finalUserData
+    // This is important for Replit authenticated users who shouldn't have their null passwordHash overwritten
+    // unless an admin is intentionally setting/changing it (which would come via a different flow for passwordHash).
+    // For Replit Auth, finalUserData.passwordHash will be null for new users or undefined if not touched.
+    if (finalUserData.passwordHash !== undefined) {
+      onConflictSet.passwordHash = finalUserData.passwordHash;
+    }
+
+
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(valuesToSet)
       .onConflictDoUpdate({
         target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+        set: onConflictSet,
       })
       .returning();
     return user;
@@ -271,5 +334,66 @@ export class DatabaseStorage implements IStorage {
     // Implementação temporária - deve ser substituída por acesso ao DB real
     console.log(`DatabaseStorage.deleteChecklistResults: Excluindo resultados do checklist ${checklistId}`);
     return true;
+  }
+
+  // Role methods
+  async getRoles(): Promise<Role[]> {
+    return db.select().from(roles);
+  }
+
+  async getRole(id: number): Promise<Role | undefined> {
+    const [role] = await db.select().from(roles).where(eq(roles.id, id));
+    return role;
+  }
+
+  async createRole(roleData: InsertRole): Promise<Role> {
+    const [role] = await db.insert(roles).values(roleData).returning();
+    return role;
+  }
+
+  async updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role> {
+    const [role] = await db
+      .update(roles)
+      .set(roleData)
+      .where(eq(roles.id, id))
+      .returning();
+    return role;
+  }
+
+  async deleteRole(id: number): Promise<boolean> {
+    // Before deleting a role, ensure it's not used by any user.
+    // This check should ideally be in the service/route layer,
+    // but a basic check here can prevent orphaned roleIds.
+    const usersWithRole = await db.select().from(users).where(eq(users.roleId, id)).limit(1);
+    if (usersWithRole.length > 0) {
+      throw new Error("Role is currently in use and cannot be deleted.");
+    }
+    await db.delete(roles).where(eq(roles.id, id));
+    return true;
+  }
+
+  // Extended User methods
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    if (!email) return undefined; // Guard against empty email query
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id)).returning({ id: users.id });
+    return result.length > 0;
+  }
+
+  async updateUserPassword(id: string, passwordHash: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 }

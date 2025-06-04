@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,13 +7,16 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Car, Plus, Edit, Trash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Vehicle } from "@shared/schema";
-import { offlineStorage } from "@/services/offlineStorage";
+import { Vehicle, insertVehicleSchema } from "@shared/schema"; // Import Zod schema
+import { ZodIssue } from "zod"; // Import ZodIssue for error formatting
+// import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
 
 export function CadastroVeiculos() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // State for Zod errors
   const [formData, setFormData] = useState({
     name: "",
     plate: "",
@@ -22,25 +25,90 @@ export function CadastroVeiculos() {
     imageUrl: ""
   });
 
-  const { data: vehicles = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/vehicles"],
+  const { data: vehicles = [], isLoading } = useQuery<Vehicle[], Error>({ // Added Error type for useQuery
+    queryKey: ["/api/vehicles"], // Changed from array to string for consistency if preferred, though array is fine
     queryFn: async () => {
-      try {
-        if (navigator.onLine) {
-          const res = await fetch("/api/vehicles");
-          if (res.ok) {
-            const data = await res.json();
-            await offlineStorage.saveVehicles(data);
-            return data;
-          }
-        }
-        return await offlineStorage.getVehicles();
-      } catch (error) {
-        console.error("Erro ao buscar veículos:", error);
-        return await offlineStorage.getVehicles();
+      // Offline storage logic can be kept if desired, but for now, focusing on online
+      const res = await fetch("/api/vehicles");
+      if (!res.ok) {
+        // For offline-first, you might return offlineStorage.getVehicles() here
+        throw new Error("Falha ao buscar veículos da API");
       }
-    }
+      const data = await res.json();
+      // await offlineStorage.saveVehicles(data); // Keep if offline needed
+      return data;
+    },
+    // onError: () => { // Example if you want to fallback to offline on error
+    //   return offlineStorage.getVehicles();
+    // }
   });
+
+  // Mutations
+  const saveVehicleMutation = useMutation<Vehicle, Error, Partial<Vehicle>>({
+    mutationFn: async (vehicleData) => {
+      let url = '/api/vehicles';
+      let method = 'POST';
+
+      if (formMode === "edit" && currentVehicle?.id) {
+        url = `/api/vehicles/${currentVehicle.id}`;
+        method = 'PUT';
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vehicleData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
+        throw new Error(errorData.message || `Falha ao ${formMode === "create" ? "criar" : "atualizar"} veículo`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      toast({
+        title: "Sucesso!",
+        description: formMode === "create"
+          ? "Veículo cadastrado com sucesso."
+          : "Veículo atualizado com sucesso.",
+      });
+      resetForm();
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro!",
+        description: error.message || "Ocorreu um erro.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteVehicleMutation = useMutation<unknown, Error, number>({
+    mutationFn: async (vehicleId) => {
+      const response = await fetch(`/api/vehicles/${vehicleId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
+        throw new Error(errorData.message || "Falha ao excluir veículo");
+      }
+      // No need to return response.json() for DELETE if backend sends no body on 200/204
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
+      toast({
+        title: "Sucesso!",
+        description: "Veículo excluído com sucesso.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro!",
+        description: error.message || "Ocorreu um erro ao excluir o veículo.",
+        variant: "destructive",
+      });
+    },
+  });
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -72,82 +140,53 @@ export function CadastroVeiculos() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este veículo?")) return;
-
-    try {
-      const res = await fetch(`/api/vehicles/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (res.ok) {
-        toast({
-          title: "Sucesso!",
-          description: "Veículo excluído com sucesso.",
-        });
-        refetch();
-      } else {
-        throw new Error("Erro ao excluir veículo");
-      }
-    } catch (error) {
-      console.error("Erro:", error);
-      toast({
-        title: "Erro!",
-        description: "Ocorreu um erro ao excluir o veículo.",
-        variant: "destructive",
-      });
-    }
+    deleteVehicleMutation.mutate(id);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      const vehicleData = {
-        ...formData,
-        year: formData.year ? parseInt(formData.year) : undefined
-      };
+    setFormErrors({}); // Clear previous errors
 
-      let url = '/api/vehicles';
-      let method = 'POST';
-      
-      if (formMode === "edit" && currentVehicle) {
-        url = `/api/vehicles/${currentVehicle.id}`;
-        method = 'PUT';
-      }
+    const rawYear = formData.year ? parseInt(formData.year) : undefined;
+    const vehicleDataToValidate = {
+      name: formData.name,
+      plate: formData.plate,
+      model: formData.model || undefined, // Ensure empty strings become undefined if schema expects optional
+      year: rawYear,
+      // imageUrl is not part of insertVehicleSchema from shared/schema by default,
+      // but if it were, it would be: imageUrl: formData.imageUrl || undefined
+    };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(vehicleData),
+    const validationResult = insertVehicleSchema.safeParse(vehicleDataToValidate);
+
+    if (!validationResult.success) {
+      const errors: Record<string, string> = {};
+      validationResult.error.issues.forEach((issue: ZodIssue) => {
+        if (issue.path[0]) {
+          errors[issue.path[0] as string] = issue.message;
+        }
       });
-
-      if (!response.ok) {
-        throw new Error("Erro ao salvar veículo");
-      }
-
+      setFormErrors(errors);
       toast({
-        title: "Sucesso!",
-        description: formMode === "create" 
-          ? "Veículo cadastrado com sucesso." 
-          : "Veículo atualizado com sucesso.",
-      });
-
-      resetForm();
-      refetch();
-    } catch (error) {
-      console.error("Erro:", error);
-      toast({
-        title: "Erro!",
-        description: "Ocorreu um erro ao salvar o veículo.",
+        title: "Erro de Validação",
+        description: "Por favor, corrija os erros no formulário.",
         variant: "destructive",
       });
+      return;
     }
+
+    // Include imageUrl in the data sent to mutation if it's handled by backend but not in Zod schema
+    const finalVehicleData = {
+        ...validationResult.data,
+        imageUrl: formData.imageUrl || undefined
+    };
+
+    saveVehicleMutation.mutate(finalVehicleData);
   };
 
-  if (isLoading) {
+  if (isLoading) { // This isLoading is from useQuery for fetching vehicles
     return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
@@ -176,8 +215,9 @@ export function CadastroVeiculos() {
                   placeholder="Ex: Ford Ranger"
                   value={formData.name}
                   onChange={handleInputChange}
-                  required
+                  // Zod schema handles required, but `required` attr is good for browser too
                 />
+                {formErrors.name && <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>}
               </div>
               
               <div className="space-y-2">
@@ -188,8 +228,8 @@ export function CadastroVeiculos() {
                   placeholder="Ex: ABC-1234"
                   value={formData.plate}
                   onChange={handleInputChange}
-                  required
                 />
+                {formErrors.plate && <p className="text-sm text-red-500 mt-1">{formErrors.plate}</p>}
               </div>
               
               <div className="space-y-2">
@@ -201,6 +241,7 @@ export function CadastroVeiculos() {
                   value={formData.model}
                   onChange={handleInputChange}
                 />
+                {formErrors.model && <p className="text-sm text-red-500 mt-1">{formErrors.model}</p>}
               </div>
               
               <div className="space-y-2">
@@ -213,6 +254,7 @@ export function CadastroVeiculos() {
                   value={formData.year}
                   onChange={handleInputChange}
                 />
+                {formErrors.year && <p className="text-sm text-red-500 mt-1">{formErrors.year}</p>}
               </div>
               
               <div className="space-y-2 md:col-span-2">
@@ -224,6 +266,7 @@ export function CadastroVeiculos() {
                   value={formData.imageUrl}
                   onChange={handleInputChange}
                 />
+                {/* Assuming imageUrl is not in the Zod schema for this example, so no formErrors.imageUrl */}
               </div>
             </div>
             
@@ -241,7 +284,9 @@ export function CadastroVeiculos() {
               <Button 
                 type="submit"
                 className="flex items-center gap-1"
+                disabled={saveVehicleMutation.isPending}
               >
+                {saveVehicleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {formMode === "create" ? "Cadastrar Veículo" : "Atualizar Veículo"}
               </Button>
             </div>
@@ -253,17 +298,21 @@ export function CadastroVeiculos() {
         <CardHeader>
           <CardTitle>Veículos Cadastrados</CardTitle>
           <CardDescription>
-            {vehicles.length} veículo(s) registrado(s) no sistema
+            {vehicles.length} veículo(s) registrado(s) no sistema.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {vehicles.length === 0 ? (
+          {isLoading && vehicles.length === 0 && ( // Show loader only if loading and no vehicles yet
+             <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          )}
+          {!isLoading && vehicles.length === 0 && (
             <div className="text-center py-6 text-muted-foreground">
               <Car className="h-12 w-12 mx-auto mb-2 opacity-20" />
               <p>Nenhum veículo cadastrado.</p>
               <p className="text-sm mt-1">Use o formulário acima para adicionar um novo veículo.</p>
             </div>
-          ) : (
+          )}
+          {vehicles.length > 0 && (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -280,19 +329,24 @@ export function CadastroVeiculos() {
                     <TableRow key={vehicle.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center">
-                          <Car className="h-4 w-4 mr-2" />
+                          {vehicle.imageUrl ? (
+                            <img src={vehicle.imageUrl} alt={vehicle.name} className="h-8 w-8 mr-2 rounded-sm object-cover" />
+                          ) : (
+                            <Car className="h-4 w-4 mr-2 text-muted-foreground" />
+                          )}
                           {vehicle.name}
                         </div>
                       </TableCell>
                       <TableCell>{vehicle.plate}</TableCell>
-                      <TableCell>{vehicle.model}</TableCell>
-                      <TableCell>{vehicle.year}</TableCell>
+                      <TableCell>{vehicle.model || "-"}</TableCell>
+                      <TableCell>{vehicle.year || "-"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(vehicle)}
+                            disabled={deleteVehicleMutation.isPending}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -301,8 +355,12 @@ export function CadastroVeiculos() {
                             size="sm"
                             className="text-red-500 hover:text-red-700"
                             onClick={() => handleDelete(vehicle.id)}
+                            disabled={deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id}
                           >
-                            <Trash className="h-4 w-4" />
+                            {deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash className="h-4 w-4" />
+                            }
                           </Button>
                         </div>
                       </TableCell>

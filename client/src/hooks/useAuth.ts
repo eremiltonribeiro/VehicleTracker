@@ -6,6 +6,10 @@ export interface AuthUser {
   firstName: string | null;
   lastName: string | null;
   profileImageUrl: string | null;
+  role: {
+    name: string;
+    permissions: Record<string, boolean>;
+  } | null; // Role can be null if not assigned or not found
 }
 
 export function useAuth() {

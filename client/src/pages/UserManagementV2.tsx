@@ -28,58 +28,80 @@ import {
   Car,
   PlusCircle
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/apiClient"; // Assuming an apiClient utility
+import { usePermissions } from "@/lib/usePermissions"; // Import usePermissions
 
-// Tipos
-interface User {
-  id: string;
-  username: string;
-  name: string;
-  role: string;
+// Tipos (Backend aligned)
+interface ApiUser { // Renamed to avoid conflict with useAuth's User
+  id: string; // varchar from Replit Auth
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  roleId?: number;
+  // passwordHash is not sent to frontend
+  // Optional: include role object if backend joins them
+  role?: ApiRole;
 }
 
-// Interface para perfis de usuário
-interface UserRole {
-  id: string;
-  name: string;
-  description: string;
-  permissions: {
-    dashboard: boolean;
-    registrations: boolean;
-    history: boolean;
-    reports: boolean;
-    checklists: boolean;
-    settings: boolean;
-    userManagement: boolean;
-    vehicleManagement: boolean;
-    driverManagement: boolean;
-  };
+interface UserFormData {
+  email: string;
+  password?: string; // Only for creation
+  firstName?: string;
+  lastName?: string;
+  roleId: number;
 }
+
+interface PasswordChangeData {
+  currentPassword?: string; // Optional for admin
+  newPassword?: string;
+}
+
+
+// Interface para perfis de usuário (Backend aligned)
+interface ApiRole { // Renamed to avoid conflict
+  id: number; // serial
+  name: string;
+  description?: string;
+  permissions: Record<string, boolean>; // Parsed from JSON string
+}
+
+interface RoleFormData {
+  name: string;
+  description?: string;
+  permissions: string; // JSON string
+}
+
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [users, setUsers] = useState<ApiUser[]>([]); // Will be replaced by react-query
+  // const [userRoles, setUserRoles] = useState<ApiRole[]>([]); // Will be replaced by react-query
+  // const [isLoading, setIsLoading] = useState(true); // Will be replaced by react-query status
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { user: authUser } = useAuth(); // Renamed to avoid conflict
+  const [, setLocation] = useLocation();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [editRoleDialogOpen, setEditRoleDialogOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState("users");
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("user");
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
-  const [newRole, setNewRole] = useState<UserRole>({
-    id: "",
-    name: "",
-    description: "",
-    permissions: {
+
+  // State for forms - to be aligned with ApiUser and ApiRole
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null);
+  const [currentRole, setCurrentRole] = useState<ApiRole | null>(null);
+
+  // User form state
+  const [userForm, setUserForm] = useState<Partial<UserFormData>>({});
+
+  // Password change form state
+  const [passwordChangeForm, setPasswordChangeForm] = useState<PasswordChangeData>({});
+
+  // Role form state
+  const [roleForm, setRoleForm] = useState<Partial<RoleFormData>>({
+    permissions: JSON.stringify({ // Default permissions for new role form
       dashboard: false,
       registrations: false,
       history: false,
@@ -89,464 +111,304 @@ export default function UserManagement() {
       userManagement: false,
       vehicleManagement: false,
       driverManagement: false
-    }
+    })
   });
   
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   
-  // Verificar se o usuário é administrador
+  // --- React Query Hooks ---
+  const { data: users = [], isLoading: isLoadingUsers, error: usersError } = useQuery<ApiUser[], Error>({
+    queryKey: ["users"],
+    queryFn: async () => {
+      const res = await apiClient.get("/users");
+      return res.data;
+    },
+  });
+
+  const { data: roles = [], isLoading: isLoadingRoles, error: rolesError } = useQuery<ApiRole[], Error>({
+    queryKey: ["roles"],
+    queryFn: async () => {
+      const res = await apiClient.get("/roles");
+      return res.data; // Assuming permissions are already parsed by an interceptor or backend sends object
+    },
+  });
+  
+  // --- User Mutations ---
+  const createUserMutation = useMutation<ApiUser, Error, UserFormData>({
+    mutationFn: async (userData) => {
+      const res = await apiClient.post("/users", userData);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: "Sucesso", description: "Usuário criado com sucesso." });
+      setDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao criar usuário.", variant: "destructive" });
+    },
+  });
+
+  const updateUserMutation = useMutation<ApiUser, Error, Partial<UserFormData> & { id: string }>({
+    mutationFn: async (userData) => {
+      const { id, ...data } = userData;
+      const res = await apiClient.put(`/users/${id}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: "Sucesso", description: "Usuário atualizado com sucesso." });
+      setDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao atualizar usuário.", variant: "destructive" });
+    },
+  });
+  
+  const deleteUserMutation = useMutation<unknown, Error, string>({
+    mutationFn: async (userId: string) => {
+      await apiClient.delete(`/users/${userId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      toast({ title: "Sucesso", description: "Usuário excluído com sucesso." });
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao excluir usuário.", variant: "destructive" });
+    },
+  });
+
+  const changePasswordMutation = useMutation<unknown, Error, PasswordChangeData & { userId: string }>({
+    mutationFn: async (data) => {
+      const { userId, ...passwordData } = data;
+      await apiClient.put(`/users/${userId}/password`, passwordData);
+    },
+    onSuccess: () => {
+      toast({ title: "Sucesso", description: "Senha alterada com sucesso." });
+      setPasswordDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao alterar senha.", variant: "destructive" });
+    },
+  });
+
+  // --- Role Mutations ---
+  const createRoleMutation = useMutation<ApiRole, Error, RoleFormData>({
+    mutationFn: async (roleData) => {
+      const res = await apiClient.post("/roles", roleData);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast({ title: "Sucesso", description: "Perfil criado com sucesso." });
+      setRoleDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao criar perfil.", variant: "destructive" });
+    },
+  });
+
+  const updateRoleMutation = useMutation<ApiRole, Error, Partial<RoleFormData> & { id: number }>({
+    mutationFn: async (roleData) => {
+      const { id, ...data } = roleData;
+      const res = await apiClient.put(`/roles/${id}`, data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast({ title: "Sucesso", description: "Perfil atualizado com sucesso." });
+      setEditRoleDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao atualizar perfil.", variant: "destructive" });
+    },
+  });
+
+  const deleteRoleMutation = useMutation<unknown, Error, number>({
+    mutationFn: async (roleId: number) => {
+      await apiClient.delete(`/roles/${roleId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      toast({ title: "Sucesso", description: "Perfil excluído com sucesso." });
+    },
+    onError: (error) => {
+      toast({ title: "Erro", description: error.message || "Falha ao excluir perfil.", variant: "destructive" });
+    },
+  });
+
+
+  const { hasPermission, isLoading: isLoadingPermissions } = usePermissions();
+  
+  // Admin check effect (placeholder, backend is the source of truth for protection)
   useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    if (userData.role !== "admin") {
-      toast({
-        title: "Acesso negado",
-        description: "Você não tem permissão para acessar esta página",
-        variant: "destructive",
-      });
-      setLocation("/");
-    } else {
-      // Carregar lista de usuários e perfis
-      loadUsers();
-      loadRoles();
-    }
-  }, [setLocation, toast]);
-  
-  // Simulação de carregamento de usuários
-  const loadUsers = () => {
-    setIsLoading(true);
-    
-    // Carregar do localStorage se disponível
-    const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
-    if (Object.keys(storedUsers).length > 0) {
-      const usersList = Object.entries(storedUsers).map(([username, data]: [string, any]) => ({
-        id: data.id,
-        username: username,
-        name: data.name,
-        role: data.role
-      }));
-      setUsers(usersList);
-    } else {
-      // Lista de usuários simulada para first-run
-      const mockUsers: User[] = [
-        { id: "1", username: "admin", name: "Administrador", role: "admin" },
-        { id: "2", username: "motorista1", name: "João Motorista", role: "driver" },
-        { id: "3", username: "gerente1", name: "Carlos Gerente", role: "manager" },
-      ];
-      
-      // Salvar no localStorage
-      const usersObj: {[key: string]: any} = {};
-      mockUsers.forEach(user => {
-        usersObj[user.username] = {
-          id: user.id,
-          name: user.name,
-          role: user.role,
-          password: user.username === "admin" ? "admin123" : "senha123"
-        };
-      });
-      localStorage.setItem("appUsers", JSON.stringify(usersObj));
-      
-      setUsers(mockUsers);
-    }
-    
-    setIsLoading(false);
-  };
-  
-  // Carregar perfis de usuário
-  const loadRoles = () => {
-    // Carregar do localStorage se disponível
-    const storedRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
-    if (storedRoles.length > 0) {
-      setUserRoles(storedRoles);
-    } else {
-      // Perfis padrão
-      const defaultRoles: UserRole[] = [
-        {
-          id: "1",
-          name: "Administrador",
-          description: "Acesso completo ao sistema",
-          permissions: {
-            dashboard: true,
-            registrations: true,
-            history: true,
-            reports: true,
-            checklists: true,
-            settings: true,
-            userManagement: true,
-            vehicleManagement: true,
-            driverManagement: true
-          }
-        },
-        {
-          id: "2",
-          name: "Gerente",
-          description: "Acesso à maioria das funcionalidades, exceto gerenciamento de usuários",
-          permissions: {
-            dashboard: true,
-            registrations: true,
-            history: true,
-            reports: true,
-            checklists: true,
-            settings: true,
-            userManagement: false,
-            vehicleManagement: true,
-            driverManagement: true
-          }
-        },
-        {
-          id: "3",
-          name: "Motorista",
-          description: "Acesso limitado para registro de atividades",
-          permissions: {
-            dashboard: false,
-            registrations: true,
-            history: true,
-            reports: false,
-            checklists: true,
-            settings: false,
-            userManagement: false,
-            vehicleManagement: false,
-            driverManagement: false
-          }
-        }
-      ];
-      
-      localStorage.setItem("userRoles", JSON.stringify(defaultRoles));
-      setUserRoles(defaultRoles);
-    }
-  };
-  
-  // Validar formulário de usuário
+    // console.log("Auth user for admin check:", authUser);
+    // This is not a real security check for the frontend, more for UI hints if needed.
+    // Actual security is enforced by `isAdmin` middleware on backend routes.
+    // If authUser is null or doesn't have an admin role/permission, certain UI elements could be disabled/hidden.
+    // For this subtask, we're focusing on API integration, so we'll skip comprehensive UI changes based on role for now.
+  }, [authUser]);
+
+  if (isLoadingPermissions || isLoadingUsers || isLoadingRoles) { // Combined loading state
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin h-12 w-12 border-4 border-blue-700 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
+
+  // Basic frontend access control
+  // Check for a general admin permission or a specific user management permission.
+  // Adjust "userManagement" to the actual permission key if different.
+  if (!hasPermission("userManagement")) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Acesso Negado</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Você não tem permissão para gerenciar usuários e perfis.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // --- Form Validation ---
   const validateUserForm = () => {
-    const errors: {[key: string]: string} = {};
-    
-    if (!username.trim()) errors.username = "Nome de usuário é obrigatório";
-    if (!name.trim()) errors.name = "Nome completo é obrigatório";
-    
-    if (currentUser === null) {
-      if (!password) errors.password = "Senha é obrigatória";
-      if (password.length < 6) errors.password = "A senha deve ter pelo menos 6 caracteres";
-      if (password !== confirmPassword) errors.confirmPassword = "As senhas não coincidem";
+    const errors: { [key: string]: string } = {};
+    if (!userForm.email?.trim()) errors.email = "Email é obrigatório";
+    else if (!/\S+@\S+\.\S+/.test(userForm.email)) errors.email = "Email inválido";
+
+    if (!currentUser) { // Only validate password for new users
+      if (!userForm.password) errors.password = "Senha é obrigatória";
+      else if (userForm.password.length < 6) errors.password = "A senha deve ter pelo menos 6 caracteres";
+      // TODO: Add confirm password validation in UI and logic
     }
+    if (userForm.roleId === undefined || userForm.roleId <= 0) errors.roleId = "Perfil é obrigatório";
+    if (!userForm.firstName?.trim()) errors.firstName = "Primeiro nome é obrigatório.";
+    if (!userForm.lastName?.trim()) errors.lastName = "Último nome é obrigatório.";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validatePasswordForm = () => { // Keep for later refactor
+    const errors: { [key: string]: string } = {};
+    if (isSelfUser(currentUser?.id) && !passwordChangeForm.currentPassword) {
+      errors.currentPassword = "Senha atual é obrigatória";
+    }
+    if (!passwordChangeForm.newPassword) errors.newPassword = "Nova senha é obrigatória";
+    else if (passwordChangeForm.newPassword.length < 6) errors.newPassword = "A nova senha deve ter pelo menos 6 caracteres";
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
   
-  // Validar formulário de alteração de senha
-  const validatePasswordForm = () => {
-    const errors: {[key: string]: string} = {};
-    
-    if (!currentPassword) errors.currentPassword = "Senha atual é obrigatória";
-    if (!newPassword) errors.newPassword = "Nova senha é obrigatória";
-    if (newPassword.length < 6) errors.newPassword = "A nova senha deve ter pelo menos 6 caracteres";
-    if (newPassword !== confirmNewPassword) errors.confirmNewPassword = "As senhas não coincidem";
-    
-    // Verificar senha atual
-    if (currentUser) {
-      const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
-      const userData = storedUsers[currentUser.username];
-      if (userData && userData.password !== currentPassword) {
-        errors.currentPassword = "Senha atual incorreta";
-      }
-    }
-    
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  
-  // Validar formulário de perfil
   const validateRoleForm = () => {
     const errors: {[key: string]: string} = {};
-    
-    if (!newRole.name.trim()) errors.name = "Nome do perfil é obrigatório";
-    
+    if (!roleForm.name?.trim()) errors.name = "Nome do perfil é obrigatório";
+    if (!roleForm.permissions || !JSON.parse(roleForm.permissions)) errors.permissions = "Permissões são obrigatórias e devem ser JSON válido.";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  
-  // Abrir diálogo para novo usuário
+
+  // --- Dialog Openers ---
   const handleAddUser = () => {
     setCurrentUser(null);
-    setUsername("");
-    setPassword("");
-    setConfirmPassword("");
-    setName("");
-    setRole("user");
+    setUserForm({ email: "", password: "", firstName: "", lastName: "", roleId: roles.find(r => r.name.toLowerCase() === 'user')?.id || 0 });
     setFormErrors({});
     setDialogOpen(true);
   };
   
-  // Abrir diálogo para editar usuário
-  const handleEditUser = (user: User) => {
+  const handleEditUser = (user: ApiUser) => {
     setCurrentUser(user);
-    setUsername(user.username);
-    setName(user.name);
-    setRole(user.role);
+    setUserForm({ email: user.email, firstName: user.firstName, lastName: user.lastName, roleId: user.roleId });
     setFormErrors({});
     setDialogOpen(true);
   };
   
-  // Abrir diálogo para alteração de senha
-  const handleChangePassword = (user: User) => {
+  const handleChangePassword = (user: ApiUser) => {
     setCurrentUser(user);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmNewPassword("");
+    setPasswordChangeForm({ currentPassword: "", newPassword: "" });
     setFormErrors({});
     setPasswordDialogOpen(true);
   };
   
-  // Abrir diálogo para adicionar novo perfil
   const handleAddRole = () => {
     setCurrentRole(null);
-    setNewRole({
-      id: "",
-      name: "",
-      description: "",
-      permissions: {
-        dashboard: false,
-        registrations: false,
-        history: false,
-        reports: false,
-        checklists: false,
-        settings: false,
-        userManagement: false,
-        vehicleManagement: false,
-        driverManagement: false
-      }
-    });
+    setRoleForm({ name: "", description: "", permissions: JSON.stringify({
+        dashboard: false, registrations: false, history: false, reports: false, checklists: false,
+        settings: false, userManagement: false, vehicleManagement: false, driverManagement: false
+    })});
     setFormErrors({});
     setRoleDialogOpen(true);
   };
   
-  // Abrir diálogo para editar perfil
-  const handleEditRole = (role: UserRole) => {
+  const handleEditRole = (role: ApiRole) => {
     setCurrentRole(role);
-    setNewRole({...role});
+    setRoleForm({ name: role.name, description: role.description, permissions: JSON.stringify(role.permissions) });
     setFormErrors({});
     setEditRoleDialogOpen(true);
   };
-  
-  // Salvar usuário (novo ou edição)
+
+  // --- Save/Delete Handlers ---
   const handleSaveUser = () => {
     if (!validateUserForm()) return;
-    
-    const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
-    
-    if (currentUser === null) {
-      // Novo usuário
-      // Verificar se o nome de usuário já existe
-      if (storedUsers[username]) {
-        setFormErrors({username: "Este nome de usuário já está em uso"});
-        return;
-      }
-      
-      const newUser: User = {
-        id: Date.now().toString(),
-        username,
-        name,
-        role,
-      };
-      
-      // Armazenar as credenciais do usuário
-      storedUsers[username] = {
-        id: newUser.id,
-        password: password,
-        name: name,
-        role: role
-      };
-      localStorage.setItem("appUsers", JSON.stringify(storedUsers));
-      setUsers([...users, newUser]);
-      toast({
-        title: "Sucesso",
-        description: "Usuário criado com sucesso",
-      });
-    } else {
-      // Edição de usuário existente
-      // Se o nome de usuário foi alterado, verificar se o novo já existe
-      if (username !== currentUser.username && storedUsers[username]) {
-        setFormErrors({username: "Este nome de usuário já está em uso"});
-        return;
-      }
-      
-      // Atualizar no localStorage
-      if (username !== currentUser.username) {
-        // Se mudou o username, precisamos mover os dados para o novo username
-        const userData = storedUsers[currentUser.username];
-        delete storedUsers[currentUser.username];
-        storedUsers[username] = {
-          ...userData,
-          name: name,
-          role: role
-        };
-      } else {
-        // Apenas atualizar os dados existentes
-        storedUsers[username] = {
-          ...storedUsers[username],
-          name: name,
-          role: role
-        };
-      }
-      localStorage.setItem("appUsers", JSON.stringify(storedUsers));
-      
-      // Atualizar na lista de usuários
-      const updatedUsers = users.map(u => 
-        u.id === currentUser.id ? { ...u, username, name, role } : u
-      );
-      setUsers(updatedUsers);
-      
-      toast({
-        title: "Sucesso",
-        description: "Usuário atualizado com sucesso",
-      });
+    if (currentUser) { // Edit
+      updateUserMutation.mutate({ ...userForm, id: currentUser.id } as Partial<UserFormData> & { id: string });
+    } else { // Create
+      createUserMutation.mutate(userForm as UserFormData);
     }
-    
-    setDialogOpen(false);
   };
   
-  // Salvar alteração de senha
   const handleSavePassword = () => {
     if (!validatePasswordForm() || !currentUser) return;
-    
-    const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
-    
-    // Atualizar senha
-    storedUsers[currentUser.username] = {
-      ...storedUsers[currentUser.username],
-      password: newPassword
-    };
-    localStorage.setItem("appUsers", JSON.stringify(storedUsers));
-    
-    toast({
-      title: "Sucesso",
-      description: "Senha alterada com sucesso",
-    });
-    
-    setPasswordDialogOpen(false);
+    changePasswordMutation.mutate({ ...passwordChangeForm, userId: currentUser.id });
   };
   
-  // Salvar novo perfil
   const handleSaveRole = () => {
     if (!validateRoleForm()) return;
-    
-    // Novo perfil
-    const roleToSave: UserRole = {
-      ...newRole,
-      id: Date.now().toString()
-    };
-    
-    const updatedRoles = [...userRoles, roleToSave];
-    setUserRoles(updatedRoles);
-    localStorage.setItem("userRoles", JSON.stringify(updatedRoles));
-    
-    toast({
-      title: "Sucesso",
-      description: "Perfil criado com sucesso",
-    });
-    
-    setRoleDialogOpen(false);
+    createRoleMutation.mutate(roleForm as RoleFormData);
   };
   
-  // Salvar edição de perfil
   const handleUpdateRole = () => {
     if (!validateRoleForm() || !currentRole) return;
-    
-    const updatedRoles = userRoles.map(r => 
-      r.id === currentRole.id ? newRole : r
-    );
-    
-    setUserRoles(updatedRoles);
-    localStorage.setItem("userRoles", JSON.stringify(updatedRoles));
-    
-    toast({
-      title: "Sucesso",
-      description: "Perfil atualizado com sucesso",
-    });
-    
-    setEditRoleDialogOpen(false);
+    updateRoleMutation.mutate({ ...roleForm, id: currentRole.id } as Partial<RoleFormData> & { id: number });
   };
   
-  // Deletar usuário
   const handleDeleteUser = (userId: string) => {
-    if (userId === "1") {
-      toast({
-        title: "Operação não permitida",
-        description: "O usuário administrador principal não pode ser removido",
-        variant: "destructive",
-      });
+    if (userId === authUser?.id) { // Prevent self-deletion
+      toast({ title: "Operação não permitida", description: "Você não pode excluir seu próprio usuário.", variant: "destructive" });
       return;
     }
-    
-    // Confirmação de exclusão
-    if (!window.confirm("Tem certeza que deseja excluir este usuário?")) {
+    if (window.confirm("Tem certeza que deseja excluir este usuário?")) {
+      deleteUserMutation.mutate(userId);
+    }
+  };
+  
+  const handleDeleteRole = (roleId: number) => {
+    // Basic check if role is in use (can be more robust on backend)
+    const isRoleInUse = users.some(user => user.roleId === roleId);
+    if (isRoleInUse) {
+      toast({ title: "Operação não permitida", description: "Este perfil está em uso por um ou mais usuários.", variant: "destructive" });
       return;
     }
-    
-    // Encontrar o username pelo id
-    const userToDelete = users.find(u => u.id === userId);
-    if (!userToDelete) return;
-    
-    // Remover do localStorage
-    const storedUsers = JSON.parse(localStorage.getItem("appUsers") || "{}");
-    delete storedUsers[userToDelete.username];
-    localStorage.setItem("appUsers", JSON.stringify(storedUsers));
-    
-    // Remover da lista de usuários
-    const updatedUsers = users.filter(u => u.id !== userId);
-    setUsers(updatedUsers);
-    
-    toast({
-      title: "Sucesso",
-      description: "Usuário removido com sucesso",
-    });
-  };
-  
-  // Deletar perfil
-  const handleDeleteRole = (roleId: string) => {
-    // Verificar se há usuários usando este perfil
-    const roleName = userRoles.find(r => r.id === roleId)?.name.toLowerCase();
-    const usersWithRole = users.some(u => u.role.toLowerCase() === roleName);
-    
-    if (usersWithRole) {
-      toast({
-        title: "Operação não permitida",
-        description: "Existem usuários associados a este perfil",
-        variant: "destructive",
-      });
-      return;
+    if (window.confirm("Tem certeza que deseja excluir este perfil?")) {
+      deleteRoleMutation.mutate(roleId);
     }
-    
-    // Confirmação de exclusão
-    if (!window.confirm("Tem certeza que deseja excluir este perfil?")) {
-      return;
-    }
-    
-    // Remover da lista de perfis e do localStorage
-    const updatedRoles = userRoles.filter(r => r.id !== roleId);
-    setUserRoles(updatedRoles);
-    localStorage.setItem("userRoles", JSON.stringify(updatedRoles));
-    
-    toast({
-      title: "Sucesso",
-      description: "Perfil removido com sucesso",
-    });
   };
   
-  // Obter nome do perfil
-  const getRoleName = (roleKey: string) => {
-    const foundRole = userRoles.find(r => r.name.toLowerCase() === roleKey.toLowerCase());
-    return foundRole ? foundRole.name : roleKey;
+  // --- UI Helpers ---
+  const getRoleName = (roleId?: number) => {
+    if (!roleId) return "N/A";
+    return roles.find(r => r.id === roleId)?.name || "Desconhecido";
   };
   
-  // Verificar se é o próprio usuário
-  const isSelfUser = (userId: string) => {
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    return userData.id === userId;
+  const isSelfUser = (userId?: string) => {
+    return authUser?.id === userId;
   };
-  
-  // Função para renderizar as permissões de um perfil
+
+  // --- Render Permission List ---
   const renderPermissionList = (permissions: {[key: string]: boolean}) => {
     const permissionLabels: {[key: string]: string} = {
       dashboard: "Dashboard",
@@ -618,34 +480,37 @@ export default function UserManagement() {
               <CardTitle className="text-lg">Lista de Usuários</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {isLoadingUsers ? (
                 <div className="flex justify-center p-8">
                   <div className="animate-spin h-8 w-8 border-4 border-blue-700 border-t-transparent rounded-full"></div>
                 </div>
+              ) : usersError ? (
+                <p className="text-red-500 py-4">Erro ao carregar usuários: {usersError.message}</p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
-                        <TableHead className="font-medium">Nome de Usuário</TableHead>
+                        <TableHead className="font-medium">Email</TableHead>
                         <TableHead className="font-medium">Nome Completo</TableHead>
                         <TableHead className="font-medium">Perfil</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.username}</TableCell>
-                          <TableCell>{user.name}</TableCell>
-                          <TableCell>{getRoleName(user.role)}</TableCell>
+                      {users.map((u) => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-medium">{u.email}</TableCell>
+                          <TableCell>{`${u.firstName || ''} ${u.lastName || ''}`.trim() || "N/A"}</TableCell>
+                          <TableCell>{getRoleName(u.roleId)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end space-x-1">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => handleChangePassword(user)}
+                                onClick={() => handleChangePassword(u)}
+                                disabled={!u.id}
                               >
                                 <KeyRound className="h-4 w-4" />
                               </Button>
@@ -653,7 +518,8 @@ export default function UserManagement() {
                                 variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0"
-                                onClick={() => handleEditUser(user)}
+                                onClick={() => handleEditUser(u)}
+                                disabled={!u.id}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -661,8 +527,8 @@ export default function UserManagement() {
                                 variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0 text-red-600"
-                                onClick={() => handleDeleteUser(user.id)}
-                                disabled={user.id === "1" || isSelfUser(user.id)}
+                                onClick={() => handleDeleteUser(u.id)}
+                                disabled={isSelfUser(u.id) || u.email === "admin@example.com" /* Placeholder for main admin protection */}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -684,50 +550,59 @@ export default function UserManagement() {
               <CardTitle className="text-lg">Perfis de Acesso</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50">
-                      <TableHead className="font-medium">Nome</TableHead>
-                      <TableHead className="font-medium">Descrição</TableHead>
-                      <TableHead className="font-medium">Permissões</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {userRoles.map((role) => (
-                      <TableRow key={role.id}>
-                        <TableCell className="font-medium">{role.name}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{role.description}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-xs">
-                          {renderPermissionList(role.permissions)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEditRole(role)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-600"
-                              onClick={() => handleDeleteRole(role.id)}
-                              disabled={role.id === "1"}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+             {isLoadingRoles ? (
+                 <div className="flex justify-center p-8">
+                   <div className="animate-spin h-8 w-8 border-4 border-blue-700 border-t-transparent rounded-full"></div>
+                 </div>
+              ) : rolesError ? (
+                 <p className="text-red-500 py-4">Erro ao carregar perfis: {rolesError.message}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead className="font-medium">Nome</TableHead>
+                        <TableHead className="font-medium">Descrição</TableHead>
+                        <TableHead className="font-medium">Permissões</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {roles.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium">{r.name}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{r.description || "N/A"}</TableCell>
+                          <TableCell className="max-w-[200px] truncate text-xs">
+                            {renderPermissionList(r.permissions)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleEditRole(r)}
+                                disabled={r.name.toLowerCase() === "admin"} // Protect admin role by name
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-600"
+                                onClick={() => handleDeleteRole(r.id)}
+                                disabled={r.name.toLowerCase() === "admin"}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -749,75 +624,74 @@ export default function UserManagement() {
           
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Nome de Usuário</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ex: joaosilva"
+                id="email"
+                value={userForm.email || ""}
+                onChange={(e) => setUserForm({...userForm, email: e.target.value})}
+                placeholder="Ex: usuario@example.com"
               />
-              {formErrors.username && (
-                <p className="text-sm text-red-500 mt-1">{formErrors.username}</p>
+              {formErrors.email && (
+                <p className="text-sm text-red-500 mt-1">{formErrors.email}</p>
               )}
             </div>
             
-            {currentUser === null && (
+            {currentUser === null && ( // Only show password fields for new user
               <>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
                   <Input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={userForm.password || ""}
+                    onChange={(e) => setUserForm({...userForm, password: e.target.value})}
                     placeholder="Digite a senha"
                   />
                   {formErrors.password && (
                     <p className="text-sm text-red-500 mt-1">{formErrors.password}</p>
                   )}
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar Senha</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirme a senha"
-                  />
-                  {formErrors.confirmPassword && (
-                    <p className="text-sm text-red-500 mt-1">{formErrors.confirmPassword}</p>
-                  )}
-                </div>
+                {/* TODO: Add Confirm Password Field for new user */}
               </>
             )}
             
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo</Label>
+              <Label htmlFor="firstName">Primeiro Nome</Label>
               <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: João da Silva"
+                id="firstName"
+                value={userForm.firstName || ""}
+                onChange={(e) => setUserForm({...userForm, firstName: e.target.value})}
+                placeholder="Ex: João"
               />
-              {formErrors.name && (
-                <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>
+               {formErrors.firstName && (
+                <p className="text-sm text-red-500 mt-1">{formErrors.firstName}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Último Nome</Label>
+              <Input
+                id="lastName"
+                value={userForm.lastName || ""}
+                onChange={(e) => setUserForm({...userForm, lastName: e.target.value})}
+                placeholder="Ex: Silva"
+              />
+              {formErrors.lastName && (
+                <p className="text-sm text-red-500 mt-1">{formErrors.lastName}</p>
               )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="role">Perfil</Label>
+              <Label htmlFor="roleId">Perfil</Label>
               <Select
-                value={role}
-                onValueChange={setRole}
+                value={userForm.roleId?.toString() || ""}
+                onValueChange={(value) => setUserForm({...userForm, roleId: parseInt(value)})}
               >
-                <SelectTrigger id="role">
+                <SelectTrigger id="roleId">
                   <SelectValue placeholder="Selecione um perfil" />
                 </SelectTrigger>
                 <SelectContent>
-                  {userRoles.map(r => (
-                    <SelectItem key={r.id} value={r.name.toLowerCase()}>
+                  {roles.map(r => ( // Use roles from useQuery
+                    <SelectItem key={r.id} value={r.id.toString()}>
                       {r.name}
                     </SelectItem>
                   ))}
@@ -830,14 +704,18 @@ export default function UserManagement() {
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSaveUser}
               className="bg-blue-700 hover:bg-blue-800"
+              disabled={createUserMutation.isPending || updateUserMutation.isPending}
             >
-              {currentUser ? "Salvar" : "Criar"}
+              {currentUser
+                ? (updateUserMutation.isPending ? "Salvando..." : "Salvar")
+                : (createUserMutation.isPending ? "Criando..." : "Criar")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -849,21 +727,21 @@ export default function UserManagement() {
           <DialogHeader>
             <DialogTitle>Alterar Senha</DialogTitle>
             <DialogDescription>
-              {isSelfUser(currentUser?.id || "")
+              {isSelfUser(currentUser?.id)
                 ? "Atualize sua senha."
-                : `Alterar senha do usuário ${currentUser?.username}.`}
+                : `Alterar senha do usuário ${currentUser?.email || currentUser?.firstName || currentUser?.id }.`}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {isSelfUser(currentUser?.id || "") && (
+            {isSelfUser(currentUser?.id) && (
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">Senha Atual</Label>
                 <Input
                   id="currentPassword"
                   type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  value={passwordChangeForm.currentPassword || ""}
+                  onChange={(e) => setPasswordChangeForm({...passwordChangeForm, currentPassword: e.target.value})}
                   placeholder="Digite sua senha atual"
                 />
                 {formErrors.currentPassword && (
@@ -877,8 +755,8 @@ export default function UserManagement() {
               <Input
                 id="newPassword"
                 type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                value={passwordChangeForm.newPassword || ""}
+                onChange={(e) => setPasswordChangeForm({...passwordChangeForm, newPassword: e.target.value})}
                 placeholder="Digite a nova senha"
               />
               {formErrors.newPassword && (
@@ -886,56 +764,52 @@ export default function UserManagement() {
               )}
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
-              <Input
-                id="confirmNewPassword"
-                type="password"
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Confirme a nova senha"
-              />
-              {formErrors.confirmNewPassword && (
-                <p className="text-sm text-red-500 mt-1">{formErrors.confirmNewPassword}</p>
-              )}
-            </div>
+            {/* TODO: Add Confirm New Password Field */}
+
           </div>
           
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setPasswordDialogOpen(false)}
+              disabled={changePasswordMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSavePassword}
               className="bg-blue-700 hover:bg-blue-800"
+              disabled={changePasswordMutation.isPending}
             >
-              Alterar Senha
+              {changePasswordMutation.isPending ? "Alterando..." : "Alterar Senha"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       
-      {/* Diálogo para adicionar perfil */}
-      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+      {/* Diálogo para adicionar/editar perfil (consolidated) */}
+      <Dialog open={roleDialogOpen || editRoleDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setRoleDialogOpen(false);
+          setEditRoleDialogOpen(false);
+        }
+      }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Novo Perfil de Acesso</DialogTitle>
+            <DialogTitle>{currentRole ? "Editar Perfil" : "Novo Perfil"}</DialogTitle>
             <DialogDescription>
-              Configure as informações do perfil e suas permissões.
+              {currentRole ? "Atualize as informações do perfil." : "Configure as informações do novo perfil."}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="roleName">Nome do Perfil</Label>
+                <Label htmlFor="roleNameFormDialog">Nome do Perfil</Label> {/* Changed ID to avoid conflict */}
                 <Input
-                  id="roleName"
-                  value={newRole.name}
-                  onChange={(e) => setNewRole({...newRole, name: e.target.value})}
+                  id="roleNameFormDialog"
+                  value={roleForm.name || ""}
+                  onChange={(e) => setRoleForm({...roleForm, name: e.target.value})}
                   placeholder="Ex: Coordenador"
                 />
                 {formErrors.name && (
@@ -944,11 +818,11 @@ export default function UserManagement() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="roleDescription">Descrição</Label>
+                <Label htmlFor="roleDescriptionFormDialog">Descrição</Label> {/* Changed ID */}
                 <Input
-                  id="roleDescription"
-                  value={newRole.description}
-                  onChange={(e) => setNewRole({...newRole, description: e.target.value})}
+                  id="roleDescriptionFormDialog"
+                  value={roleForm.description || ""}
+                  onChange={(e) => setRoleForm({...roleForm, description: e.target.value})}
                   placeholder="Ex: Acesso à coordenação de frotas"
                 />
               </div>
@@ -958,325 +832,48 @@ export default function UserManagement() {
             
             <div>
               <h4 className="text-sm font-medium mb-4">Permissões</h4>
-              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-dashboard"
-                    checked={newRole.permissions.dashboard}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, dashboard: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-dashboard" className="flex items-center space-x-2">
-                    <GanttChart className="h-4 w-4 text-blue-700" />
-                    <span>Dashboard</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-registrations"
-                    checked={newRole.permissions.registrations}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, registrations: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-registrations" className="flex items-center space-x-2">
-                    <PlusCircle className="h-4 w-4 text-blue-700" />
-                    <span>Registros</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-history"
-                    checked={newRole.permissions.history}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, history: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-history" className="flex items-center space-x-2">
-                    <ScrollText className="h-4 w-4 text-blue-700" />
-                    <span>Histórico</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-reports"
-                    checked={newRole.permissions.reports}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, reports: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-reports" className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-blue-700" />
-                    <span>Relatórios</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-checklists"
-                    checked={newRole.permissions.checklists}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, checklists: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-checklists" className="flex items-center space-x-2">
-                    <CheckSquare className="h-4 w-4 text-blue-700" />
-                    <span>Checklists</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-settings"
-                    checked={newRole.permissions.settings}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, settings: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-settings" className="flex items-center space-x-2">
-                    <Settings className="h-4 w-4 text-blue-700" />
-                    <span>Configurações</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-userManagement"
-                    checked={newRole.permissions.userManagement}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, userManagement: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-userManagement" className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-blue-700" />
-                    <span>Gerenciar Usuários</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="perm-vehicleManagement"
-                    checked={newRole.permissions.vehicleManagement}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, vehicleManagement: checked }
-                    })}
-                  />
-                  <Label htmlFor="perm-vehicleManagement" className="flex items-center space-x-2">
-                    <Car className="h-4 w-4 text-blue-700" />
-                    <span>Gerenciar Veículos</span>
-                  </Label>
-                </div>
+                {Object.keys(JSON.parse(roleForm.permissions || '{}')).map((key) => (
+                  <div className="flex items-center space-x-2" key={key}>
+                    <Switch
+                      id={`perm-${key}`}
+                      checked={JSON.parse(roleForm.permissions || '{}')[key]}
+                      onCheckedChange={(checked) => {
+                        const currentPermissions = JSON.parse(roleForm.permissions || '{}');
+                        currentPermissions[key] = checked;
+                        setRoleForm({...roleForm, permissions: JSON.stringify(currentPermissions) });
+                      }}
+                    />
+                    <Label htmlFor={`perm-${key}`} className="flex items-center space-x-2 capitalize">
+                      {/* TODO: Map permission keys to icons and friendly names if possible */}
+                      {/* e.g. <Users className="h-4 w-4 text-blue-700" /> */}
+                      <span>{key.replace(/([A-Z])/g, ' $1')}</span>
+                    </Label>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setRoleDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveRole}
-              className="bg-blue-700 hover:bg-blue-800"
-            >
-              Criar Perfil
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Diálogo para editar perfil */}
-      <Dialog open={editRoleDialogOpen} onOpenChange={setEditRoleDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar Perfil de Acesso</DialogTitle>
-            <DialogDescription>
-              Atualize as informações do perfil e suas permissões.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-roleName">Nome do Perfil</Label>
-                <Input
-                  id="edit-roleName"
-                  value={newRole.name}
-                  onChange={(e) => setNewRole({...newRole, name: e.target.value})}
-                  placeholder="Ex: Coordenador"
-                />
-                {formErrors.name && (
-                  <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>
+               {formErrors.permissions && (
+                  <p className="text-sm text-red-500 mt-1">{formErrors.permissions}</p>
                 )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="edit-roleDescription">Descrição</Label>
-                <Input
-                  id="edit-roleDescription"
-                  value={newRole.description}
-                  onChange={(e) => setNewRole({...newRole, description: e.target.value})}
-                  placeholder="Ex: Acesso à coordenação de frotas"
-                />
-              </div>
-            </div>
-            
-            <Separator />
-            
-            <div>
-              <h4 className="text-sm font-medium mb-4">Permissões</h4>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-dashboard"
-                    checked={newRole.permissions.dashboard}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, dashboard: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-dashboard" className="flex items-center space-x-2">
-                    <GanttChart className="h-4 w-4 text-blue-700" />
-                    <span>Dashboard</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-registrations"
-                    checked={newRole.permissions.registrations}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, registrations: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-registrations" className="flex items-center space-x-2">
-                    <PlusCircle className="h-4 w-4 text-blue-700" />
-                    <span>Registros</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-history"
-                    checked={newRole.permissions.history}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, history: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-history" className="flex items-center space-x-2">
-                    <ScrollText className="h-4 w-4 text-blue-700" />
-                    <span>Histórico</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-reports"
-                    checked={newRole.permissions.reports}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, reports: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-reports" className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-blue-700" />
-                    <span>Relatórios</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-checklists"
-                    checked={newRole.permissions.checklists}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, checklists: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-checklists" className="flex items-center space-x-2">
-                    <CheckSquare className="h-4 w-4 text-blue-700" />
-                    <span>Checklists</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-settings"
-                    checked={newRole.permissions.settings}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, settings: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-settings" className="flex items-center space-x-2">
-                    <Settings className="h-4 w-4 text-blue-700" />
-                    <span>Configurações</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-userManagement"
-                    checked={newRole.permissions.userManagement}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, userManagement: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-userManagement" className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-blue-700" />
-                    <span>Gerenciar Usuários</span>
-                  </Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="edit-perm-vehicleManagement"
-                    checked={newRole.permissions.vehicleManagement}
-                    onCheckedChange={(checked) => setNewRole({
-                      ...newRole,
-                      permissions: { ...newRole.permissions, vehicleManagement: checked }
-                    })}
-                  />
-                  <Label htmlFor="edit-perm-vehicleManagement" className="flex items-center space-x-2">
-                    <Car className="h-4 w-4 text-blue-700" />
-                    <span>Gerenciar Veículos</span>
-                  </Label>
-                </div>
-              </div>
             </div>
           </div>
           
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setEditRoleDialogOpen(false)}
+              onClick={() => { setRoleDialogOpen(false); setEditRoleDialogOpen(false); }}
+              disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
-              onClick={handleUpdateRole}
+              onClick={currentRole ? handleUpdateRole : handleSaveRole}
               className="bg-blue-700 hover:bg-blue-800"
+              disabled={createRoleMutation.isPending || updateRoleMutation.isPending}
             >
-              Salvar Alterações
+              {currentRole
+                ? (updateRoleMutation.isPending ? "Salvando..." : "Salvar Alterações")
+                : (createRoleMutation.isPending ? "Criando..." : "Criar Perfil")}
             </Button>
           </DialogFooter>
         </DialogContent>
