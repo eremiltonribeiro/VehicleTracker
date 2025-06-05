@@ -36,7 +36,8 @@ class OfflineStorage {
         // Armazena imagens/arquivos
         if (!db.objectStoreNames.contains('offlineFiles')) {
           const store = db.createObjectStore('offlineFiles', { keyPath: 'id' });
-          store.createIndex('entityId', 'entityId', { unique: false });
+          // Changed 'entityId' to 'operationId' for clarity
+          store.createIndex('operationId', 'operationId', { unique: false });
           store.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
@@ -392,7 +393,7 @@ class OfflineStorage {
   }
   
   // Salva um arquivo offline
-  public async saveOfflineFile(entityId: string, file: File): Promise<string> {
+  public async saveOfflineFile(operationId: string, file: File): Promise<string> {
     const db = await this.ensureDbReady();
     
     return new Promise((resolve, reject) => {
@@ -407,7 +408,7 @@ class OfflineStorage {
         
         const fileData = {
           id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-          entityId,
+          operationId, // Changed from entityId
           name: file.name,
           type: file.type,
           size: file.size,
@@ -465,16 +466,16 @@ class OfflineStorage {
     });
   }
   
-  // Obtém arquivos por entidade
-  public async getOfflineFilesByEntity(entityId: string): Promise<any[]> {
+  // Obtém arquivos por operationId
+  public async getOfflineFilesByOperationId(operationId: string): Promise<any[]> {
     const db = await this.ensureDbReady();
     
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(['offlineFiles'], 'readonly');
       const store = transaction.objectStore('offlineFiles');
-      const index = store.index('entityId');
+      const index = store.index('operationId'); // Changed from entityId
       
-      const request = index.getAll(entityId);
+      const request = index.getAll(operationId);
       
       request.onsuccess = () => {
         resolve(request.result || []);
