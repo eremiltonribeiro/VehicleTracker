@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { LogIn } from "lucide-react";
 import { brandColors } from "@/lib/colors";
 import { useLocation } from "wouter";
-import { useAuth } from "@/App";
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
