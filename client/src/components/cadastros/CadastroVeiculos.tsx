@@ -59,9 +59,34 @@ export function CadastroVeiculos() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(vehicleData),
       });
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
-        throw new Error(errorData.message || `Falha ao ${formMode === "create" ? "criar" : "atualizar"} veículo`);
+        const entityName = "veículo"; // For message customization
+        let detailedErrorMessage = `Falha ao ${formMode === "create" ? "criar" : "atualizar"} ${entityName}. Status: ${response.status} ${response.statusText}`;
+        let responseBodyForErrorLog = "";
+
+        try {
+          const errorData = await response.json();
+          detailedErrorMessage = errorData.message || JSON.stringify(errorData);
+        } catch (e) {
+          try {
+            // response.text() consumes the body, so call it only if .json() failed or on a cloned response if needed for multiple reads
+            responseBodyForErrorLog = await response.text();
+            detailedErrorMessage += `. Resposta do servidor (não JSON): ${responseBodyForErrorLog.substring(0, 500)}`;
+          } catch (textE) {
+            detailedErrorMessage += ". Não foi possível ler o corpo da resposta do servidor.";
+          }
+        }
+
+        console.error(`Backend error details for ${url}:`, detailedErrorMessage, "Raw Response Body (if available):", responseBodyForErrorLog);
+
+        let toastErrorMessage = `Falha ao ${formMode === "create" ? "criar" : "atualizar"} ${entityName}.`;
+        if (typeof detailedErrorMessage === 'string' && detailedErrorMessage.length < 100 && !detailedErrorMessage.startsWith("{") && !detailedErrorMessage.toLowerCase().includes("html")) {
+            toastErrorMessage = detailedErrorMessage;
+        } else {
+            toastErrorMessage = `Erro ${response.status} ao salvar ${entityName}. Verifique o console para detalhes técnicos.`;
+        }
+        throw new Error(toastErrorMessage);
       }
       return response.json();
     },
