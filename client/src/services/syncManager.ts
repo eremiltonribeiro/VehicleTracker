@@ -8,7 +8,7 @@ interface PendingOperation {
   url: string;
   method: string;
   payload: any;
-  files?: File[];
+  fileMetadatas?: { fileId: string, name: string, type: string, operationId: string }[]; // Changed from files?: File[]
   status: 'pending' | 'syncing' | 'processing' | 'error' | 'completed';
   retryCount: number;
   error?: string;
@@ -22,6 +22,7 @@ class SyncManager {
   private isSyncing: boolean = false;
   private maxRetries: number = 3;
   private syncInterval: number = 30000; // 30 segundos
+  private syncOperationTimeout: number = 60000; // 60 segundos para cada operação de sincronização
   private intervalId: number | null = null;
   private mutationObserver: MutationObserver | null = null;
   private syncListeners: Array<(hasPendingOperations: boolean) => void> = [];
@@ -55,9 +56,24 @@ class SyncManager {
       });
 
       clearTimeout(timeoutId);
-      this.updateOnlineStatus(response.ok);
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.toLowerCase().includes('text/html')) {
+          // Likely a captive portal redirect
+          console.log('Conexão detectada, mas parece ser um portal cativo (HTML recebido). Tratando como offline.');
+          this.updateOnlineStatus(false);
+        } else {
+          // Ping bem-sucedido e não parece ser um portal cativo
+          this.updateOnlineStatus(true);
+        }
+      } else {
+        // Resposta não OK (ex: 404, 500)
+        this.updateOnlineStatus(false);
+      }
     } catch (error) {
-      console.log('Erro ao verificar conexão:', error);
+      // Erro de rede (fetch falhou, abortado por timeout, etc.)
+      console.log('Erro ao verificar conexão (ex: timeout, falha de rede):', error);
       this.updateOnlineStatus(false);
     }
 
@@ -243,7 +259,7 @@ class SyncManager {
         url,
         method,
         payload: body,
-        files: files || [],
+        // files: files || [], // Will be replaced by fileMetadatas
         status: 'pending',
         retryCount: 0,
         timestamp: Date.now()
@@ -286,13 +302,27 @@ class SyncManager {
         await offlineStorage.saveOfflineData(entity, filteredData);
       }
 
-      // Se for upload de arquivo, salvar o arquivo no storage
+      // Se for upload de arquivo, salvar o arquivo no storage e guardar metadados
       if (files && files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          await offlineStorage.saveOfflineFile(id, file);
+        pendingOp.fileMetadatas = [];
+        for (const file of files) {
+          try {
+            const fileId = await offlineStorage.saveOfflineFile(pendingOp.id, file);
+            pendingOp.fileMetadatas.push({
+              fileId: fileId,
+              name: file.name,
+              type: file.type,
+              operationId: pendingOp.id
+            });
+          } catch (error) {
+            console.error(`Falha ao salvar arquivo ${file.name} offline:`, error);
+            // Opcional: decidir se a operação inteira deve falhar ou continuar sem o arquivo
+          }
         }
       }
+
+      // Salva a operação pendente (agora com fileMetadatas, se houver)
+      await offlineStorage.savePendingOperation(pendingOp);
 
       // Notifica que há operações pendentes
       this.syncListeners.forEach(listener => listener(true));
@@ -373,9 +403,9 @@ class SyncManager {
     const entity = url.replace(/^\/api\//, '').split('/')[0];
 
     // Garantir que files sempre seja uma matriz de tipo File ou undefined
-    const validatedFiles = files && Array.isArray(files) 
-      ? files.filter(file => file instanceof File) 
-      : undefined;
+    // const validatedFiles = files && Array.isArray(files)
+    //   ? files.filter(file => file instanceof File)
+    //   : undefined; // Replaced by fileMetadatas logic
 
     const operation: PendingOperation = {
       id,
@@ -385,10 +415,31 @@ class SyncManager {
       method,
       payload: body,
       timestamp: Date.now(),
-      files: validatedFiles,
+      // files: validatedFiles, // Replaced by fileMetadatas
       retryCount: 0,
       status: 'pending'
+      // fileMetadatas will be added here if files are present and saved successfully
     };
+
+    // Se houver arquivos, salvá-los e adicionar metadados à operação
+    // Esta lógica é similar à de interceptRequest, mas adaptada para addPendingOperation
+    if (files && files.length > 0) {
+      operation.fileMetadatas = [];
+      for (const file of files) {
+        try {
+          const fileId = await offlineStorage.saveOfflineFile(operation.id, file);
+          operation.fileMetadatas.push({
+            fileId: fileId,
+            name: file.name,
+            type: file.type,
+            operationId: operation.id
+          });
+        } catch (error) {
+          console.error(`Falha ao salvar arquivo ${file.name} para operação pendente ${operation.id}:`, error);
+          // Considerar como lidar com falha no salvamento do arquivo aqui
+        }
+      }
+    }
 
     await offlineStorage.savePendingOperation(operation);
 
@@ -445,52 +496,103 @@ class SyncManager {
             headers: {}
           };
 
-          // Se houver arquivos, prepara um FormData
-          if (op.files && op.files.length > 0) {
+          // Se houver metadados de arquivos, prepara um FormData
+          if (op.fileMetadatas && op.fileMetadatas.length > 0) {
             const formData = new FormData();
 
-            // Adiciona os dados como campo 'data'
-            formData.append('data', JSON.stringify(op.payload));
-
-            // Recupera e adiciona os arquivos
-            for (let i = 0; i < op.files.length; i++) {
-              const fileData = await offlineStorage.getOfflineFile(op.id);
-              if (fileData) {
-                const file = new File([fileData.data], fileData.name, { type: fileData.type });
-                formData.append('photo', file);
-              }
+            // Adiciona os dados do payload como campo 'data'
+            // Garantir que op.payload não seja undefined ou null antes de stringify
+            if (op.payload !== undefined && op.payload !== null) {
+                formData.append('data', JSON.stringify(op.payload));
+            } else {
+                // Se o payload for nulo ou indefinido, pode ser necessário enviar um objeto JSON vazio
+                // ou ajustar conforme a expectativa do backend.
+                formData.append('data', JSON.stringify({}));
             }
 
+            // Recupera e adiciona os arquivos
+            for (const fileMeta of op.fileMetadatas) {
+              try {
+                const fileData = await offlineStorage.getOfflineFile(fileMeta.fileId);
+                if (fileData) {
+                  const file = new File([fileData.data], fileMeta.name, { type: fileMeta.type });
+                  formData.append('photo', file); // O backend espera 'photo' ou um nome de campo dinâmico?
+                } else {
+                  console.warn(`Arquivo ${fileMeta.fileId} (nome: ${fileMeta.name}) não encontrado no offlineStorage para a operação ${op.id}`);
+                  // Decidir se a operação deve prosseguir sem o arquivo ou falhar
+                }
+              } catch (error) {
+                console.error(`Erro ao recuperar arquivo ${fileMeta.fileId} (nome: ${fileMeta.name}) para operação ${op.id}:`, error);
+                // Decidir se a operação deve prosseguir ou falhar
+                // Poderia lançar um erro aqui para fazer a operação falhar e ser retentada/marcada como erro
+                throw new Error(`Falha ao recuperar arquivo ${fileMeta.name} para sincronização.`);
+              }
+            }
             requestOptions.body = formData;
           } else {
             // Sem arquivos, usa JSON normal
-            requestOptions.headers = {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
-            };
-            requestOptions.body = JSON.stringify(op.payload);
+            // Garantir que op.payload não seja undefined ou null antes de stringify
+            if (op.payload !== undefined && op.payload !== null) {
+                requestOptions.headers = {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                };
+                requestOptions.body = JSON.stringify(op.payload);
+            } else {
+                // Se o payload for nulo, não defina o corpo ou defina como JSON vazio,
+                // dependendo do que o servidor espera.
+                // Para métodos como DELETE, o corpo pode não ser necessário.
+                if (op.method !== 'DELETE' && op.method !== 'GET') {
+                     requestOptions.headers = {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    };
+                    requestOptions.body = JSON.stringify({});
+                }
+            }
           }
 
-          // Faz a requisição
-          const response = await fetch(op.url, requestOptions);
+          // Faz a requisição com timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => {
+            console.log(`Timeout para operação ${op.id} (${op.url})`);
+            controller.abort();
+          }, this.syncOperationTimeout);
 
-          if (!response.ok) {
-            throw new Error(`Erro na sincronização: ${response.status} ${response.statusText}`);
+          let response;
+          try {
+            response = await fetch(op.url, { ...requestOptions, signal: controller.signal });
+            clearTimeout(timeoutId); // Limpa o timeout se a requisição completar/falhar antes
+
+            if (!response.ok) {
+              const errorBody = await response.text();
+              throw new Error(`Erro na sincronização: ${response.status} ${response.statusText}. Resposta: ${errorBody}`);
+            }
+          } catch (error) {
+            clearTimeout(timeoutId); // Garante limpeza do timeout em caso de erro de fetch (incluindo abort)
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw new Error(`Timeout na operação de sincronização para ${op.url} após ${this.syncOperationTimeout / 1000}s`);
+            }
+            throw error; // Re-throw outros erros de fetch
           }
 
           // Se chegou aqui, operação concluída com sucesso
           await offlineStorage.updateOperationStatus(op.id, 'completed');
 
           // Limpa arquivos associados, se houver
-          if (op.files && op.files.length > 0) {
-            await offlineStorage.removeOfflineFile(op.id);
+          if (op.fileMetadatas && op.fileMetadatas.length > 0) {
+            for (const fileMeta of op.fileMetadatas) {
+              await offlineStorage.removeOfflineFile(fileMeta.fileId);
+            }
           }
 
           // Remove a operação da lista de pendentes
           await offlineStorage.removePendingOperation(op.id);
 
           // Capturar resposta para atualização de UI
+          // Ensure response is read only once
           const responseData = await response.json();
 
           // Notificar o sistema que um item foi sincronizado (isso ajuda a atualizar a UI)
