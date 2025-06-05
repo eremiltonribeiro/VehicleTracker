@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm"; // Added 'and' and 'sql' for dynamic queries
 import {
   User,
   UpsertUser,
@@ -25,6 +25,19 @@ import {
   Role,
   roles,
   InsertRole,
+  // Checklist related imports
+  ChecklistTemplate,
+  checklistTemplates,
+  InsertChecklistTemplate,
+  ChecklistItem,
+  checklistItems,
+  InsertChecklistItem,
+  VehicleChecklist,
+  vehicleChecklists,
+  InsertVehicleChecklist,
+  ChecklistResult,
+  checklistResults,
+  InsertChecklistResult,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
@@ -38,15 +51,11 @@ export class DatabaseStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     let finalUserData = { ...userData };
 
-    // Check if it's an insert or update by trying to fetch the user first
-    // This is how Replit Auth's `verify` function implicitly works with our upsert.
-    // If `storage.upsertUser` is called directly for creating a user (e.g. admin panel),
-    // this logic will also apply if `roleId` is not preset in `userData`.
     const existingUser = await this.getUser(finalUserData.id);
 
-    if (!existingUser && !finalUserData.roleId) { // This is a new user and no roleId is provided
+    if (!existingUser && !finalUserData.roleId) {
       try {
-        const defaultRoleName = "Motorista"; // Or "Default User", "Usuário"
+        const defaultRoleName = "Motorista";
         const [defaultRole] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, defaultRoleName));
         if (defaultRole) {
           finalUserData.roleId = defaultRole.id;
@@ -59,45 +68,33 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // For users authenticated via Replit (typical case for this upsert from replitAuth.ts),
-    // passwordHash should not be set from userData unless explicitly intended (e.g. admin created user).
-    // The `replitAuth.ts` `upsertUser` call does not provide `passwordHash`.
-    // If `finalUserData.passwordHash` is undefined, it will be stored as NULL.
     if (!existingUser && finalUserData.passwordHash === undefined) {
-        finalUserData.passwordHash = null; // Explicitly set to null for new Replit users
+        finalUserData.passwordHash = null;
     }
 
-
-    // Prepare data for insert or update
     const valuesToSet: UpsertUser = {
-      id: finalUserData.id, // PK
+      id: finalUserData.id,
       email: finalUserData.email,
       firstName: finalUserData.firstName,
       lastName: finalUserData.lastName,
       profileImageUrl: finalUserData.profileImageUrl,
       passwordHash: finalUserData.passwordHash,
       roleId: finalUserData.roleId,
-      createdAt: existingUser ? existingUser.createdAt : (finalUserData.createdAt || new Date()), // Preserve original createdAt
+      createdAt: existingUser ? existingUser.createdAt : (finalUserData.createdAt || new Date()),
       updatedAt: new Date(),
     };
 
-    // Define what fields to update in case of conflict (user already exists)
     const onConflictSet: Partial<UpsertUser> = {
       email: finalUserData.email,
       firstName: finalUserData.firstName,
       lastName: finalUserData.lastName,
       profileImageUrl: finalUserData.profileImageUrl,
-      roleId: finalUserData.roleId, // Allow role update if provided
+      roleId: finalUserData.roleId,
       updatedAt: new Date(),
     };
-    // Only update passwordHash if it's explicitly provided in finalUserData
-    // This is important for Replit authenticated users who shouldn't have their null passwordHash overwritten
-    // unless an admin is intentionally setting/changing it (which would come via a different flow for passwordHash).
-    // For Replit Auth, finalUserData.passwordHash will be null for new users or undefined if not touched.
     if (finalUserData.passwordHash !== undefined) {
       onConflictSet.passwordHash = finalUserData.passwordHash;
     }
-
 
     const [user] = await db
       .insert(users)
@@ -242,19 +239,26 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<VehicleRegistration[]> {
-    let query = db.select().from(vehicleRegistrations);
-
+    // This is a simplified version. For dynamic queries, you might need to build condition arrays.
+    // Drizzle doesn't allow appending .where() like some other ORMs.
+    const conditions = [];
     if (filters) {
       if (filters.type) {
-        query = query.where(eq(vehicleRegistrations.type, filters.type));
+        conditions.push(eq(vehicleRegistrations.type, filters.type));
       }
       if (filters.vehicleId) {
-        query = query.where(eq(vehicleRegistrations.vehicleId, filters.vehicleId));
+        conditions.push(eq(vehicleRegistrations.vehicleId, filters.vehicleId));
       }
-      // Data filters would be implemented similarly with date comparison operators
+      // Date filters would require gt, lt, gte, lte operators
+      // e.g., if (filters.startDate) conditions.push(gte(vehicleRegistrations.date, filters.startDate));
+      // e.g., if (filters.endDate) conditions.push(lte(vehicleRegistrations.date, filters.endDate));
     }
 
-    return query;
+    if (conditions.length > 0) {
+      // @ts-ignore because .where does not allow undefined
+      return db.select().from(vehicleRegistrations).where(and(...conditions));
+    }
+    return db.select().from(vehicleRegistrations);
   }
 
   async getRegistration(id: number): Promise<VehicleRegistration | undefined> {
@@ -273,7 +277,7 @@ export class DatabaseStorage implements IStorage {
     return registration;
   }
 
-  async updateRegistration(id: number, data: any): Promise<VehicleRegistration> {
+  async updateRegistration(id: number, data: Partial<InsertRegistration>): Promise<VehicleRegistration | undefined> {
     const [registration] = await db
       .update(vehicleRegistrations)
       .set(data)
@@ -283,46 +287,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteRegistration(id: number): Promise<boolean> {
-    await db.delete(vehicleRegistrations).where(eq(vehicleRegistrations.id, id));
-    return true;
+    const result = await db.delete(vehicleRegistrations).where(eq(vehicleRegistrations.id, id)).returning({id: vehicleRegistrations.id});
+    return result.length > 0;
   }
 
   // Checklist template methods
   async getChecklistTemplates(): Promise<ChecklistTemplate[]> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistTemplates não implementado completamente');
-    return [];
+    return db.select().from(checklistTemplates);
   }
 
   async getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistTemplate não implementado completamente');
-    return undefined;
+    const [template] = await db.select().from(checklistTemplates).where(eq(checklistTemplates.id, id));
+    return template;
   }
 
   async createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.createChecklistTemplate não implementado completamente');
-    return { id: 0, ...template };
+    const [newTemplate] = await db.insert(checklistTemplates).values(template).returning();
+    return newTemplate;
   }
 
   // Checklist item methods
   async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistItems não implementado completamente');
-    return [];
+    return db.select().from(checklistItems).where(eq(checklistItems.templateId, templateId));
   }
 
   async getChecklistItem(id: number): Promise<ChecklistItem | undefined> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistItem não implementado completamente');
-    return undefined;
+    const [item] = await db.select().from(checklistItems).where(eq(checklistItems.id, id));
+    return item;
   }
 
   async createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.createChecklistItem não implementado completamente');
-    return { id: 0, ...item };
+    const [newItem] = await db.insert(checklistItems).values(item).returning();
+    return newItem;
   }
 
   // Vehicle checklist methods
@@ -332,58 +328,69 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<VehicleChecklist[]> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getVehicleChecklists não implementado completamente');
-    return [];
+    const conditions = [];
+    if (filters) {
+      if (filters.vehicleId !== undefined) {
+        conditions.push(eq(vehicleChecklists.vehicleId, filters.vehicleId));
+      }
+      if (filters.driverId !== undefined) {
+        conditions.push(eq(vehicleChecklists.driverId, filters.driverId));
+      }
+      // Example for date range, assuming gte and lte are imported or available via sql``
+      // if (filters.startDate) {
+      //   conditions.push(sql`${vehicleChecklists.date} >= ${filters.startDate}`);
+      // }
+      // if (filters.endDate) {
+      //   conditions.push(sql`${vehicleChecklists.date} <= ${filters.endDate}`);
+      // }
+    }
+
+    if (conditions.length > 0) {
+      // @ts-ignore
+      return db.select().from(vehicleChecklists).where(and(...conditions));
+    }
+    return db.select().from(vehicleChecklists);
   }
 
   async getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getVehicleChecklist não implementado completamente');
-    return undefined;
+    const [checklist] = await db.select().from(vehicleChecklists).where(eq(vehicleChecklists.id, id));
+    return checklist;
   }
 
   async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.createVehicleChecklist não implementado completamente');
-    return { id: 0, ...checklist, date: new Date() };
+    const [newChecklist] = await db.insert(vehicleChecklists).values(checklist).returning();
+    return newChecklist;
   }
 
-  async updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log(`DatabaseStorage.updateVehicleChecklist: Atualizando checklist ${id}`, data);
-    return { id, ...data };
+  async updateVehicleChecklist(id: number, data: Partial<InsertVehicleChecklist>): Promise<VehicleChecklist | undefined> {
+    const [updatedChecklist] = await db.update(vehicleChecklists).set(data).where(eq(vehicleChecklists.id, id)).returning();
+    return updatedChecklist;
   }
 
   async deleteVehicleChecklist(id: number): Promise<boolean> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log(`DatabaseStorage.deleteVehicleChecklist: Excluindo checklist ${id}`);
-    return true;
+    const result = await db.delete(vehicleChecklists).where(eq(vehicleChecklists.id, id)).returning({ id: vehicleChecklists.id });
+    return result.length > 0;
   }
 
   // Checklist result methods
   async getChecklistResults(checklistId: number): Promise<ChecklistResult[]> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistResults não implementado completamente');
-    return [];
+    return db.select().from(checklistResults).where(eq(checklistResults.checklistId, checklistId));
   }
 
   async getChecklistResult(id: number): Promise<ChecklistResult | undefined> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.getChecklistResult não implementado completamente');
-    return undefined;
+    const [result] = await db.select().from(checklistResults).where(eq(checklistResults.id, id));
+    return result;
   }
 
-  async createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log('DatabaseStorage.createChecklistResult não implementado completamente');
-    return { id: 0, ...result };
+  async createChecklistResult(resultData: InsertChecklistResult): Promise<ChecklistResult> {
+    const [newResult] = await db.insert(checklistResults).values(resultData).returning();
+    return newResult;
   }
 
   async deleteChecklistResults(checklistId: number): Promise<boolean> {
-    // Implementação temporária - deve ser substituída por acesso ao DB real
-    console.log(`DatabaseStorage.deleteChecklistResults: Excluindo resultados do checklist ${checklistId}`);
-    return true;
+    // This deletes ALL results for a given checklistId.
+    const result = await db.delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id });
+    return result.length > 0; // Returns true if any rows were deleted
   }
 
   // Role methods
@@ -401,7 +408,7 @@ export class DatabaseStorage implements IStorage {
     return role;
   }
 
-  async updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role> {
+  async updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role | undefined> {
     const [role] = await db
       .update(roles)
       .set(roleData)
@@ -411,15 +418,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteRole(id: number): Promise<boolean> {
-    // Before deleting a role, ensure it's not used by any user.
-    // This check should ideally be in the service/route layer,
-    // but a basic check here can prevent orphaned roleIds.
-    const usersWithRole = await db.select().from(users).where(eq(users.roleId, id)).limit(1);
-    if (usersWithRole.length > 0) {
+    const usersWithRole = await db.select({count: sql<number>`count(*)`}).from(users).where(eq(users.roleId, id));
+    if (Number(usersWithRole[0].count) > 0) {
       throw new Error("Role is currently in use and cannot be deleted.");
     }
-    await db.delete(roles).where(eq(roles.id, id));
-    return true;
+    const result = await db.delete(roles).where(eq(roles.id, id)).returning({id: roles.id});
+    return result.length > 0;
   }
 
   // Extended User methods
@@ -428,7 +432,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    if (!email) return undefined; // Guard against empty email query
+    if (!email) return undefined;
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
