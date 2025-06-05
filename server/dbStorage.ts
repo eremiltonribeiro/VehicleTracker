@@ -125,6 +125,16 @@ export class DatabaseStorage implements IStorage {
     return vehicle;
   }
 
+  async updateVehicle(id: number, data: Partial<InsertVehicle>): Promise<Vehicle | undefined> {
+    const [vehicle] = await db.update(vehicles).set(data).where(eq(vehicles.id, id)).returning();
+    return vehicle;
+  }
+
+  async deleteVehicle(id: number): Promise<boolean> {
+    const result = await db.delete(vehicles).where(eq(vehicles.id, id)).returning({ id: vehicles.id });
+    return result.length > 0;
+  }
+
   // Driver methods
   async getDrivers(): Promise<Driver[]> {
     return db.select().from(drivers);
@@ -138,6 +148,16 @@ export class DatabaseStorage implements IStorage {
   async createDriver(driverData: InsertDriver): Promise<Driver> {
     const [driver] = await db.insert(drivers).values(driverData).returning();
     return driver;
+  }
+
+  async updateDriver(id: number, data: Partial<InsertDriver>): Promise<Driver | undefined> {
+    const [driver] = await db.update(drivers).set(data).where(eq(drivers.id, id)).returning();
+    return driver;
+  }
+
+  async deleteDriver(id: number): Promise<boolean> {
+    const result = await db.delete(drivers).where(eq(drivers.id, id)).returning({ id: drivers.id });
+    return result.length > 0;
   }
 
   // Fuel station methods
@@ -155,6 +175,16 @@ export class DatabaseStorage implements IStorage {
     return station;
   }
 
+  async updateFuelStation(id: number, data: Partial<InsertFuelStation>): Promise<FuelStation | undefined> {
+    const [station] = await db.update(fuelStations).set(data).where(eq(fuelStations.id, id)).returning();
+    return station;
+  }
+
+  async deleteFuelStation(id: number): Promise<boolean> {
+    const result = await db.delete(fuelStations).where(eq(fuelStations.id, id)).returning({ id: fuelStations.id });
+    return result.length > 0;
+  }
+
   // Fuel type methods
   async getFuelTypes(): Promise<FuelType[]> {
     return db.select().from(fuelTypes);
@@ -170,6 +200,16 @@ export class DatabaseStorage implements IStorage {
     return type;
   }
 
+  async updateFuelType(id: number, data: Partial<InsertFuelType>): Promise<FuelType | undefined> {
+    const [type] = await db.update(fuelTypes).set(data).where(eq(fuelTypes.id, id)).returning();
+    return type;
+  }
+
+  async deleteFuelType(id: number): Promise<boolean> {
+    const result = await db.delete(fuelTypes).where(eq(fuelTypes.id, id)).returning({ id: fuelTypes.id });
+    return result.length > 0;
+  }
+
   // Maintenance type methods
   async getMaintenanceTypes(): Promise<MaintenanceType[]> {
     return db.select().from(maintenanceTypes);
@@ -183,6 +223,16 @@ export class DatabaseStorage implements IStorage {
   async createMaintenanceType(typeData: InsertMaintenanceType): Promise<MaintenanceType> {
     const [type] = await db.insert(maintenanceTypes).values(typeData).returning();
     return type;
+  }
+
+  async updateMaintenanceType(id: number, data: Partial<InsertMaintenanceType>): Promise<MaintenanceType | undefined> {
+    const [type] = await db.update(maintenanceTypes).set(data).where(eq(maintenanceTypes.id, id)).returning();
+    return type;
+  }
+
+  async deleteMaintenanceType(id: number): Promise<boolean> {
+    const result = await db.delete(maintenanceTypes).where(eq(maintenanceTypes.id, id)).returning({ id: maintenanceTypes.id });
+    return result.length > 0;
   }
 
   // Vehicle registration methods

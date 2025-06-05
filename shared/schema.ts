@@ -46,6 +46,7 @@ export const vehicles = pgTable("vehicles", {
   plate: text("plate").notNull().unique(),
   model: text("model").notNull(),
   year: integer("year").notNull(),
+  imageUrl: text("image_url"),
 });
 
 export const insertVehicleSchema = createInsertSchema(vehicles).pick({
@@ -53,10 +54,17 @@ export const insertVehicleSchema = createInsertSchema(vehicles).pick({
   plate: true,
   model: true,
   year: true,
+  imageUrl: true,
 });
 
 export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
+
+// Add Zod schema for imageUrl to insertVehicleSchema
+const ZodInsertVehicleSchema = insertVehicleSchema.extend({
+  imageUrl: z.string().optional().nullable(),
+});
+export type ZodInsertVehicle = z.infer<typeof ZodInsertVehicleSchema>;
 
 // Drivers table
 export const drivers = pgTable("drivers", {
@@ -64,16 +72,24 @@ export const drivers = pgTable("drivers", {
   name: text("name").notNull(),
   license: text("license").notNull(),
   phone: text("phone").notNull(),
+  imageUrl: text("image_url"),
 });
 
 export const insertDriverSchema = createInsertSchema(drivers).pick({
   name: true,
   license: true,
   phone: true,
+  imageUrl: true,
 });
 
 export type InsertDriver = z.infer<typeof insertDriverSchema>;
 export type Driver = typeof drivers.$inferSelect;
+
+// Add Zod schema for imageUrl to insertDriverSchema
+export const ZodInsertDriverSchema = insertDriverSchema.extend({
+  imageUrl: z.string().url().optional().nullable(),
+});
+export type ZodInsertDriver = z.infer<typeof ZodInsertDriverSchema>;
 
 // Fuel stations table
 export const fuelStations = pgTable("fuel_stations", {
