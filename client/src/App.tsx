@@ -23,7 +23,7 @@ import AppConfig from "@/pages/AppConfig";
 import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { syncManager } from './services/syncManager';
-import { useAuth, AuthUser } from '../hooks/useAuth'; // Import the central useAuth
+import { useAuth, AuthUser } from './hooks/useAuth'; // Import the central useAuth
 
 // Componente PrivateRoute para proteger rotas
 interface PrivateRouteProps {
