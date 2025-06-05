@@ -10,8 +10,10 @@ import {
   fuelRegistrationSchema, 
   maintenanceRegistrationSchema, 
   tripRegistrationSchema,
-  insertVehicleSchema,
-  insertDriverSchema,
+  // insertVehicleSchema, // Will use ZodInsertVehicleSchema instead for this route
+  ZodInsertVehicleSchema, // Use the more specific Zod schema
+  // insertDriverSchema, // Will use ZodInsertDriverSchema instead for this route
+  ZodInsertDriverSchema, // Use the more specific Zod schema for drivers
   insertFuelStationSchema,
   insertFuelTypeSchema,
   insertMaintenanceTypeSchema,
@@ -409,9 +411,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const vehicleData = req.body;
       if (vehicleData.year) vehicleData.year = parseInt(vehicleData.year);
-      insertVehicleSchema.parse(vehicleData);
+    // Add imageUrl to vehicleData before parsing if file exists
       if (req.file) vehicleData.imageUrl = `/uploads/${req.file.filename}`;
-      const vehicle = await storage.createVehicle(vehicleData);
+
+    const parsedData = ZodInsertVehicleSchema.parse(vehicleData);
+    const vehicle = await storage.createVehicle(parsedData);
       res.status(201).json(vehicle);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -457,9 +461,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/drivers", upload.single('image'), async (req, res) => {
     try {
       const driverData = req.body;
-      insertDriverSchema.parse(driverData);
+      // Add imageUrl to driverData before parsing if file exists
       if (req.file) driverData.imageUrl = `/uploads/${req.file.filename}`;
-      const driver = await storage.createDriver(driverData);
+
+      const parsedData = ZodInsertDriverSchema.parse(driverData);
+      const driver = await storage.createDriver(parsedData);
       res.status(201).json(driver);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
