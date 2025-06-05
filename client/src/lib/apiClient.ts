@@ -1,50 +1,84 @@
-import axios from 'axios';
+// client/src/lib/apiClient.ts
+import axios, { AxiosError } from 'axios';
+import { toast } from '@/hooks/use-toast';
 
-// You might want to set your API base URL here
-// For example, if your API is served from '/api' on the same domain:
-// const baseURL = '/api';
-// Or if it's on a different domain:
-// const baseURL = 'https://your-api-domain.com/api';
+const handleUnauthorized = (reasonMessage?: string, errorCode?: string) => {
+  // Clear any potentially stale auth error code stored on window
+  if ((window as any).__lastAuthErrorCode) {
+    delete (window as any).__lastAuthErrorCode;
+  }
+
+  if (window.location.pathname !== '/login') {
+    let redirectUrl = '/login?reason=' + encodeURIComponent(reasonMessage || 'session_expired');
+    if (errorCode) {
+      redirectUrl += `&code=${encodeURIComponent(errorCode)}`;
+    }
+    window.location.href = redirectUrl;
+  }
+};
 
 const apiClient = axios.create({
-  // baseURL, // Uncomment and set this if you have a base URL
   headers: {
     'Content-Type': 'application/json',
-    // You can add other default headers here, like Authorization tokens
+    'X-Requested-With': 'XMLHttpRequest',
   },
+  withCredentials: true,
 });
 
-// Add a request interceptor to include the auth token if available
-apiClient.interceptors.request.use(
-  (config) => {
-    // Example: Retrieve token from localStorage or an auth context
-    // const token = localStorage.getItem('authToken');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Optional: Add a response interceptor for global error handling or data transformation
 apiClient.interceptors.response.use(
   (response) => {
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
     return response;
   },
-  (error) => {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
-    // For example, redirect to login on 401 errors
-    // if (error.response && error.response.status === 401) {
-    //   // Handle unauthorized access, e.g., redirect to login
-    //   console.error('Unauthorized, redirecting to login.');
-    //   // window.location.href = '/login';
-    // }
+  (error: AxiosError<any>) => {
+    if (error.response) {
+      const responseData = error.response.data;
+      const serverMessage = responseData?.message || 'Ocorreu um erro desconhecido.';
+      const errorCode = responseData?.code;
+
+      if (error.response.status === 401) {
+        const requestUrl = error.config?.url || '';
+
+        if (requestUrl.endsWith('/api/auth/user') || requestUrl.includes('/api/login')) {
+          console.warn(`Auth endpoint ${requestUrl} returned 401. This should be handled by useAuth or login flow.`);
+          if (requestUrl.endsWith('/api/auth/user') && errorCode) {
+            (window as any).__lastAuthErrorCode = errorCode;
+          }
+        } else {
+          console.error('Received 401 Unauthorized for general API request. Logging out.');
+          toast({
+            title: "Sessão Expirada",
+            description: serverMessage || "Sua sessão expirou ou é inválida. Você será redirecionado para o login.",
+            variant: "destructive",
+            duration: 4000,
+          });
+          setTimeout(() => {
+            handleUnauthorized(serverMessage, errorCode);
+          }, 3000);
+        }
+      } else if (error.response.status === 403) {
+        console.error('Received 403 Forbidden. Access denied.');
+        toast({
+          title: "Acesso Negado",
+          description: serverMessage || "Você não tem permissão para realizar esta ação.",
+          variant: "destructive"
+        });
+      } else if (error.response.status >= 500) {
+        console.error('Received 5xx server error.');
+        toast({
+          title: "Erro no Servidor",
+          description: serverMessage || "Ocorreu um erro inesperado no servidor. Por favor, tente novamente mais tarde.",
+          variant: "destructive"
+        });
+      } else if (responseData && typeof responseData === 'object' && 'message' in responseData) {
+        // Fallback for other client errors (4xx) that have a message structure
+        console.warn(`Received ${error.response.status} error: ${serverMessage}`);
+        toast({
+            title: `Erro ${error.response.status}`,
+            description: serverMessage,
+            variant: "destructive"
+        });
+      }
+    }
     return Promise.reject(error);
   }
 );

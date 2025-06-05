@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Switch, Route, useLocation, useRouter } from "wouter";
+import { Switch, Route, useLocation } from "wouter"; // Removed useRouter, not used
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -23,116 +23,88 @@ import AppConfig from "@/pages/AppConfig";
 import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { syncManager } from './services/syncManager';
-
-// Context para gerenciar estado de autenticação
-export const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    localStorage.getItem("authenticated") === "true"
-  );
-  const [user, setUser] = useState<any>(
-    JSON.parse(localStorage.getItem("user") || "null")
-  );
-  const [, setLocation] = useLocation();
-
-  // A função de login salva os dados no localStorage e atualiza o estado
-  const login = (userData: any) => {
-    try {
-      localStorage.setItem("authenticated", "true");
-      localStorage.setItem("user", JSON.stringify(userData));
-      setIsAuthenticated(true);
-      setUser(userData);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  // A função de logout limpa os dados do localStorage e atualiza o estado
-  const logout = () => {
-    try {
-      localStorage.removeItem("authenticated");
-      localStorage.removeItem("user");
-      setIsAuthenticated(false);
-      setUser(null);
-      setLocation("/login");
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
-  return { isAuthenticated, user, login, logout };
-};
+import { useAuth, AuthUser } from '../hooks/useAuth'; // Import the central useAuth
 
 // Componente PrivateRoute para proteger rotas
-function PrivateRoute(props: any) {
-  const { isAuthenticated, user } = useAuth();
+interface PrivateRouteProps {
+  component: React.ComponentType<any>;
+  path: string;
+  permission?: string; // Make permission optional as not all routes require it
+  exact?: boolean;
+}
+
+function PrivateRoute({ component: Component, permission, ...rest }: PrivateRouteProps) {
+  const { isAuthenticated, user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [hasAccess, setHasAccess] = useState(true);
 
   useEffect(() => {
+    // If loading, don't do anything yet.
+    if (isLoading) return;
+
     if (!isAuthenticated) {
-      setLocation("/login");
-      return;
-    }
-
-    // Verificar permissão baseada no perfil do usuário
-    const requiredPermission = props.permission;
-    if (requiredPermission) {
-      const userData = user || JSON.parse(localStorage.getItem("user") || "{}");
-      const userRole = userData.role;
-
-      // Obter os perfis de usuário do localStorage
-      const userRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
-      const currentRole = userRoles.find((role: any) => 
-        role.name.toLowerCase() === userRole.toLowerCase()
-      );
-
-      if (currentRole && currentRole.permissions) {
-        setHasAccess(currentRole.permissions[requiredPermission]);
-      } else {
-        if (userRole === "admin") {
-          setHasAccess(true);
-        } else if (userRole === "manager") {
-          setHasAccess(requiredPermission !== "userManagement");
-        } else {
-          const basicPermissions = ["registrations", "history", "checklists"];
-          setHasAccess(basicPermissions.includes(requiredPermission));
-        }
+      // Store the current path to redirect back after login
+      // Ensure it's not an API path or the login page itself
+      if (rest.path && !rest.path.startsWith('/api') && rest.path !== '/login') {
+        // This part is tricky without direct access to session or a global state for returnTo
+        // For now, we rely on the server-side `req.session.returnTo` implemented in replitAuth.ts
+        // and the apiClient redirecting to /login which should trigger the server-side logic.
+        console.log(`PrivateRoute: Not authenticated, redirecting to /login. Attempted path: ${rest.path}`);
       }
+      setLocation("/login");
     }
-  }, [isAuthenticated, user, props.permission, setLocation]);
+  }, [isAuthenticated, isLoading, setLocation, rest.path]);
 
+  // While loading authentication status, render nothing or a loading spinner
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen"><p>Loading authentication...</p></div>;
+  }
+
+  // If not authenticated and no longer loading, redirect handled by useEffect or render nothing
   if (!isAuthenticated) {
     return null;
   }
 
-  if (!hasAccess) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
-        <h2 className="text-2xl font-bold text-red-600 mb-2">Acesso Negado</h2>
-        <p className="text-gray-600 mb-4">
-          Você não tem permissão para acessar esta página.
-        </p>
-        <Button 
-          onClick={() => setLocation("/")}
-          className="bg-blue-700 hover:bg-blue-800"
-        >
-          Voltar para a página inicial
-        </Button>
-      </div>
-    );
+  // Check permissions if a permission is required for the route
+  if (permission) {
+    const typedUser = user as AuthUser | undefined; // Already typed by useAuth hook
+    const userPermissions = typedUser?.role?.permissions;
+
+    if (!userPermissions || !userPermissions[permission]) {
+      // User does not have the required permission
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Acesso Negado</h2>
+          <p className="text-gray-600 mb-4">
+            Você não tem permissão para acessar esta página.
+          </p>
+          <Button
+            onClick={() => setLocation("/")} // Navigate to home or a safe page
+            className="bg-blue-700 hover:bg-blue-800"
+          >
+            Voltar para a página inicial
+          </Button>
+        </div>
+      );
+    }
   }
 
-  return <Route {...props} />;
+  // If authenticated and has permission (or no permission required), render the component
+  return <Route {...rest} component={Component} />;
 }
 
 function Router() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth(); // Use the central hook
   const [location] = useLocation();
   const isLoginPage = location === "/login";
 
-  if (isLoginPage) {
+  // If loading authentication state, show a loading indicator or blank screen
+  // to avoid flashing the login page or main app layout incorrectly.
+  if (isLoading && !isLoginPage) {
+    return <div className="flex justify-center items-center h-screen"><p>Loading application...</p></div>;
+  }
+  // If on the login page, or not authenticated and not loading, show the login page.
+  // This also handles the case where initial load determines user is not authenticated.
+  if (isLoginPage || (!isAuthenticated && !isLoading)) {
     return (
       <div className="min-h-screen">
         <Switch>
@@ -259,14 +231,19 @@ function App() {
     syncManager.checkPendingOperations();
 
     // Registrar ouvintes para mudanças de status de conexão
-    const handleOnlineStatus = (isOnline: boolean) => {
-      setIsOnline(isOnline);
+    const handleOnlineStatus = (online: boolean) => {
+      setIsOnline(online);
 
       // Notificar o usuário sobre o status da conexão
-      if (isOnline) {
+      if (online) {
+        console.log("Application came online. Refetching user authentication status.");
+        queryClient.refetchQueries({ queryKey: ['/api/auth/user'] })
+          .then(() => console.log("User authentication status refetched."))
+          .catch(err => console.error("Error refetching user authentication status:", err));
+
         toast({
           title: "Você está online",
-          description: "Seus dados serão sincronizados automaticamente.",
+          description: "Sincronizando e verificando status da sessão.",
           duration: 3000,
         });
       } else {
