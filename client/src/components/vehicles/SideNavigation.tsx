@@ -1,120 +1,78 @@
 import { Link, useLocation } from "wouter";
 import { Home, BarChart2, History, Settings, Car, Plus, FileText, Users, CheckSquare, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/App";
+import { useEffect, useState, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth"; // Changed import
 
-// Interface para perfis de usuário
-interface UserRole {
-  id: string;
-  name: string;
-  description: string;
-  permissions: {
-    dashboard: boolean;
-    registrations: boolean;
-    history: boolean;
-    reports: boolean;
-    checklists: boolean;
-    settings: boolean;
-    userManagement: boolean;
-    vehicleManagement: boolean;
-    driverManagement: boolean;
-  };
-}
+// Interface para perfis de usuário (pode ser removida se não usada em outro lugar após refatoração)
+// interface UserRole {
+//   id: string;
+//   name: string;
+//   description: string;
+//   permissions: {
+//     dashboard: boolean;
+//     registrations: boolean;
+//     history: boolean;
+//     reports: boolean;
+//     checklists: boolean;
+//     settings: boolean;
+//     userManagement: boolean;
+//     vehicleManagement: boolean;
+//     driverManagement: boolean;
+//   };
+// }
+
+const defaultPermissions = {
+  dashboard: false,
+  registrations: false,
+  history: false,
+  reports: false,
+  checklists: false,
+  settings: false,
+  userManagement: false,
+  vehicleManagement: false, // Assuming this might be a permission
+  driverManagement: false,  // Assuming this might be a permission
+};
 
 export function SideNavigation() {
   const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [userPermissions, setUserPermissions] = useState<{[key: string]: boolean}>({
-    dashboard: false,
-    registrations: false,
-    history: false,
-    reports: false,
-    checklists: false,
-    settings: false,
-    userManagement: false,
-    vehicleManagement: false,
-    driverManagement: false
-  });
   
-  const { user, logout } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth(); // Use new useAuth hook
   
-  // Carregar permissões do usuário
-  useEffect(() => {
-    const userData = JSON.parse(localStorage.getItem("user") || "{}");
-    const userRole = userData.role;
-    
-    if (userRole) {
-      // Buscar o perfil correspondente no localStorage
-      const userRoles: UserRole[] = JSON.parse(localStorage.getItem("userRoles") || "[]");
-      const currentRole = userRoles.find(role => role.name.toLowerCase() === userRole.toLowerCase());
-      
-      if (currentRole) {
-        setUserPermissions(currentRole.permissions);
-      } else {
-        // Perfis padrão caso não encontre
-        if (userRole === "admin") {
-          setUserPermissions({
-            dashboard: true,
-            registrations: true,
-            history: true,
-            reports: true,
-            checklists: true,
-            settings: true,
-            userManagement: true,
-            vehicleManagement: true,
-            driverManagement: true
-          });
-        } else if (userRole === "manager") {
-          setUserPermissions({
-            dashboard: true,
-            registrations: true,
-            history: true,
-            reports: true,
-            checklists: true,
-            settings: true,
-            userManagement: false,
-            vehicleManagement: true,
-            driverManagement: true
-          });
-        } else {
-          // Usuário comum ou motorista
-          setUserPermissions({
-            dashboard: false,
-            registrations: true,
-            history: true,
-            reports: false,
-            checklists: true,
-            settings: false,
-            userManagement: false,
-            vehicleManagement: false,
-            driverManagement: false
-          });
-        }
-      }
+  // Derive userPermissions from the user object
+  const userPermissions = useMemo(() => {
+    if (!isAuthenticated || !user || !user.role || !user.role.permissions) {
+      return defaultPermissions;
     }
-  }, []);
+    // Ensure all keys from defaultPermissions are present, even if not in user.role.permissions
+    return {
+      ...defaultPermissions,
+      ...user.role.permissions,
+    };
+  }, [user, isAuthenticated]);
   
   // Helper function to check if a route is active
-  const isActive = (route: string) => {
+  const isActive = (route: string) => { // No change needed here, but ensure location is valid.
     if (route === "/" && location === "/") return true;
-    if (route === "/registros" && location === "/registros") return true;
+    if (route === "/registros" && location === "/registros") return true; // Example, adjust as per your routes
     if (route === "/registros/history" && location.includes("/registros/history")) return true;
     if (route === "/registros/dashboard" && location.includes("/registros/dashboard")) return true;
     if (route === "/relatorios" && location.includes("/relatorios")) return true;
     if (route === "/configuracoes" && location.includes("/configuracoes")) return true;
+    // Add new /cadastros route check if it's a separate link
+    if (route === "/cadastros" && location.includes("/cadastros")) return true;
     if (route === "/usuarios" && location.includes("/usuarios")) return true;
     if (route === "/checklists" && location.includes("/checklists")) return true;
     return false;
   };
   
-  // Função para fazer logout e redirecionar para login
+  // Função para fazer logout
   const handleLogout = () => {
-    logout();
-    setLocation("/login");
+    window.location.href = "/api/logout"; // Redirect to server-side OIDC logout
   };
   
-  // Carregar configurações do app
+  // Carregar configurações do app (this useEffect seems unrelated to auth, can remain if needed)
   useEffect(() => {
     try {
       const savedConfig = localStorage.getItem("appConfig");
@@ -139,6 +97,20 @@ export function SideNavigation() {
       console.error("Erro ao carregar configurações:", error);
     }
   }, []);
+
+  // If auth is loading, or user is not authenticated (which means SideNavigation shouldn't be shown by App.tsx anyway),
+  // you might render nothing or a placeholder. For now, link visibility will be handled by userPermissions.
+  // App.tsx should ideally not render SideNavigation if !isAuthenticated.
+  if (isLoading) {
+    // Optionally, render a slim loading version of the sidebar or nothing
+    return null;
+  }
+
+  // If not authenticated (e.g. after logout and useAuth updates), this component might still be briefly rendered
+  // by App.tsx's Router before a redirect. Returning null is safest.
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
@@ -258,7 +230,7 @@ export function SideNavigation() {
                   </Button>
                 )}
                 
-                {userPermissions.settings && (
+                {userPermissions.settings && ( // This single 'settings' permission now controls both links
                   <>
                     <Button
                       variant="ghost"
@@ -274,6 +246,7 @@ export function SideNavigation() {
                       <span className="text-sm font-medium">Configurações</span>
                     </Button>
                     
+                    {/* Assuming "Cadastros" is also part of "settings" or has its own permission if needed */}
                     <Button
                       variant="ghost"
                       className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
@@ -284,7 +257,7 @@ export function SideNavigation() {
                         setIsMobileMenuOpen(false);
                       }}
                     >
-                      <Car className="h-5 w-5" />
+                      <Car className="h-5 w-5" /> {/* Icon might need review for "Cadastros" */}
                       <span className="text-sm font-medium">Cadastros</span>
                     </Button>
                   </>
@@ -404,7 +377,8 @@ export function SideNavigation() {
             </Button>
           )}
           
-          {userPermissions.settings && (
+          {userPermissions.settings && ( // This single 'settings' permission now controls both links
+             <>
             <Button
               variant="ghost"
               className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
@@ -415,6 +389,21 @@ export function SideNavigation() {
               <Settings className="h-5 w-5" />
               <span className="text-sm font-medium">Configurações</span>
             </Button>
+
+            {/* Assuming "Cadastros" is also part of "settings" or has its own permission if needed */}
+            <Button
+              variant="ghost"
+              className={`flex items-center justify-start gap-3 rounded-md w-full p-3 ${
+                isActive("/cadastros") ? "bg-blue-700 text-white" : "text-white hover:bg-blue-700"
+              }`}
+              onClick={() => {
+                setLocation("/cadastros");
+              }}
+            >
+              <Car className="h-5 w-5" /> {/* Icon might need review for "Cadastros" */}
+              <span className="text-sm font-medium">Cadastros</span>
+            </Button>
+            </>
           )}
           
           {userPermissions.userManagement && (
