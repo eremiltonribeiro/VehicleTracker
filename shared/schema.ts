@@ -61,7 +61,7 @@ export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;
 
 // Add Zod schema for imageUrl to insertVehicleSchema
-const ZodInsertVehicleSchema = insertVehicleSchema.extend({
+export const ZodInsertVehicleSchema = insertVehicleSchema.extend({
   imageUrl: z.string().optional().nullable(),
 });
 export type ZodInsertVehicle = z.infer<typeof ZodInsertVehicleSchema>;
