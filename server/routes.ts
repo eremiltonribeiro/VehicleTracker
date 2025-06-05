@@ -334,7 +334,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/users/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const targetUserId = req.params.userId;
-      const targetUserId = req.params.userId;
       // Prevent admin from deleting themselves, or handle appropriately
       if (targetUserId === (req.user as any).claims.sub) {
         return res.status(400).json({ message: "Não é possível excluir o próprio usuário por esta rota." });

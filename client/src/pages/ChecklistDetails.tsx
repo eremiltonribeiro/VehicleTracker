@@ -480,8 +480,6 @@ export default function ChecklistDetails() {
                                         window.open(result.photoUrl, '_blank');
                                       }
                                     }}
-                                    className="bg-white text-blue-700 p-1 rounded-full shadow-md"
-                                    title="Ver em tamanho real"
                                     aria-label="Abrir imagem em tamanho real"
                                     className="bg-white text-blue-700 p-1 rounded-full shadow-md"
                                     title="Ver em tamanho real"
