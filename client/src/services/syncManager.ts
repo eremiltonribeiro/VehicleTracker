@@ -100,44 +100,106 @@ class SyncManager {
     }
   }
 
+  private showSyncCompletedMessage() {
+    let indicator = document.getElementById('offline-indicator');
+    if (!indicator) {
+      // Se por algum motivo o indicador não existir, cria-o.
+      // Esta lógica é similar à de updateOfflineUI, mas simplificada para este caso.
+      const indicatorElement = document.createElement('div');
+      indicatorElement.id = 'offline-indicator';
+      indicatorElement.style.position = 'fixed';
+      indicatorElement.style.bottom = '10px';
+      indicatorElement.style.right = '10px';
+      indicatorElement.style.padding = '8px 16px';
+      indicatorElement.style.borderRadius = '4px';
+      indicatorElement.style.zIndex = '9999';
+      indicatorElement.style.fontWeight = 'bold';
+      document.body.appendChild(indicatorElement);
+      indicator = indicatorElement;
+    }
+
+    if (indicator) {
+      indicator.textContent = "Sincronização concluída!";
+      indicator.style.backgroundColor = '#d1e7dd'; // Verde sucesso
+      indicator.style.color = '#0f5132';
+      indicator.style.display = 'block';
+
+      setTimeout(() => {
+        // Verifica se a mensagem ainda é "Sincronização concluída!" antes de potencialmente escondê-la.
+        // updateOfflineUI será chamado e decidirá se deve realmente esconder ou mostrar outro estado.
+        if (indicator && indicator.textContent === "Sincronização concluída!") {
+           this.updateOfflineUI(this.isOnline); // Reavalia o estado da UI
+        }
+      }, 5000); // Mensagem de sucesso visível por 5 segundos
+    }
+  }
+
   // Método para atualizar a UI com status offline/online
-  private updateOfflineUI(online: boolean) {
+  private async updateOfflineUI(online: boolean) {
     // Atualiza a interface para mostrar status
-    const offlineIndicator = document.getElementById('offline-indicator');
+    let offlineIndicator = document.getElementById('offline-indicator');
 
     if (!offlineIndicator) {
       // Cria o indicador se não existir
-      const indicator = document.createElement('div');
-      indicator.id = 'offline-indicator';
-      indicator.style.position = 'fixed';
-      indicator.style.bottom = '10px';
-      indicator.style.right = '10px';
-      indicator.style.padding = '8px 16px';
-      indicator.style.borderRadius = '4px';
-      indicator.style.zIndex = '9999';
-      indicator.style.fontWeight = 'bold';
-      document.body.appendChild(indicator);
+      const indicatorElement = document.createElement('div');
+      indicatorElement.id = 'offline-indicator';
+      indicatorElement.style.position = 'fixed';
+      indicatorElement.style.bottom = '10px';
+      indicatorElement.style.right = '10px';
+      indicatorElement.style.padding = '8px 16px';
+      indicatorElement.style.borderRadius = '4px';
+      indicatorElement.style.zIndex = '9999';
+      indicatorElement.style.fontWeight = 'bold';
+      document.body.appendChild(indicatorElement);
+      offlineIndicator = indicatorElement;
     }
 
-    const indicator = document.getElementById('offline-indicator');
-    if (indicator) {
-      if (!online) {
-        indicator.textContent = 'Você está offline. Suas alterações serão salvas localmente.';
-        indicator.style.backgroundColor = '#f8d7da';
-        indicator.style.color = '#721c24';
-        indicator.style.display = 'block';
-      } else {
-        // Verifica se há operações pendentes
-        this.getPendingOperationsCount().then(count => {
-          if (count > 0) {
-            indicator.textContent = `Sincronizando ${count} operações...`;
-            indicator.style.backgroundColor = '#fff3cd';
-            indicator.style.color = '#856404';
-            indicator.style.display = 'block';
-          } else {
-            indicator.style.display = 'none';
+    // Certifique-se de que offlineIndicator não é null aqui antes de prosseguir
+    if (!offlineIndicator) return;
+
+    const indicator = offlineIndicator; // Renomear para 'indicator' para consistência com o código abaixo
+
+    if (!online) {
+      indicator.textContent = 'Você está offline. Suas alterações serão salvas localmente.';
+      indicator.style.backgroundColor = '#f8d7da';
+      indicator.style.color = '#721c24';
+      indicator.style.display = 'block';
+    } else {
+      try {
+        const allOps = await offlineStorage.getPendingOperations();
+        const errorOpsCount = allOps.filter(op => op.status === 'error').length;
+        const pendingToSyncOpsCount = allOps.filter(op => op.status === 'pending' || op.status === 'syncing').length;
+
+        if (this.isSyncing && pendingToSyncOpsCount > 0) {
+          indicator.textContent = `Sincronizando ${pendingToSyncOpsCount} operações...`;
+          indicator.style.backgroundColor = '#fff3cd'; // Amarelo para sincronizando
+          indicator.style.color = '#856404';
+          indicator.style.display = 'block';
+        } else if (pendingToSyncOpsCount > 0) {
+          indicator.textContent = `${pendingToSyncOpsCount} alterações pendentes para sincronizar.`;
+          indicator.style.backgroundColor = '#cfe2ff'; // Azul para pendente
+          indicator.style.color = '#084298';
+          indicator.style.display = 'block';
+        } else if (errorOpsCount > 0) {
+          indicator.textContent = `Falha ao sincronizar ${errorOpsCount} alterações. Verifique os detalhes.`;
+          indicator.style.backgroundColor = '#f8d7da'; // Vermelho para erro
+          indicator.style.color = '#721c24';
+          indicator.style.display = 'block';
+        } else {
+          // Se não estiver mostrando "Sincronização concluída!", esconde.
+          // Isso evita que a mensagem de "concluído" seja imediatamente escondida
+          // se o updateOfflineUI for chamado logo após showSyncCompletedMessage.
+          if (indicator.textContent !== "Sincronização concluída!") {
+             indicator.style.display = 'none';
           }
-        });
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar UI offline:", error);
+        // Fallback em caso de erro ao buscar operações
+        indicator.textContent = 'Verificando status...';
+        indicator.style.backgroundColor = '#e0e0e0'; // Cinza neutro
+        indicator.style.color = '#333';
+        indicator.style.display = 'block';
       }
     }
   }
@@ -284,12 +346,20 @@ class SyncManager {
         if (method === 'POST') {
           // Adiciona o novo item
           await offlineStorage.saveOfflineData(entity, [...currentData, tempBody]);
+          // Dispatch event
+          window.dispatchEvent(new CustomEvent('local-data-changed', {
+            detail: { entityType: entity, operationType: 'create', data: tempBody }
+          }));
         } else if (method === 'PUT') {
           // Atualiza o item existente
           const updatedData = currentData.map((item: any) => 
             item.id === body.id ? {...item, ...body, offlinePending: true} : item
           );
           await offlineStorage.saveOfflineData(entity, updatedData);
+          // Dispatch event
+          window.dispatchEvent(new CustomEvent('local-data-changed', {
+            detail: { entityType: entity, operationType: 'update', data: body }
+          }));
         }
       } else if (method === 'DELETE') {
         // Para exclusão, remove do cache local também
@@ -300,6 +370,10 @@ class SyncManager {
           item.id != itemId // Comparação não estrita para lidar com diferenças de tipo
         );
         await offlineStorage.saveOfflineData(entity, filteredData);
+        // Dispatch event
+        window.dispatchEvent(new CustomEvent('local-data-changed', {
+          detail: { entityType: entity, operationType: 'delete', id: itemId }
+        }));
       }
 
       // Se for upload de arquivo, salvar o arquivo no storage e guardar metadados
@@ -443,7 +517,7 @@ class SyncManager {
 
     await offlineStorage.savePendingOperation(operation);
 
-    // Atualiza o contador visual
+    // Atualiza o contador visual e o status da UI
     this.updateOfflineUI(this.isOnline);
 
     return operation.id;
@@ -463,6 +537,7 @@ class SyncManager {
 
     try {
       this.isSyncing = true;
+      this.updateOfflineUI(true); // Atualiza UI no início da sincronização
       console.log('Iniciando sincronização de operações pendentes...');
 
       // Obtém todas as operações pendentes
@@ -470,13 +545,13 @@ class SyncManager {
 
       if (pendingOps.length === 0) {
         console.log('Nenhuma operação pendente para sincronizar');
-        this.isSyncing = false;
-        this.updateOfflineUI(true);
-        return;
+        // this.isSyncing = false; // Moved to finally
+        // this.updateOfflineUI(true); // Moved to finally
+        return; // isSyncing and updateOfflineUI will be handled by finally
       }
 
       console.log(`Encontradas ${pendingOps.length} operações pendentes`);
-      this.updateOfflineUI(true);
+      // this.updateOfflineUI(true); // Chamado no início do try
 
       // Processa as operações em ordem de timestamp (mais antigas primeiro)
       const sortedOperations = pendingOps.sort((a, b) => a.timestamp - b.timestamp);
@@ -488,6 +563,7 @@ class SyncManager {
 
           // Atualiza status para sincronizando
           await offlineStorage.updateOperationStatus(op.id, 'syncing');
+          this.updateOfflineUI(true); // Reflete que uma operação específica está sincronizando
 
           // Prepara os dados para envio
           let requestBody;
@@ -583,8 +659,16 @@ class SyncManager {
 
           // Limpa arquivos associados, se houver
           if (op.fileMetadatas && op.fileMetadatas.length > 0) {
-            for (const fileMeta of op.fileMetadatas) {
-              await offlineStorage.removeOfflineFile(fileMeta.fileId);
+            try {
+              console.log(`Removendo ${op.fileMetadatas.length} arquivos offline associados à operação ${op.id}`);
+              for (const fileMeta of op.fileMetadatas) {
+                await offlineStorage.removeOfflineFile(fileMeta.fileId);
+                console.log(`Arquivo offline ${fileMeta.fileId} (nome: ${fileMeta.name}) removido com sucesso.`);
+              }
+            } catch (fileError) {
+              console.error(`Erro ao remover arquivos offline para operação ${op.id}:`, fileError);
+              // Não interrompe o processo, apenas registra o erro.
+              // A operação principal já foi bem-sucedida.
             }
           }
 
@@ -626,6 +710,19 @@ class SyncManager {
               errorMessage
             );
 
+            // Limpar arquivos offline associados a esta operação falhada
+            if (op.fileMetadatas && op.fileMetadatas.length > 0) {
+              console.log(`Limpando ${op.fileMetadatas.length} arquivos órfãos para a operação falhada ${op.id}`);
+              for (const fileMeta of op.fileMetadatas) {
+                try {
+                  await offlineStorage.removeOfflineFile(fileMeta.fileId);
+                  console.log(`Arquivo órfão ${fileMeta.fileId} (nome: ${fileMeta.name}) removido.`);
+                } catch (fileErr) {
+                  console.warn(`Não foi possível remover o arquivo órfão ${fileMeta.fileId} para a operação falhada ${op.id}: `, fileErr);
+                }
+              }
+            }
+
             // Notificar o sistema que um item falhou permanentemente
             window.dispatchEvent(new CustomEvent('offline-sync-error', { 
               detail: { 
@@ -646,23 +743,26 @@ class SyncManager {
 
         // Invalidar caches do React Query para forçar recarga de dados
         window.dispatchEvent(new CustomEvent('invalidate-queries'));
+        this.showSyncCompletedMessage(); // Mostra mensagem de sucesso
       }
 
       // Verifica se ainda há operações pendentes
-      const remainingOps = await offlineStorage.getPendingOperations();
-      this.syncListeners.forEach(listener => listener(remainingOps.length > 0));
+      // const remainingOps = await offlineStorage.getPendingOperations(); // updateOfflineUI no finally vai pegar isso
+      // this.syncListeners.forEach(listener => listener(remainingOps.length > 0)); // updateOfflineUI fará a notificação visual
 
       // Atualiza o cache local após sincronização bem-sucedida
       if (successCount > 0) {
         await this.refreshLocalCaches();
       }
 
-      // Atualiza a UI
-      this.updateOfflineUI(true);
+      // Atualiza a UI - movido para o finally
+      // this.updateOfflineUI(true);
     } catch (error) {
       console.error('Erro geral na sincronização:', error);
+      // this.updateOfflineUI(this.isOnline); // Garante que a UI reflita o estado após um erro geral
     } finally {
       this.isSyncing = false;
+      this.updateOfflineUI(this.isOnline); // Chamada crucial no finally
     }
   }
 
