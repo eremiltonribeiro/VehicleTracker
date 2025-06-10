@@ -145,22 +145,22 @@ export type RegistrationType = (typeof RegistrationType)[keyof typeof Registrati
 export const vehicleRegistrations = pgTable("vehicle_registrations", {
   id: serial("id").primaryKey(),
   type: text("type").notNull(), // "fuel", "maintenance", "trip"
-  vehicleId: integer("vehicle_id").notNull(),
-  driverId: integer("driver_id").notNull(),
+  vehicleId: integer("vehicle_id").notNull().references(() => vehicles.id),
+  driverId: integer("driver_id").notNull().references(() => drivers.id),
   date: timestamp("date").notNull().defaultNow(),
   initialKm: integer("initial_km").notNull(),
   finalKm: integer("final_km"),
   
   // Fuel fields
-  fuelStationId: integer("fuel_station_id"),
-  fuelTypeId: integer("fuel_type_id"),
+  fuelStationId: integer("fuel_station_id").references(() => fuelStations.id),
+  fuelTypeId: integer("fuel_type_id").references(() => fuelTypes.id),
   liters: integer("liters"),
   fuelCost: integer("fuel_cost"), // in cents
   fullTank: boolean("full_tank"),
   arla: boolean("arla"),
   
   // Maintenance fields
-  maintenanceTypeId: integer("maintenance_type_id"),
+  maintenanceTypeId: integer("maintenance_type_id").references(() => maintenanceTypes.id),
   maintenanceCost: integer("maintenance_cost"), // in cents
 
   // Trip fields
@@ -258,7 +258,7 @@ export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
 // Tabela para itens de checklist
 export const checklistItems = pgTable("checklist_items", {
   id: serial("id").primaryKey(),
-  templateId: integer("template_id").notNull(),
+  templateId: integer("template_id").notNull().references(() => checklistTemplates.id),
   name: text("name").notNull(),
   description: text("description"),
   isRequired: boolean("is_required").default(true),
@@ -281,9 +281,9 @@ export type ChecklistItem = typeof checklistItems.$inferSelect;
 // Tabela para checklists realizados
 export const vehicleChecklists = pgTable("vehicle_checklists", {
   id: serial("id").primaryKey(),
-  vehicleId: integer("vehicle_id").notNull(),
-  driverId: integer("driver_id").notNull(),
-  templateId: integer("template_id").notNull(),
+  vehicleId: integer("vehicle_id").notNull().references(() => vehicles.id),
+  driverId: integer("driver_id").notNull().references(() => drivers.id),
+  templateId: integer("template_id").notNull().references(() => checklistTemplates.id),
   date: timestamp("date").notNull().defaultNow(),
   observations: text("observations"),
   odometer: integer("odometer").notNull(),
@@ -301,8 +301,8 @@ export type VehicleChecklist = typeof vehicleChecklists.$inferSelect;
 // Tabela para resultados dos itens de checklist
 export const checklistResults = pgTable("checklist_results", {
   id: serial("id").primaryKey(),
-  checklistId: integer("checklist_id").notNull(),
-  itemId: integer("item_id").notNull(),
+  checklistId: integer("checklist_id").notNull().references(() => vehicleChecklists.id),
+  itemId: integer("item_id").notNull().references(() => checklistItems.id),
   status: text("status").notNull(), // 'ok', 'issue', 'not_applicable'
   observation: text("observation"),
   photoUrl: text("photo_url"),

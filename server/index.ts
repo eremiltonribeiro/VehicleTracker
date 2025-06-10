@@ -40,11 +40,19 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    // TODO: Implement structured logging for production
+    console.error(`[Unhandled Error] ${ _req.method } ${_req.originalUrl}:`, err);
+
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    // Ensure response is sent only if headers haven't already been sent
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
+    // Do not call _next(err) with the error again if you've handled the response.
+    // If you want to delegate to further error handlers (e.g. default Express handler in some cases),
+    // then you might call _next(err), but typically for a final handler, you just send the response.
   });
 
   // importantly only setup vite in development and after

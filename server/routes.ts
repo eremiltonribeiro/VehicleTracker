@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response } from "express";
 import { createServer, type Server } from "http";
+import { db } from "./db"; // Import db instance
 import { storage } from "./storage";
 import path from "path";
 import fs from "fs";
@@ -130,6 +131,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       next();
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error in isAdmin middleware:", error);
       res.status(500).json({ message: "Erro ao verificar função do usuário.", details: error.message });
     }
   };
@@ -147,6 +150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allRoles = await storage.getRoles();
       res.json(allRoles.map(role => ({...role, permissions: JSON.parse(role.permissions as string)})));
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/roles:", error);
       res.status(500).json({ message: "Erro ao buscar perfis de acesso.", details: error.message });
     }
   });
@@ -160,6 +165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/roles:", error);
       res.status(500).json({ message: "Erro ao criar perfil de acesso.", details: error.message });
     }
   });
@@ -176,6 +183,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/roles/${req.params.roleId}:`, error);
       res.status(500).json({ message: "Erro ao atualizar perfil de acesso.", details: error.message });
     }
   });
@@ -189,8 +198,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Perfil de acesso excluído com sucesso." });
     } catch (error: any) {
       if (error.message && error.message.includes("Role is currently in use")) {
+        // TODO: Use structured logger
+        console.error(`Error deleting /api/roles/${req.params.roleId} (Role in use):`, error);
         return res.status(400).json({ message: error.message });
       }
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/roles/${req.params.roleId}:`, error);
       res.status(500).json({ message: "Erro ao excluir perfil de acesso.", details: error.message });
     }
   });
@@ -224,6 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(usersResponse);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/users:", error);
       res.status(500).json({ message: "Erro ao listar usuários.", details: error.message });
     }
   });
@@ -251,6 +266,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/users:", error);
       res.status(500).json({ message: "Erro ao criar usuário.", details: error.message });
     }
   });
@@ -289,6 +306,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/users/${req.params.userId}:`, error);
       res.status(500).json({ message: "Erro ao atualizar usuário.", details: error.message });
     }
   });
@@ -303,6 +322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Usuário não encontrado para exclusão." });
       res.json({ message: "Usuário excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/users/${req.params.userId}:`, error);
       res.status(500).json({ message: "Erro ao excluir usuário.", details: error.message });
     }
   });
@@ -343,21 +364,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating password for /api/users/${req.params.userId}/password:`, error);
       res.status(500).json({ message: "Erro ao alterar senha.", details: error.message });
     }
   });
 
   // Vehicle routes
-  app.get("/api/vehicles", async (req, res) => {
+  app.get("/api/vehicles", isAuthenticated, async (req, res) => {
     try {
       const items = await storage.getVehicles();
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/vehicles:", error);
       res.status(500).json({ message: "Erro ao buscar veículos.", details: error.message });
     }
   });
 
-  app.get("/api/vehicles/:id", async (req, res) => {
+  app.get("/api/vehicles/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do veículo inválido."});
@@ -365,11 +390,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) return res.status(404).json({ message: "Veículo não encontrado." });
       res.json(item);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/vehicles/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar veículo.", details: error.message });
     }
   });
 
-  app.post("/api/vehicles", upload.single('image'), async (req, res) => {
+  app.post("/api/vehicles", isAuthenticated, isAdmin, upload.single('image'), async (req, res) => {
     try {
       const vehicleData = req.body;
       if (vehicleData.year) vehicleData.year = parseInt(vehicleData.year);
@@ -381,11 +408,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar veículo.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/vehicles:", error);
       res.status(500).json({ message: "Erro ao criar veículo.", details: error.message });
     }
   });
 
-  app.put("/api/vehicles/:id", upload.single('image'), async (req, res) => { // Added upload.single
+  app.put("/api/vehicles/:id", isAuthenticated, isAdmin, upload.single('image'), async (req, res) => { // Added upload.single
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do veículo inválido."});
@@ -403,11 +432,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar veículo.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/vehicles/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar veículo.", details: error.message });
     }
   });
 
-  app.delete("/api/vehicles/:id", async (req, res) => {
+  app.delete("/api/vehicles/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do veículo inválido."});
@@ -415,21 +446,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Veículo não encontrado para exclusão." });
       res.json({ message: "Veículo excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/vehicles/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir veículo.", details: error.message });
     }
   });
 
   // Driver routes
-  app.get("/api/drivers", async (req, res) => {
+  app.get("/api/drivers", isAuthenticated, async (req, res) => {
     try {
       const items = await storage.getDrivers();
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/drivers:", error);
       res.status(500).json({ message: "Erro ao buscar motoristas.", details: error.message });
     }
   });
 
-  app.get("/api/drivers/:id", async (req, res) => {
+  app.get("/api/drivers/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do motorista inválido."});
@@ -437,11 +472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) return res.status(404).json({ message: "Motorista não encontrado." });
       res.json(item);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/drivers/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar motorista.", details: error.message });
     }
   });
 
-  app.post("/api/drivers", upload.single('image'), async (req, res) => {
+  app.post("/api/drivers", isAuthenticated, isAdmin, upload.single('image'), async (req, res) => {
     try {
       const driverData = req.body;
       if (req.file) driverData.imageUrl = `/uploads/${req.file.filename}`;
@@ -452,11 +489,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar motorista.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/drivers:", error);
       res.status(500).json({ message: "Erro ao criar motorista.", details: error.message });
     }
   });
 
-  app.put("/api/drivers/:id", upload.single('image'), async (req, res) => { // Added upload.single
+  app.put("/api/drivers/:id", isAuthenticated, isAdmin, upload.single('image'), async (req, res) => { // Added upload.single
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do motorista inválido."});
@@ -470,11 +509,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar motorista.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/drivers/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar motorista.", details: error.message });
     }
   });
 
-  app.delete("/api/drivers/:id", async (req, res) => {
+  app.delete("/api/drivers/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do motorista inválido."});
@@ -482,21 +523,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Motorista não encontrado para exclusão." });
       res.json({ message: "Motorista excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/drivers/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir motorista.", details: error.message });
     }
   });
 
   // Fuel Station routes
-  app.get("/api/fuel-stations", async (req, res) => {
+  app.get("/api/fuel-stations", isAuthenticated, async (req, res) => {
     try {
       const items = await storage.getFuelStations();
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/fuel-stations:", error);
       res.status(500).json({ message: "Erro ao buscar postos de combustível.", details: error.message });
     }
   });
 
-  app.get("/api/fuel-stations/:id", async (req, res) => {
+  app.get("/api/fuel-stations/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do posto inválido."});
@@ -504,11 +549,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) return res.status(404).json({ message: "Posto de combustível não encontrado." });
       res.json(item);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/fuel-stations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar posto de combustível.", details: error.message });
     }
   });
 
-  app.post("/api/fuel-stations", async (req, res) => {
+  app.post("/api/fuel-stations", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const parsedData = insertFuelStationSchema.parse(req.body);
       const station = await storage.createFuelStation(parsedData);
@@ -517,11 +564,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar posto.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/fuel-stations:", error);
       res.status(500).json({ message: "Erro ao criar posto de combustível.", details: error.message });
     }
   });
 
-  app.put("/api/fuel-stations/:id", async (req, res) => {
+  app.put("/api/fuel-stations/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do posto inválido."});
@@ -533,11 +582,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar posto.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/fuel-stations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar posto de combustível.", details: error.message });
     }
   });
 
-  app.delete("/api/fuel-stations/:id", async (req, res) => {
+  app.delete("/api/fuel-stations/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do posto inválido."});
@@ -545,21 +596,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Posto de combustível não encontrado para exclusão." });
       res.json({ message: "Posto de combustível excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/fuel-stations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir posto de combustível.", details: error.message });
     }
   });
 
   // Fuel Type routes
-  app.get("/api/fuel-types", async (req, res) => {
+  app.get("/api/fuel-types", isAuthenticated, async (req, res) => {
     try {
       const items = await storage.getFuelTypes();
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/fuel-types:", error);
       res.status(500).json({ message: "Erro ao buscar tipos de combustível.", details: error.message });
     }
   });
 
-  app.get("/api/fuel-types/:id", async (req, res) => {
+  app.get("/api/fuel-types/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de combustível inválido."});
@@ -567,11 +622,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) return res.status(404).json({ message: "Tipo de combustível não encontrado." });
       res.json(item);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/fuel-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar tipo de combustível.", details: error.message });
     }
   });
 
-  app.post("/api/fuel-types", async (req, res) => {
+  app.post("/api/fuel-types", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const parsedData = insertFuelTypeSchema.parse(req.body);
       const fuelType = await storage.createFuelType(parsedData);
@@ -580,11 +637,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar tipo de combustível.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/fuel-types:", error);
       res.status(500).json({ message: "Erro ao criar tipo de combustível.", details: error.message });
     }
   });
 
-  app.put("/api/fuel-types/:id", async (req, res) => {
+  app.put("/api/fuel-types/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de combustível inválido."});
@@ -596,11 +655,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar tipo de combustível.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/fuel-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar tipo de combustível.", details: error.message });
     }
   });
 
-  app.delete("/api/fuel-types/:id", async (req, res) => {
+  app.delete("/api/fuel-types/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de combustível inválido."});
@@ -608,21 +669,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Tipo de combustível não encontrado para exclusão." });
       res.json({ message: "Tipo de combustível excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/fuel-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir tipo de combustível.", details: error.message });
     }
   });
 
   // Maintenance Type routes
-  app.get("/api/maintenance-types", async (req, res) => {
+  app.get("/api/maintenance-types", isAuthenticated, async (req, res) => {
     try {
       const items = await storage.getMaintenanceTypes();
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/maintenance-types:", error);
       res.status(500).json({ message: "Erro ao buscar tipos de manutenção.", details: error.message });
     }
   });
 
-  app.get("/api/maintenance-types/:id", async (req, res) => {
+  app.get("/api/maintenance-types/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de manutenção inválido."});
@@ -630,11 +695,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!item) return res.status(404).json({ message: "Tipo de manutenção não encontrado." });
       res.json(item);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/maintenance-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar tipo de manutenção.", details: error.message });
     }
   });
 
-  app.post("/api/maintenance-types", async (req, res) => {
+  app.post("/api/maintenance-types", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const parsedData = insertMaintenanceTypeSchema.parse(req.body);
       const maintenanceType = await storage.createMaintenanceType(parsedData);
@@ -643,11 +710,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar tipo de manutenção.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/maintenance-types:", error);
       res.status(500).json({ message: "Erro ao criar tipo de manutenção.", details: error.message });
     }
   });
 
-  app.put("/api/maintenance-types/:id", async (req, res) => {
+  app.put("/api/maintenance-types/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de manutenção inválido."});
@@ -659,11 +728,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar tipo de manutenção.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/maintenance-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar tipo de manutenção.", details: error.message });
     }
   });
 
-  app.delete("/api/maintenance-types/:id", async (req, res) => {
+  app.delete("/api/maintenance-types/:id", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do tipo de manutenção inválido."});
@@ -671,12 +742,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Tipo de manutenção não encontrado para exclusão." });
       res.json({ message: "Tipo de manutenção excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/maintenance-types/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir tipo de manutenção.", details: error.message });
     }
   });
 
   // Registration routes
-  app.get("/api/registrations", async (req, res) => {
+  app.get("/api/registrations", isAuthenticated, async (req, res) => {
     try {
       const type = req.query.type as string | undefined;
       const vehicleId = req.query.vehicleId ? parseInt(req.query.vehicleId as string) : undefined;
@@ -697,11 +770,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json(registrationsWithDetails);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/registrations:", error);
       res.status(500).json({ message: "Erro ao buscar registros.", details: error.message });
     }
   });
 
-  app.get("/api/registrations/:id", async (req, res) => {
+  app.get("/api/registrations/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do registro inválido."});
@@ -717,11 +792,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ ...registration, vehicle, driver, fuelStation, fuelType, maintenanceType });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/registrations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar registro.", details: error.message });
     }
   });
 
-  app.post("/api/registrations", upload.single("photo"), async (req, res) => {
+  app.post("/api/registrations", isAuthenticated, upload.single("photo"), async (req, res) => {
     try {
       const registrationData = JSON.parse(req.body.data);
       if (registrationData.date) registrationData.date = new Date(registrationData.date);
@@ -741,11 +818,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar registro.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/registrations:", error);
       res.status(500).json({ message: "Erro ao criar registro.", details: error.message });
     }
   });
 
-  app.put("/api/registrations/:id", upload.single("photo"), async (req, res) => {
+  app.put("/api/registrations/:id", isAuthenticated, upload.single("photo"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do registro inválido."});
@@ -764,11 +843,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar registro.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error(`Error updating /api/registrations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao atualizar registro.", details: error.message });
     }
   });
 
-  app.delete("/api/registrations/:id", async (req, res) => {
+  app.delete("/api/registrations/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do registro inválido."});
@@ -776,21 +857,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!deleted) return res.status(404).json({ message: "Registro não encontrado para exclusão." });
       res.json({ message: "Registro excluído com sucesso.", success: true, id: id });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error deleting /api/registrations/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao excluir registro.", details: error.message });
     }
   });
 
   // Checklist Template Routes
-  app.get("/api/checklist-templates", async (req, res) => {
+  app.get("/api/checklist-templates", isAuthenticated, async (req, res) => {
     try {
       const templates = await storage.getChecklistTemplates();
       res.json(templates);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/checklist-templates:", error);
       res.status(500).json({ message: "Erro ao buscar templates de checklist.", details: error.message });
     }
   });
 
-  app.get("/api/checklist-templates/:id", async (req, res) => {
+  app.get("/api/checklist-templates/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do template inválido."});
@@ -799,11 +884,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await storage.getChecklistItems(id);
       res.json({ ...template, items });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/checklist-templates/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar template de checklist.", details: error.message });
     }
   });
 
-  app.post("/api/checklist-templates", async (req, res) => {
+  app.post("/api/checklist-templates", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const parsedData = insertChecklistTemplateSchema.parse(req.body);
       const template = await storage.createChecklistTemplate(parsedData);
@@ -812,12 +899,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar template.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/checklist-templates:", error);
       res.status(500).json({ message: "Erro ao criar template de checklist.", details: error.message });
     }
   });
 
   // Checklist Item Routes (assuming items are managed in context of a template, or globally if needed)
-   app.get("/api/checklist-templates/:templateId/items", async (req, res) => {
+   app.get("/api/checklist-templates/:templateId/items", isAuthenticated, async (req, res) => {
     try {
       const templateId = parseInt(req.params.templateId);
       if (isNaN(templateId)) return res.status(400).json({ message: "ID do template inválido."});
@@ -828,11 +917,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const items = await storage.getChecklistItems(templateId);
       res.json(items);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/checklist-templates/${req.params.templateId}/items:`, error);
       res.status(500).json({ message: "Erro ao buscar itens de checklist.", details: error.message });
     }
   });
 
-  app.post("/api/checklist-items", async (req, res) => { // Typically, this would be /api/checklist-templates/:templateId/items
+  app.post("/api/checklist-items", isAuthenticated, isAdmin, async (req, res) => { // Typically, this would be /api/checklist-templates/:templateId/items
     try {
       const parsedData = insertChecklistItemSchema.parse(req.body);
       // Optional: Check if templateId in parsedData.templateId exists
@@ -845,12 +936,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar item de checklist.", errors: error.errors });
       }
+      // TODO: Use structured logger
+      console.error("Error creating /api/checklist-items:", error);
       res.status(500).json({ message: "Erro ao criar item de checklist.", details: error.message });
     }
   });
 
   // Vehicle Checklist (Checklist Instance) Routes
-  app.get("/api/checklists", async (req, res) => {
+  app.get("/api/checklists", isAuthenticated, async (req, res) => {
     try {
       const vehicleId = req.query.vehicleId ? parseInt(req.query.vehicleId as string) : undefined;
       const driverId = req.query.driverId ? parseInt(req.query.driverId as string) : undefined;
@@ -872,11 +965,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       res.json(enrichedChecklists);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error("Error fetching /api/checklists:", error);
       res.status(500).json({ message: "Erro ao buscar checklists de veículos.", details: error.message });
     }
   });
 
-  app.get("/api/checklists/:id", async (req, res) => {
+  app.get("/api/checklists/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do checklist inválido."});
@@ -898,12 +993,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         results,
       });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/checklists/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar checklist de veículo.", details: error.message });
     }
   });
 
   // This is effectively the same as /api/checklists/:id, keeping for compatibility if frontend uses it.
-  app.get("/api/checklists/edit/:id", async (req, res) => {
+  app.get("/api/checklists/edit/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do checklist inválido."});
@@ -930,11 +1027,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         results: processedResults,
       });
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/checklists/edit/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao obter dados para edição de checklist.", details: error.message });
     }
   });
 
-  app.post("/api/checklists", upload.single("photo"), async (req, res) => {
+  app.post("/api/checklists", isAuthenticated, upload.single("photo"), async (req, res) => {
     try {
       const rawData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body;
       if (req.file) rawData.photoUrl = `/uploads/${req.file.filename}`;
@@ -947,28 +1046,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       rawData.status = hasIssues ? 'failed' : 'complete';
 
       const parsedChecklistData = insertVehicleChecklistSchema.parse(rawData);
-      const checklist = await storage.createVehicleChecklist(parsedChecklistData);
 
-      if (resultsData.length > 0) {
-        await Promise.all(resultsData.map((result: any) => {
-          const parsedResultData = insertChecklistResultSchema.parse({
-            ...result,
-            checklistId: checklist.id, // Ensure checklistId is set
-          });
-          return storage.createChecklistResult(parsedResultData);
-        }));
-      }
+      let checklist;
+      await db.transaction(async (tx) => {
+        checklist = await storage.createVehicleChecklist(parsedChecklistData, tx);
+
+        if (resultsData.length > 0) {
+          await Promise.all(resultsData.map((result: any) => {
+            const parsedResultData = insertChecklistResultSchema.parse({
+              ...result,
+              checklistId: checklist.id, // Ensure checklistId is set
+            });
+            return storage.createChecklistResult(parsedResultData, tx);
+          }));
+        }
+      });
       res.status(201).json({ message: "Checklist criado com sucesso.", checklist });
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao criar checklist.", errors: error.errors });
       }
+      // TODO: Use structured logger
       console.error("Erro ao criar checklist:", error);
       res.status(500).json({ message: "Erro ao criar checklist.", details: error.message });
     }
   });
 
-  app.put("/api/checklists/:id", upload.single("photo"), async (req, res) => {
+  app.put("/api/checklists/:id", isAuthenticated, upload.single("photo"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do checklist inválido."});
@@ -999,29 +1103,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const parsedChecklistData = insertVehicleChecklistSchema.partial().parse(checklistUpdatePayload);
-      const updatedChecklist = await storage.updateVehicleChecklist(id, parsedChecklistData);
 
-      await storage.deleteChecklistResults(id); // Clear old results
-      if (resultsData.length > 0) {
-        await Promise.all(resultsData.map((result: any) => {
-           const parsedResultData = insertChecklistResultSchema.parse({
-            ...result,
-            checklistId: id, // Ensure checklistId is set
-          });
-          return storage.createChecklistResult(parsedResultData);
-        }));
-      }
+      let updatedChecklist;
+      await db.transaction(async (tx) => {
+        updatedChecklist = await storage.updateVehicleChecklist(id, parsedChecklistData, tx);
+        await storage.deleteChecklistResults(id, tx); // Clear old results
+
+        if (resultsData.length > 0) {
+          await Promise.all(resultsData.map((result: any) => {
+             const parsedResultData = insertChecklistResultSchema.parse({
+              ...result,
+              checklistId: id, // Ensure checklistId is set
+            });
+            return storage.createChecklistResult(parsedResultData, tx);
+          }));
+        }
+      });
       res.json({ message: "Checklist atualizado com sucesso.", checklist: updatedChecklist });
     } catch (error: any) {
       if (error instanceof ZodError) {
         return res.status(400).json({ message: "Erro de validação ao atualizar checklist.", errors: error.errors });
       }
+      // TODO: Use structured logger
       console.error("Erro ao atualizar checklist:", error);
       res.status(500).json({ message: "Erro ao atualizar checklist.", details: error.message });
     }
   });
 
-  app.delete("/api/checklists/:id", async (req, res) => {
+  app.delete("/api/checklists/:id", isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do checklist inválido."});
@@ -1035,13 +1144,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Checklist excluído com sucesso." });
     } catch (error: any) {
+      // TODO: Use structured logger
       console.error("Erro ao excluir checklist:", error);
       res.status(500).json({ message: "Erro ao excluir checklist.", details: error.message });
     }
   });
 
   // Checklist Result Routes (usually managed via /api/checklists/:id results array, but direct routes can be useful)
-  app.get("/api/checklists/:checklistId/results", async (req, res) => {
+  app.get("/api/checklists/:checklistId/results", isAuthenticated, async (req, res) => {
     try {
       const checklistId = parseInt(req.params.checklistId);
       if (isNaN(checklistId)) return res.status(400).json({ message: "ID do checklist inválido."});
@@ -1059,6 +1169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       res.json(processedResults);
     } catch (error: any) {
+      // TODO: Use structured logger
+      console.error(`Error fetching /api/checklists/${req.params.checklistId}/results:`, error);
       res.status(500).json({ message: "Erro ao buscar resultados do checklist.", details: error.message });
     }
   });
