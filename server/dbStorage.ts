@@ -1,5 +1,13 @@
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm"; // Added 'and' and 'sql' for dynamic queries
+import { PgTransaction } from 'drizzle-orm/pg-core';
+import { NeonHttpProxy } from 'drizzle-orm/neon-http';
+import * as schemaShared from '@shared/schema';
+import { ExtractTablesWithRelations } from 'drizzle-orm';
+
+// Define a more precise transaction type
+type Transaction = PgTransaction<NeonHttpProxy<boolean, boolean>, typeof schemaShared, ExtractTablesWithRelations<typeof schemaShared>>;
+
 import {
   User,
   UpsertUser,
@@ -38,7 +46,7 @@ import {
   ChecklistResult,
   checklistResults,
   InsertChecklistResult,
-} from "@shared/schema";
+} from "@shared/schema"; // Assuming schema types are correctly exported from @shared/schema
 import { IStorage } from "./storage";
 
 export class DatabaseStorage implements IStorage {
@@ -357,13 +365,13 @@ export class DatabaseStorage implements IStorage {
     return checklist;
   }
 
-  async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
-    const [newChecklist] = await db.insert(vehicleChecklists).values(checklist).returning();
+  async createVehicleChecklist(checklist: InsertVehicleChecklist, tx?: Transaction): Promise<VehicleChecklist> {
+    const [newChecklist] = await (tx || db).insert(vehicleChecklists).values(checklist).returning();
     return newChecklist;
   }
 
-  async updateVehicleChecklist(id: number, data: Partial<InsertVehicleChecklist>): Promise<VehicleChecklist | undefined> {
-    const [updatedChecklist] = await db.update(vehicleChecklists).set(data).where(eq(vehicleChecklists.id, id)).returning();
+  async updateVehicleChecklist(id: number, data: Partial<InsertVehicleChecklist>, tx?: Transaction): Promise<VehicleChecklist | undefined> {
+    const [updatedChecklist] = await (tx || db).update(vehicleChecklists).set(data).where(eq(vehicleChecklists.id, id)).returning();
     return updatedChecklist;
   }
 
@@ -382,14 +390,14 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async createChecklistResult(resultData: InsertChecklistResult): Promise<ChecklistResult> {
-    const [newResult] = await db.insert(checklistResults).values(resultData).returning();
+  async createChecklistResult(resultData: InsertChecklistResult, tx?: Transaction): Promise<ChecklistResult> {
+    const [newResult] = await (tx || db).insert(checklistResults).values(resultData).returning();
     return newResult;
   }
 
-  async deleteChecklistResults(checklistId: number): Promise<boolean> {
+  async deleteChecklistResults(checklistId: number, tx?: Transaction): Promise<boolean> {
     // This deletes ALL results for a given checklistId.
-    const result = await db.delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id });
+    const result = await (tx || db).delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id });
     return result.length > 0; // Returns true if any rows were deleted
   }
 
