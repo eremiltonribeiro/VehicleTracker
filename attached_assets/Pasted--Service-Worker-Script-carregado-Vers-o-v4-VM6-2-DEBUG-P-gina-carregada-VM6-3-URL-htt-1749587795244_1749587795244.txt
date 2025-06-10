@@ -1,0 +1,59 @@
+[Service Worker] Script carregado. Versão: v4
+VM6:2 === DEBUG: Página carregada ===
+VM6:3 URL: https://sistemadegestaofrotas.replit.app/
+VM6:4 User Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36
+index-55oRGihx.js:48 [SyncManager] Iniciando verificação de conectividade...
+index-55oRGihx.js:610 🚀 Iniciando aplicação...
+index-55oRGihx.js:610 📍 URL: https://sistemadegestaofrotas.replit.app/
+index-55oRGihx.js:610 🌐 Online: true
+index-55oRGihx.js:610 ✅ Elemento root encontrado
+index-55oRGihx.js:610 ✅ React inicializado com sucesso
+index-55oRGihx.js:610 🔍 useAuth state: 
+Object
+index-55oRGihx.js:610 🔍 Fetching auth user...
+index-55oRGihx.js:610 🔍 Router State Update: 
+Object
+index-55oRGihx.js:610 🚀 Iniciando aplicação...
+index-55oRGihx.js:610 📍 URL: https://sistemadegestaofrotas.replit.app/
+index-55oRGihx.js:610 🌐 Online: true
+index-55oRGihx.js:610 ✅ Elemento root encontrado
+index-55oRGihx.js:610 ✅ React inicializado com sucesso
+index-55oRGihx.js:610 🚀 API Request: GET /api/auth/user
+content.js:1 Extensão carregada!
+index-55oRGihx.js:610 ✅ Service Worker registrado: https://sistemadegestaofrotas.replit.app/
+index-55oRGihx.js:48 IndexedDB inicializado com sucesso
+user:1 
+ Failed to load resource: the server responded with a status of 401 ()
+index-55oRGihx.js:610 ❌ API Error - Status: 401, URL: /api/auth/user 
+Object
+index-55oRGihx.js:610 🔐 Auth endpoint returned 401 - user not authenticated
+index-55oRGihx.js:610 🔄 Auth query retry attempt 0: 401
+index-55oRGihx.js:610 ❌ 401 error - not retrying
+index-55oRGihx.js:48 [SyncManager] Resultado do teste de conectividade: 
+Object
+index-55oRGihx.js:48 [SyncManager] Conectividade confirmada
+index-55oRGihx.js:48 [SyncManager] Latência: 236ms
+index-55oRGihx.js:610 🔍 useAuth state: 
+Object
+index-55oRGihx.js:610 🔍 Router State Update: 
+Object
+index-55oRGihx.js:610 🏁 App inicializado
+index-55oRGihx.js:610 🔍 useAuth state: 
+Object
+index-55oRGihx.js:610 🔍 useAuth state: 
+Object
+index-55oRGihx.js:610 🔍 Fetching auth user...
+index-55oRGihx.js:610 🔍 Router State Update: 
+Object
+index-55oRGihx.js:610 🔄 Redirecionando para /login - usuário não autenticado
+index-55oRGihx.js:610 🔍 useAuth state: 
+Object
+index-55oRGihx.js:610 🔍 Router State Update: 
+Object
+index-55oRGihx.js:610 🚀 API Request: GET /api/auth/user
+user:1 
+ Failed to load resource: the server responded with a status of 401 ()
+index-55oRGihx.js:610 ❌ API Error - Status: 401, URL: /api/auth/user 
+Object
+index-55oRGihx.js:610 🔐 Auth endpoint returned 401 - user not authenticated
+(anonymous)	@	index-55oRGihx.js:610

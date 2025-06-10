@@ -40,17 +40,20 @@ export function SideNavigation() {
   
   const { user, isLoading, isAuthenticated } = useAuth(); // Use new useAuth hook
   
-  // Derive userPermissions from the user object
+  // Authentication disabled - grant all permissions
   const userPermissions = useMemo(() => {
-    if (!isAuthenticated || !user || !user.role || !user.role.permissions) {
-      return defaultPermissions;
-    }
-    // Ensure all keys from defaultPermissions are present, even if not in user.role.permissions
     return {
-      ...defaultPermissions,
-      ...user.role.permissions,
+      dashboard: true,
+      registrations: true,
+      history: true,
+      reports: true,
+      checklists: true,
+      settings: true,
+      userManagement: true,
+      vehicleManagement: true,
+      driverManagement: true,
     };
-  }, [user, isAuthenticated]);
+  }, []);
   
   // Helper function to check if a route is active
   const isActive = (route: string) => { // No change needed here, but ensure location is valid.

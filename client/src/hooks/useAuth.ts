@@ -22,38 +22,14 @@ const fetchAuthUser = async (): Promise<AuthUser> => {
 };
 
 export function useAuth() {
-  const { data: user, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/auth/user"],
-    queryFn: fetchAuthUser,
-    retry: (failureCount, error: any) => {
-      console.log(`🔄 Auth query retry attempt ${failureCount}:`, error?.response?.status);
-      // Não retry em 401 (não autenticado)
-      if (error?.response?.status === 401) {
-        console.log('❌ 401 error - not retrying');
-        return false;
-      }
-      return failureCount < 2;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos (anteriormente cacheTime)
-    refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-  });
-
-  console.log('🔍 useAuth state:', {
-    hasUser: !!user,
-    isLoading,
-    hasError: !!error,
-    errorStatus: error?.response?.status,
-    isAuthenticated: !!user && !error
-  });
-
+  // Authentication disabled - bypass authentication checks
+  console.log('🔧 Auth disabled - bypassing authentication requirements');
+  
   return {
-    user: user as AuthUser | undefined,
-    isLoading,
-    isAuthenticated: !!user && !error,
-    error,
-    refetch
+    user: undefined,
+    isLoading: false,
+    isAuthenticated: true, // Always return true to bypass auth checks
+    error: null,
+    refetch: () => Promise.resolve()
   };
 }
