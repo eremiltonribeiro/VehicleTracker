@@ -103,8 +103,10 @@ self.addEventListener('fetch', event => {
             fetch(event.request)
               .then(response => {
                 if (response && response.status === 200) {
+                  // Clone BEFORE using the response
+                  const responseToCache = response.clone();
                   caches.open(STATIC_CACHE_NAME)
-                    .then(cache => cache.put(event.request, response.clone()));
+                    .then(cache => cache.put(event.request, responseToCache));
                 }
                 return response;
               })
@@ -122,9 +124,10 @@ self.addEventListener('fetch', event => {
                 return response;
               }
 
-              // Clonar e armazenar no cache
+              // Clone BEFORE caching
+              const responseToCache = response.clone();
               caches.open(STATIC_CACHE_NAME)
-                .then(cache => cache.put(event.request, response.clone()));
+                .then(cache => cache.put(event.request, responseToCache));
 
               return response;
             });
@@ -187,10 +190,12 @@ self.addEventListener('message', event => {
     fetch(fullUrl)
       .then(response => {
         if (response && response.status === 200) {
+          // Clone BEFORE caching
+          const responseToCache = response.clone();
           caches.open(CACHE_NAME)
             .then(cache => {
               console.log('[Service Worker] Cacheando página:', url);
-              cache.put(fullUrl, response);
+              cache.put(fullUrl, responseToCache);
             });
         }
       })
