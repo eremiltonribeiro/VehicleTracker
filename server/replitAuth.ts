@@ -13,19 +13,16 @@ const getIssuer = memoize(async () => {
   return issuer;
 });
 
-const getOidcClient = memoize(
-  async (domain: string) => {
-    console.log(`🔧 Creating OIDC client for domain: ${domain}`);
-    const issuer = await getIssuer();
-    return new issuer.Client({
-      client_id: process.env.REPL_ID!,
-      client_secret: process.env.REPLIT_CLIENT_SECRET,
-      redirect_uris: [`https://${domain}/api/callback`],
-      response_types: ['code'],
-    });
-  },
-  { maxAge: 3600 * 1000, normalizer: args => args[0] }
-);
+const getOidcClient = memoize(async (domain: string) => {
+  console.log(`🔧 Creating OIDC client for domain: ${domain}`);
+  const issuer = await getIssuer();
+  return new issuer.Client({
+    client_id: process.env.REPL_ID!,
+    client_secret: process.env.REPLIT_CLIENT_SECRET,
+    redirect_uris: [`https://${domain}/api/callback`],
+    response_types: ['code'],
+  });
+});
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 semana
