@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Switch, Route, useLocation } from "wouter"; // Removed useRouter, not used
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,16 +20,16 @@ import ChecklistDetails from "@/pages/ChecklistDetails";
 import ChecklistTemplates from "@/pages/ChecklistTemplates";
 import ChecklistSimple from "@/pages/ChecklistSimple";
 import AppConfig from "@/pages/AppConfig";
-import RegistrationForm from "@/components/vehicles/RegistrationForm"; // <-- Importa aqui
+import RegistrationForm from "@/components/vehicles/RegistrationForm";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { syncManager } from './services/syncManager';
-import { useAuth, AuthUser } from './hooks/useAuth'; // Import the central useAuth
+import { useAuth, AuthUser } from './hooks/useAuth';
 
 // Componente PrivateRoute para proteger rotas
 interface PrivateRouteProps {
   component: React.ComponentType<any>;
   path: string;
-  permission?: string; // Make permission optional as not all routes require it
+  permission?: string;
   exact?: boolean;
 }
 
@@ -38,39 +38,29 @@ function PrivateRoute({ component: Component, permission, ...rest }: PrivateRout
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // If loading, don't do anything yet.
     if (isLoading) return;
 
     if (!isAuthenticated) {
-      // Store the current path to redirect back after login
-      // Ensure it's not an API path or the login page itself
       if (rest.path && !rest.path.startsWith('/api') && rest.path !== '/login') {
-        // This part is tricky without direct access to session or a global state for returnTo
-        // For now, we rely on the server-side `req.session.returnTo` implemented in replitAuth.ts
-        // and the apiClient redirecting to /login which should trigger the server-side logic.
         console.log(`PrivateRoute: Not authenticated, redirecting to /login. Attempted path: ${rest.path}`);
       }
       setLocation("/login");
     }
   }, [isAuthenticated, isLoading, setLocation, rest.path]);
 
-  // While loading authentication status, render nothing or a loading spinner
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><p>Loading authentication...</p></div>;
   }
 
-  // If not authenticated and no longer loading, redirect handled by useEffect or render nothing
   if (!isAuthenticated) {
     return null;
   }
 
-  // Check permissions if a permission is required for the route
   if (permission) {
-    const typedUser = user as AuthUser | undefined; // Already typed by useAuth hook
+    const typedUser = user as AuthUser | undefined;
     const userPermissions = typedUser?.role?.permissions;
 
     if (!userPermissions || !userPermissions[permission]) {
-      // User does not have the required permission
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-2">Acesso Negado</h2>
@@ -78,7 +68,7 @@ function PrivateRoute({ component: Component, permission, ...rest }: PrivateRout
             Você não tem permissão para acessar esta página.
           </p>
           <Button
-            onClick={() => setLocation("/")} // Navigate to home or a safe page
+            onClick={() => setLocation("/")}
             className="bg-blue-700 hover:bg-blue-800"
           >
             Voltar para a página inicial
@@ -88,22 +78,23 @@ function PrivateRoute({ component: Component, permission, ...rest }: PrivateRout
     }
   }
 
-  // If authenticated and has permission (or no permission required), render the component
   return <Route {...rest} component={Component} />;
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth(); // Use the central hook
+  const { isAuthenticated, isLoading } = useAuth();
   const [location] = useLocation();
   const isLoginPage = location === "/login";
 
-  // If loading authentication state, show a loading indicator or blank screen
-  // to avoid flashing the login page or main app layout incorrectly.
+  // Log para debug
+  useEffect(() => {
+    console.log('Router Debug:', { isAuthenticated, isLoading, location });
+  }, [isAuthenticated, isLoading, location]);
+
   if (isLoading && !isLoginPage) {
     return <div className="flex justify-center items-center h-screen"><p>Loading application...</p></div>;
   }
-  // If on the login page, or not authenticated and not loading, show the login page.
-  // This also handles the case where initial load determines user is not authenticated.
+
   if (isLoginPage || (!isAuthenticated && !isLoading)) {
     return (
       <div className="min-h-screen">
@@ -121,7 +112,6 @@ function Router() {
         <div className="max-w-6xl mx-auto">
           <Switch>
             <PrivateRoute path="/" component={Welcome} />
-            {/* NOVA ROTA DE EDIÇÃO - ANTES DA DE /registros */}
             <PrivateRoute
               path="/registros/edit/:id"
               component={RegistrationForm}
@@ -204,18 +194,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Registrar o service worker quando o componente montar
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js')
-          .then(registration => {
-            console.log('Service Worker registrado com sucesso:', registration.scope);
-          })
-          .catch(error => {
-            console.error('Falha ao registrar Service Worker:', error);
-          });
-      });
-    }
+    // REMOVIDO: Registro duplicado do service worker
+    // O service worker já é registrado em main.tsx
 
     // Configurar listener para mensagens do Service Worker
     if ('serviceWorker' in navigator) {
