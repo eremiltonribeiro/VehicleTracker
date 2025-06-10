@@ -417,6 +417,20 @@ export class DatabaseStorage implements IStorage {
     return newResult;
   }
 
+  async updateChecklistResult(id: number, data: Partial<InsertChecklistResult>): Promise<ChecklistResult | undefined> {
+    const [updatedResult] = await db
+      .update(checklistResults)
+      .set(data)
+      .where(eq(checklistResults.id, id))
+      .returning();
+    return updatedResult;
+  }
+
+  async deleteChecklistResult(id: number): Promise<boolean> {
+    const result = await db.delete(checklistResults).where(eq(checklistResults.id, id)).returning({ id: checklistResults.id });
+    return result.length > 0;
+  }
+
   async deleteChecklistResults(checklistId: number, tx?: Transaction): Promise<boolean> {
     // This deletes ALL results for a given checklistId.
     const result = await (tx || db).delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id });

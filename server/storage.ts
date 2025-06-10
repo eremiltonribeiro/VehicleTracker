@@ -540,6 +540,20 @@ export class MemStorage implements IStorage {
     this.checklistResults.set(id, checklistResult);
     return checklistResult;
   }
+
+  async updateChecklistResult(id: number, data: Partial<InsertChecklistResult>): Promise<ChecklistResult | undefined> {
+    const existingResult = this.checklistResults.get(id);
+    if (!existingResult) return undefined;
+    
+    const updatedResult = { ...existingResult, ...data };
+    this.checklistResults.set(id, updatedResult);
+    return updatedResult;
+  }
+
+  async deleteChecklistResult(id: number): Promise<boolean> {
+    return this.checklistResults.delete(id);
+  }
+
   async deleteChecklistResults(checklistId: number): Promise<boolean> {
     const resultsToDelete = Array.from(this.checklistResults.values()).filter(
       (result) => result.checklistId === checklistId
