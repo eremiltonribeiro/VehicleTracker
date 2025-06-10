@@ -8,9 +8,7 @@ const STATIC_URLS = [
   '/',
   '/index.html',
   OFFLINE_URL,
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+  '/manifest.json'
 ];
 
 // Extensões de arquivo para recursos estáticos que devem ser cacheados automaticamente
@@ -102,7 +100,7 @@ self.addEventListener('fetch', event => {
         .then(cachedResponse => {
           if (cachedResponse) {
             // Retornar do cache, mas fazer fetch em background para atualizar
-            const fetchPromise = fetch(event.request)
+            fetch(event.request)
               .then(response => {
                 if (response && response.status === 200) {
                   caches.open(STATIC_CACHE_NAME)
