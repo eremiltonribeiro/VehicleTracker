@@ -135,20 +135,28 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  let issuer;
   try {
-    const issuer = await getIssuer();
+    issuer = await getIssuer();
   } catch (error) {
     console.error('❌ Failed to setup OIDC issuer:', error);
-    if (isProduction) {
-      console.warn('⚠️  Production environment: Continuing without authentication due to OIDC setup failure');
-      // Add a dummy route that returns unauthenticated status
-      app.get("/api/auth/user", (req, res) => {
-        res.status(401).json({ message: "Authentication service unavailable", authenticated: false });
-      });
-      return;
-    } else {
-      throw error; // Re-throw in development
-    }
+    console.warn('⚠️  Continuing without authentication due to OIDC setup failure');
+    
+    // Add routes that return unauthenticated status
+    app.get("/api/auth/user", (req, res) => {
+      res.status(401).json({ message: "Authentication service unavailable", authenticated: false });
+    });
+    
+    app.get("/api/login", (req, res) => {
+      res.status(503).json({ message: "Authentication service unavailable" });
+    });
+    
+    app.get("/api/logout", (req, res) => {
+      res.redirect("/");
+    });
+    
+    console.log('✅ Authentication disabled due to service unavailability');
+    return;
   }
 
   const issuer = await getIssuer();
