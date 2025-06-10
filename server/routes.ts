@@ -1213,12 +1213,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Note: POST, PUT, DELETE for individual checklist results are less common,
-  // as they are often managed in batch with the parent checklist.
-  // If needed, they would follow a similar pattern:
-  // POST /api/checklist-results (body includes checklistId, itemId, status, etc.)
-  // PUT /api/checklist-results/:resultId
-  // DELETE /api/checklist-results/:resultId
+  // Individual checklist result routes
+  app.post("/api/checklist-results", isAuthenticated, async (req, res) => {
+    try {
+      const parsedData = insertChecklistResultSchema.parse(req.body);
+      const result = await storage.createChecklistResult(parsedData);
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Erro de validação ao criar resultado.", errors: error.errors });
+      }
+      console.error("Error creating checklist result:", error);
+      res.status(500).json({ message: "Erro ao criar resultado do checklist.", details: error.message });
+    }
+  });
+
+  app.put("/api/checklist-results/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do resultado inválido." });
+      
+      const parsedData = insertChecklistResultSchema.partial().parse(req.body);
+      const updatedResult = await storage.updateChecklistResult(id, parsedData);
+      
+      if (!updatedResult) return res.status(404).json({ message: "Resultado não encontrado." });
+      res.json({ message: "Resultado atualizado com sucesso.", result: updatedResult });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Erro de validação ao atualizar resultado.", errors: error.errors });
+      }
+      console.error("Error updating checklist result:", error);
+      res.status(500).json({ message: "Erro ao atualizar resultado.", details: error.message });
+    }
+  });
+
+  app.delete("/api/checklist-results/:id", isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do resultado inválido." });
+      
+      const deleted = await storage.deleteChecklistResult(id);
+      if (!deleted) return res.status(404).json({ message: "Resultado não encontrado." });
+      
+      res.json({ message: "Resultado excluído com sucesso.", success: true, id: id });
+    } catch (error: any) {
+      console.error("Error deleting checklist result:", error);
+      res.status(500).json({ message: "Erro ao excluir resultado.", details: error.message });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

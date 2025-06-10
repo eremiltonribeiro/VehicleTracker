@@ -109,6 +109,8 @@ export interface IStorage {
   getChecklistResults(checklistId: number): Promise<ChecklistResult[]>;
   getChecklistResult(id: number): Promise<ChecklistResult | undefined>;
   createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult>;
+  updateChecklistResult(id: number, data: Partial<InsertChecklistResult>): Promise<ChecklistResult | undefined>;
+  deleteChecklistResult(id: number): Promise<boolean>;
   deleteChecklistResults(checklistId: number): Promise<boolean>;
 
   // Role methods
