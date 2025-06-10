@@ -17,6 +17,17 @@ import Checklists from "@/pages/Checklists";
 import Reports from "@/pages/Reports";
 import UserManagementV2 from "@/pages/UserManagementV2";
 import Login from "@/pages/Login";
+import CentralDeCadastros from "@/pages/CentralDeCadastros";
+import ChecklistDetails from "@/pages/ChecklistDetails";
+import ChecklistSimple from "@/pages/ChecklistSimple";
+import ChecklistTemplates from "@/pages/ChecklistTemplates";
+import NewChecklist from "@/pages/NewChecklist";
+import Settings from "@/pages/Settings";
+import SettingsNew from "@/pages/SettingsNew";
+import ConfiguracoesSimples from "@/pages/ConfiguracoesSimples";
+import NovaConfiguracao from "@/pages/NovaConfiguracao";
+import AppConfig from "@/pages/AppConfig";
+import Welcome from "@/pages/Welcome";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth, AuthUser } from "@/hooks/useAuth";
@@ -56,7 +67,7 @@ function LoadingScreen({ message = "Carregando...", subtitle }: { message?: stri
   );
 }
 
-// Componente para rotas protegidas
+// Component for protected routes - now bypassed since auth is disabled
 function PrivateRoute({ 
   children, 
   permission, 
@@ -66,56 +77,7 @@ function PrivateRoute({
   permission?: string; 
   path?: string;
 }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (isLoading) {
-      console.log('⏳ PrivateRoute: Aguardando verificação de autenticação...');
-      return;
-    }
-
-    if (!isAuthenticated) {
-      console.log(`🔒 PrivateRoute: Usuário não autenticado. Rota: ${path || 'unknown'}`);
-      setLocation("/login");
-      return;
-    }
-
-    console.log(`✅ PrivateRoute: Usuário autenticado para rota: ${path || 'unknown'}`);
-  }, [isAuthenticated, isLoading, setLocation, path]);
-
-  if (isLoading) {
-    return <LoadingScreen message="Verificando autenticação..." />;
-  }
-
-  if (!isAuthenticated) {
-    return null; // Vai redirecionar
-  }
-
-  // Verificar permissões se necessário
-  if (permission) {
-    const typedUser = user as AuthUser | undefined;
-    const userPermissions = typedUser?.role?.permissions;
-
-    console.log(`🔐 Verificando permissão '${permission}' para usuário:`, {
-      hasRole: !!typedUser?.role,
-      permissions: userPermissions,
-      hasPermission: userPermissions?.[permission]
-    });
-
-    if (!userPermissions || !userPermissions[permission]) {
-      return (
-        <div className="flex items-center justify-center h-screen">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600 mb-4">Acesso Negado</h1>
-            <p className="text-gray-600">Você não tem permissão para acessar esta página.</p>
-            <p className="text-gray-500 text-sm mt-2">Permissão necessária: {permission}</p>
-          </div>
-        </div>
-      );
-    }
-  }
-
+  // Authentication disabled - always allow access
   return <>{children}</>;
 }
 
@@ -145,38 +107,8 @@ function AppRouter() {
     }
   }, [isLoading, hasInitialized]);
 
-  // Redirecionamento para login quando não autenticado
-  useEffect(() => {
-    if (!isLoading && hasInitialized && !isAuthenticated && location !== '/login') {
-      console.log('🔄 Redirecionando para /login - usuário não autenticado');
-      setLocation('/login');
-    }
-  }, [isLoading, isAuthenticated, location, setLocation, hasInitialized]);
-
-  // Redirecionamento da página de login quando autenticado
-  useEffect(() => {
-    if (!isLoading && hasInitialized && isAuthenticated && location === '/login') {
-      console.log('🔄 Redirecionando para / - usuário já autenticado');
-      setLocation('/');
-    }
-  }, [isLoading, isAuthenticated, location, setLocation, hasInitialized]);
-
-  // Mostrar loading durante verificação inicial de autenticação
-  if (isLoading || !hasInitialized) {
-    return <LoadingScreen message="Inicializando aplicação..." subtitle="Verificando autenticação" />;
-  }
-
-  // Se não autenticado, mostrar apenas a página de login
-  if (!isAuthenticated) {
-    return (
-      <Switch>
-        <Route path="/login" component={Login} />
-        <Route>
-          <Login />
-        </Route>
-      </Switch>
-    );
-  }
+  // Authentication disabled - skip all auth-related redirects
+  console.log('🔧 Authentication disabled - skipping auth checks');
 
   // Se autenticado, mostrar a aplicação completa
   return (
@@ -213,6 +145,72 @@ function AppRouter() {
           <Route path="/users">
             <PrivateRoute path="/users" permission="userManagement">
               <UserManagementV2 />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/cadastros">
+            <PrivateRoute path="/cadastros">
+              <CentralDeCadastros />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/configuracoes">
+            <PrivateRoute path="/configuracoes">
+              <Settings />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/configuracoes-simples">
+            <PrivateRoute path="/configuracoes-simples">
+              <ConfiguracoesSimples />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/configuracoes-novas">
+            <PrivateRoute path="/configuracoes-novas">
+              <SettingsNew />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/nova-configuracao">
+            <PrivateRoute path="/nova-configuracao">
+              <NovaConfiguracao />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/app-config">
+            <PrivateRoute path="/app-config">
+              <AppConfig />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/checklist-templates">
+            <PrivateRoute path="/checklist-templates">
+              <ChecklistTemplates />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/new-checklist">
+            <PrivateRoute path="/new-checklist">
+              <NewChecklist />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/checklist-simples">
+            <PrivateRoute path="/checklist-simples">
+              <ChecklistSimple />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/checklist/:id">
+            <PrivateRoute path="/checklist/:id">
+              <ChecklistDetails />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/welcome">
+            <PrivateRoute path="/welcome">
+              <Welcome />
             </PrivateRoute>
           </Route>
 
