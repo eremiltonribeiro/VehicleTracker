@@ -1,4 +1,4 @@
-import { discovery } from 'openid-client';
+import { Issuer, Strategy, type TokenSet, type UserinfoResponse, type Client } from 'openid-client';
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
@@ -12,7 +12,7 @@ if (!process.env.REPLIT_DOMAINS) {
 
 const getIssuer = memoize(
   async () => {
-    return await discovery(new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"));
+    return await Issuer.discover(process.env.ISSUER_URL ?? "https://replit.com/oidc");
   },
   { maxAge: 3600 * 1000 }
 );
@@ -55,7 +55,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: openidClient.TokenSet
+  tokens: TokenSet
 ) {
   user.claims = tokens.claims();
   user.id_token = tokens.id_token;
@@ -91,7 +91,7 @@ export async function setupAuth(app: Express) {
 
   const issuer = await getIssuer();
 
-  const verify: VerifyCallbackWithUserInfo = async (
+  const verify = async (
     tokenset: TokenSet,
     userinfo: UserinfoResponse,
     done: (err: any, user?: any) => void
