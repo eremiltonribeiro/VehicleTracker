@@ -314,6 +314,28 @@ export class DatabaseStorage implements IStorage {
     return newTemplate;
   }
 
+  async updateChecklistTemplate(id: number, data: Partial<InsertChecklistTemplate>): Promise<ChecklistTemplate | undefined> {
+    const [updatedTemplate] = await db
+      .update(checklistTemplates)
+      .set(data)
+      .where(eq(checklistTemplates.id, id))
+      .returning();
+    return updatedTemplate;
+  }
+
+  async deleteChecklistTemplate(id: number): Promise<boolean> {
+    // Check if template has associated items or checklists before deletion
+    const items = await db.select().from(checklistItems).where(eq(checklistItems.templateId, id));
+    const checklists = await db.select().from(vehicleChecklists).where(eq(vehicleChecklists.templateId, id));
+    
+    if (items.length > 0 || checklists.length > 0) {
+      throw new Error("Template is currently in use and cannot be deleted.");
+    }
+    
+    const result = await db.delete(checklistTemplates).where(eq(checklistTemplates.id, id)).returning({ id: checklistTemplates.id });
+    return result.length > 0;
+  }
+
   // Checklist item methods
   async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
     return db.select().from(checklistItems).where(eq(checklistItems.templateId, templateId));

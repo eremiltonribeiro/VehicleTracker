@@ -36,35 +36,35 @@ export interface IStorage {
   getVehicles(): Promise<Vehicle[]>;
   getVehicle(id: number): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
-  updateVehicle(id: number, data: any): Promise<Vehicle>;
+  updateVehicle(id: number, data: any): Promise<Vehicle | undefined>;
   deleteVehicle(id: number): Promise<boolean>;
 
   // Driver methods
   getDrivers(): Promise<Driver[]>;
   getDriver(id: number): Promise<Driver | undefined>;
   createDriver(driver: InsertDriver): Promise<Driver>;
-  updateDriver(id: number, data: any): Promise<Driver>;
+  updateDriver(id: number, data: any): Promise<Driver | undefined>;
   deleteDriver(id: number): Promise<boolean>;
 
   // Fuel station methods
   getFuelStations(): Promise<FuelStation[]>;
   getFuelStation(id: number): Promise<FuelStation | undefined>;
   createFuelStation(fuelStation: InsertFuelStation): Promise<FuelStation>;
-  updateFuelStation(id: number, data: any): Promise<FuelStation>;
+  updateFuelStation(id: number, data: any): Promise<FuelStation | undefined>;
   deleteFuelStation(id: number): Promise<boolean>;
 
   // Fuel type methods
   getFuelTypes(): Promise<FuelType[]>;
   getFuelType(id: number): Promise<FuelType | undefined>;
   createFuelType(fuelType: InsertFuelType): Promise<FuelType>;
-  updateFuelType(id: number, data: any): Promise<FuelType>;
+  updateFuelType(id: number, data: any): Promise<FuelType | undefined>;
   deleteFuelType(id: number): Promise<boolean>;
 
   // Maintenance type methods
   getMaintenanceTypes(): Promise<MaintenanceType[]>;
   getMaintenanceType(id: number): Promise<MaintenanceType | undefined>;
   createMaintenanceType(maintenanceType: InsertMaintenanceType): Promise<MaintenanceType>;
-  updateMaintenanceType(id: number, data: any): Promise<MaintenanceType>;
+  updateMaintenanceType(id: number, data: any): Promise<MaintenanceType | undefined>;
   deleteMaintenanceType(id: number): Promise<boolean>;
 
   // Vehicle registration methods
@@ -78,7 +78,7 @@ export interface IStorage {
   createRegistration(
     registration: InsertRegistration
   ): Promise<VehicleRegistration>;
-  updateRegistration(id: number, data: any): Promise<VehicleRegistration>;
+  updateRegistration(id: number, data: any): Promise<VehicleRegistration | undefined>;
   deleteRegistration(id: number): Promise<boolean>;
 
   // Checklist template methods
@@ -102,7 +102,7 @@ export interface IStorage {
   }): Promise<VehicleChecklist[]>;
   getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined>;
   createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist>;
-  updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist>;
+  updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist | undefined>;
   deleteVehicleChecklist(id: number): Promise<boolean>;
 
   // Checklist result methods
@@ -115,7 +115,7 @@ export interface IStorage {
   getRoles(): Promise<Role[]>;
   getRole(id: number): Promise<Role | undefined>;
   createRole(roleData: InsertRole): Promise<Role>;
-  updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role>;
+  updateRole(id: number, roleData: Partial<InsertRole>): Promise<Role | undefined>;
   deleteRole(id: number): Promise<boolean>;
 
   // Extended User methods
@@ -433,6 +433,26 @@ export class MemStorage implements IStorage {
     };
     this.checklistTemplates.set(id, checklistTemplate);
     return checklistTemplate;
+  }
+
+  async updateChecklistTemplate(id: number, data: Partial<InsertChecklistTemplate>): Promise<ChecklistTemplate | undefined> {
+    const template = this.checklistTemplates.get(id);
+    if (!template) return undefined;
+    
+    const updatedTemplate = { ...template, ...data };
+    this.checklistTemplates.set(id, updatedTemplate);
+    return updatedTemplate;
+  }
+
+  async deleteChecklistTemplate(id: number): Promise<boolean> {
+    const hasItems = Array.from(this.checklistItems.values()).some(item => item.templateId === id);
+    const hasChecklists = Array.from(this.vehicleChecklists.values()).some(checklist => checklist.templateId === id);
+    
+    if (hasItems || hasChecklists) {
+      throw new Error("Template is currently in use and cannot be deleted.");
+    }
+    
+    return this.checklistTemplates.delete(id);
   }
 
   // --- Checklist item methods ---
