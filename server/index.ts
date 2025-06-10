@@ -69,22 +69,7 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
   
-  const startServer = (portToTry: number) => {
-    server.listen(portToTry, "0.0.0.0", () => {
-      log(`serving on port ${portToTry} (http://0.0.0.0:${portToTry})`);
-    });
-  };
-  
-  server.on('error', (err: any) => {
-    if (err.code === 'EADDRINUSE') {
-      const nextPort = port + 1;
-      console.log(`Port ${port} is busy, trying ${nextPort}`);
-      startServer(nextPort);
-    } else {
-      console.error('Server error:', err);
-      throw err;
-    }
+  server.listen(port, "0.0.0.0", () => {
+    log(`serving on port ${port} (http://0.0.0.0:${port})`);
   });
-  
-  startServer(port);
 })();
