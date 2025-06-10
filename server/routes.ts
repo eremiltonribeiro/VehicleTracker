@@ -63,29 +63,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   const isAdmin = async (req: Request, res: Response, next: Function) => {
-    // Development bypass
-    if (process.env.NODE_ENV === 'development') {
-      return next();
-    }
-
-    if (!req.user || !(req.user as any).claims) {
-      return res.status(401).json({ message: "Não autenticado." });
-    }
-    const userId = (req.user as any).claims.sub;
-    try {
-      const user = await storage.getUser(userId);
-      if (!user || !user.roleId) {
-        return res.status(403).json({ message: "Função de usuário não definida." });
-      }
-      const userRole = await storage.getRole(user.roleId);
-      if (!userRole || userRole.name !== "admin") {
-        return res.status(403).json({ message: "Acesso negado. Requer função de administrador." });
-      }
-      next();
-    } catch (error: any) {
-      console.error("Error in isAdmin middleware:", error);
-      res.status(500).json({ message: "Erro ao verificar função do usuário.", details: error.message });
-    }
+    // Authentication disabled - allow all requests
+    next();
   };
 
   const roleSchema = z.object({
@@ -223,20 +202,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:userId", isAuthenticated, async (req, res) => {
+  app.put("/api/users/:userId", async (req, res) => {
     try {
       const targetUserId = req.params.userId;
-      const currentUserId = (req.user as any).claims.sub;
-      const currentUser = await storage.getUser(currentUserId);
-      const currentUserRole = currentUser && currentUser.roleId ? await storage.getRole(currentUser.roleId) : null;
       const updateData = updateUserSchema.parse(req.body);
 
-      if (targetUserId !== currentUserId && (!currentUserRole || currentUserRole.name !== 'admin')) {
-        return res.status(403).json({ message: "Não autorizado a atualizar este usuário." });
-      }
-      if (updateData.roleId && (!currentUserRole || currentUserRole.name !== 'admin')) {
-        return res.status(403).json({ message: "Não autorizado a alterar o perfil do usuário." });
-      }
+      // Authentication disabled - allow all updates
 
       const userToUpdate = await storage.getUser(targetUserId);
       if (!userToUpdate) {
@@ -266,9 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/users/:userId", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const targetUserId = req.params.userId;
-      if (targetUserId === (req.user as any).claims.sub) {
-        return res.status(400).json({ message: "Não é possível excluir o próprio usuário por esta rota." });
-      }
+      // Authentication disabled - allow all deletions
       const deleted = await storage.deleteUser(targetUserId);
       if (!deleted) return res.status(404).json({ message: "Usuário não encontrado para exclusão." });
       res.json({ message: "Usuário excluído com sucesso." });
@@ -279,12 +248,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:userId/password", isAuthenticated, async (req, res) => {
+  app.put("/api/users/:userId/password", async (req, res) => {
     try {
       const targetUserId = req.params.userId;
-      const currentUserId = (req.user as any).claims.sub;
-      const currentUser = await storage.getUser(currentUserId);
-      const currentUserRole = currentUser && currentUser.roleId ? await storage.getRole(currentUser.roleId) : null;
       const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
       const userToUpdate = await storage.getUser(targetUserId);
 
