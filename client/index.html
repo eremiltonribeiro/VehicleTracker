@@ -17,25 +17,64 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Gestão Frota">
     <link rel="apple-touch-icon" href="/icon-192x192.svg">
+    
+    <!-- Script de debug temporário - REMOVER APÓS RESOLVER O PROBLEMA -->
+    <script>
+      console.log('=== DEBUG: Página carregada ===');
+      console.log('URL:', window.location.href);
+      console.log('User Agent:', navigator.userAgent);
+      
+      // Capturar erros globais
+      window.addEventListener('error', function(e) {
+        console.error('❌ ERRO GLOBAL:', e.error);
+        console.error('Arquivo:', e.filename);
+        console.error('Linha:', e.lineno, 'Coluna:', e.colno);
+        console.error('Stack:', e.error?.stack);
+        
+        // Mostrar erro na tela se o root estiver vazio
+        const root = document.getElementById('root');
+        if (root && !root.innerHTML) {
+          root.innerHTML = `
+            <div style="padding: 20px; color: #dc2626; font-family: monospace;">
+              <h2>❌ Erro ao carregar aplicação</h2>
+              <p><strong>Mensagem:</strong> ${e.error?.message || 'Erro desconhecido'}</p>
+              <p><strong>Arquivo:</strong> ${e.filename}</p>
+              <p><strong>Linha:</strong> ${e.lineno}, Coluna: ${e.colno}</p>
+              <details>
+                <summary>Stack trace</summary>
+                <pre style="background: #fee; padding: 10px; overflow: auto;">${e.error?.stack || 'Não disponível'}</pre>
+              </details>
+              <p style="margin-top: 20px;">
+                <button onclick="location.reload()" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                  Recarregar Página
+                </button>
+              </p>
+            </div>
+          `;
+        }
+      });
+      
+      // Capturar promises rejeitadas
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('❌ PROMISE REJEITADA:', e.reason);
+      });
+      
+      // Verificar se React está carregando
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && !root.innerHTML) {
+          console.error('❌ React não inicializou após 5 segundos');
+          root.innerHTML = '<div style="padding: 20px; color: #dc2626;">⚠️ A aplicação está demorando para carregar. Verifique o console para erros.</div>';
+        }
+      }, 5000);
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- Registrar Service Worker -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-              console.log('Service Worker registrado com sucesso:', registration.scope);
-            })
-            .catch(error => {
-              console.log('Falha ao registrar o Service Worker:', error);
-            });
-        });
-      }
-    </script>
+    <!-- REMOVIDO: Registro duplicado do Service Worker -->
+    <!-- O Service Worker já é registrado em main.tsx -->
     
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
     <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
