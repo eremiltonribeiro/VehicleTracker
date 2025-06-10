@@ -23,7 +23,7 @@ import {
   insertVehicleChecklistSchema,
   insertChecklistResultSchema,
 } from "@shared/schema";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import bcrypt from 'bcryptjs';
 
 // Setup upload directory
@@ -61,59 +61,6 @@ const upload = multer({
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   await setupAuth(app);
-
-  app.get("/api/auth/user", isAuthenticated, async (req: Request, res: Response) => {
-    try {
-      const replitUserClaims = (req.user as any)?.claims;
-      if (!replitUserClaims || !replitUserClaims.sub) {
-        return res.status(404).json({ message: "Usuário Replit não encontrado na sessão." });
-      }
-
-      const userId = replitUserClaims.sub;
-      const dbUser = await storage.getUser(userId);
-
-      if (!dbUser) {
-        return res.status(404).json({
-          message: "Usuário não encontrado no banco de dados local.",
-          id: userId,
-          email: replitUserClaims.email,
-          firstName: replitUserClaims.first_name,
-          lastName: replitUserClaims.last_name,
-          profileImageUrl: replitUserClaims.profile_image_url,
-          role: null
-        });
-      }
-
-      let userRole = null;
-      if (dbUser.roleId) {
-        const roleFromDb = await storage.getRole(dbUser.roleId);
-        if (roleFromDb) {
-          try {
-            userRole = {
-              name: roleFromDb.name,
-              permissions: JSON.parse(roleFromDb.permissions as string || '{}')
-            };
-          } catch (e) {
-            console.error("Error parsing role permissions for user:", userId, e);
-            userRole = { name: roleFromDb.name, permissions: {} };
-          }
-        }
-      }
-
-      const authUserResponse = {
-        id: dbUser.id,
-        email: dbUser.email || replitUserClaims.email,
-        firstName: dbUser.firstName || replitUserClaims.first_name,
-        lastName: dbUser.lastName || replitUserClaims.last_name,
-        profileImageUrl: dbUser.profileImageUrl || replitUserClaims.profile_image_url,
-        role: userRole
-      };
-      res.json(authUserResponse);
-    } catch (error: any) {
-      console.error("Error fetching auth user details:", error);
-      res.status(500).json({ message: "Erro ao buscar detalhes do usuário.", details: error.message });
-    }
-  });
 
   const isAdmin = async (req: Request, res: Response, next: Function) => {
     // Development bypass
