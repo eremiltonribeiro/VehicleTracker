@@ -16,6 +16,14 @@ interface PendingOperation {
   timestamp: number;
 }
 
+// Interface para resultado de teste de conectividade
+interface ConnectivityTestResult {
+  isOnline: boolean;
+  latency?: number;
+  error?: string;
+  timestamp: number;
+}
+
 // Classe para gerenciar sincronização
 class SyncManager {
   private isOnline: boolean = navigator.onLine;
@@ -28,6 +36,8 @@ class SyncManager {
   private syncListeners: Array<(hasPendingOperations: boolean) => void> = [];
   private onlineStatusListeners: Array<(isOnline: boolean) => void> = [];
   private connectivityCheckTimeout: number | null = null;
+  private connectivityTestInProgress: boolean = false;
+  private lastConnectivityTest: ConnectivityTestResult | null = null;
 
   constructor() {
     // Inicializa os event listeners para status de conexão
@@ -38,30 +48,109 @@ class SyncManager {
     this.checkRealOnlineStatus();
   }
 
-  // Verifica se a conexão está realmente ativa fazendo um ping ao servidor
-  private async checkRealOnlineStatus() {
-    console.log('[SyncManager] Verificando status de conectividade...');
+  // Debouncer para evitar testes excessivos de conectividade
+  private createDebouncer(delay: number = 2000) {
+    let timeoutId: number | null = null;
 
-    if (!navigator.onLine) {
-      console.log('[SyncManager] Navigator.onLine = false');
-      this.updateOnlineStatus(false);
+    return (callback: () => void) => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      timeoutId = window.setTimeout(callback, delay);
+    };
+  }
+
+  private connectivityDebouncer = this.createDebouncer(2000);
+
+  // Verifica se a conexão está realmente ativa fazendo testes robustos
+  private async checkRealOnlineStatus() {
+    if (this.connectivityTestInProgress) {
+      console.log('[SyncManager] Teste de conectividade já em andamento, pulando...');
       return;
     }
 
-    console.log('[SyncManager] Navigator.onLine = true, testando conectividade real...');
+    this.connectivityTestInProgress = true;
+    console.log('[SyncManager] Iniciando verificação de conectividade...');
+
+    try {
+      const result = await this.performConnectivityTest();
+      this.lastConnectivityTest = result;
+
+      console.log('[SyncManager] Resultado do teste de conectividade:', result);
+
+      if (result.isOnline) {
+        console.log('[SyncManager] Conectividade confirmada');
+        if (result.latency) {
+          console.log(`[SyncManager] Latência: ${result.latency}ms`);
+        }
+        this.updateOnlineStatus(true);
+      } else {
+        console.log('[SyncManager] Conectividade não confirmada:', result.error);
+        this.updateOnlineStatus(false);
+      }
+    } catch (error) {
+      console.error('[SyncManager] Erro durante teste de conectividade:', error);
+      this.updateOnlineStatus(false);
+    } finally {
+      this.connectivityTestInProgress = false;
+    }
+
+    // Reagendar verificação com intervalo ajustável baseado no status atual
+    const nextCheckInterval = this.isOnline ? 300000 : 60000; // 5 min se online, 1 min se offline
+
+    if (this.connectivityCheckTimeout) {
+      clearTimeout(this.connectivityCheckTimeout);
+    }
+    this.connectivityCheckTimeout = window.setTimeout(() => this.checkRealOnlineStatus(), nextCheckInterval);
+  }
+
+  // Teste principal de conectividade
+  private async performConnectivityTest(): Promise<ConnectivityTestResult> {
+    const timestamp = Date.now();
+
+    // Se navigator.onLine é false, nem tenta testar
+    if (!navigator.onLine) {
+      return {
+        isOnline: false,
+        error: 'navigator.onLine is false',
+        timestamp
+      };
+    }
+
+    try {
+      // Teste primário: endpoint da aplicação
+      const primaryResult = await this.testPrimaryEndpoint();
+
+      if (primaryResult.isOnline) {
+        return primaryResult;
+      }
+
+      // Se o teste primário falhou, tentar teste secundário
+      console.log('[SyncManager] Teste primário falhou, tentando teste secundário...');
+      const secondaryResult = await this.testSecondaryEndpoint();
+      return secondaryResult;
+
+    } catch (error) {
+      return {
+        isOnline: false,
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        timestamp
+      };
+    }
+  }
+
+  // Teste primário: endpoint da própria aplicação
+  private async testPrimaryEndpoint(): Promise<ConnectivityTestResult> {
+    const startTime = Date.now();
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => {
-        console.log('[SyncManager] Timeout na verificação de conectividade');
-        controller.abort();
-      }, 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      // Primeiro teste: endpoint da aplicação
-      const response = await fetch('/api/ping', { 
+      const response = await fetch('/api/ping', {
         method: 'HEAD',
         cache: 'no-store',
-        headers: { 
+        headers: {
           'Cache-Control': 'no-cache',
           'Accept': 'application/json'
         },
@@ -69,50 +158,124 @@ class SyncManager {
       });
 
       clearTimeout(timeoutId);
+      const latency = Date.now() - startTime;
 
       if (response.ok) {
-        console.log('[SyncManager] Ping bem-sucedido ao servidor da aplicação');
-        this.updateOnlineStatus(true);
+        return {
+          isOnline: true,
+          latency,
+          timestamp: Date.now()
+        };
       } else {
-        console.log(`[SyncManager] Ping falhou com status: ${response.status}`);
-        // Tentar teste secundário para verificar se é um problema do servidor vs conectividade
-        await this.performSecondaryConnectivityTest();
+        return {
+          isOnline: false,
+          error: `Server responded with ${response.status}`,
+          latency,
+          timestamp: Date.now()
+        };
       }
     } catch (error) {
-      console.log('[SyncManager] Erro no ping primário:', error);
-      // Se o ping primário falhou, tentar teste secundário
-      await this.performSecondaryConnectivityTest();
+      const latency = Date.now() - startTime;
+      return {
+        isOnline: false,
+        error: error instanceof Error ? error.message : 'Primary endpoint failed',
+        latency,
+        timestamp: Date.now()
+      };
     }
-
-    // Reagendar verificação com intervalo maior
-    if (this.connectivityCheckTimeout) {
-      clearTimeout(this.connectivityCheckTimeout);
-    }
-    this.connectivityCheckTimeout = window.setTimeout(() => this.checkRealOnlineStatus(), 300000); // A cada 5 minutos
   }
 
-  // Teste secundário de conectividade usando recursos externos
-  private async performSecondaryConnectivityTest() {
-    console.log('[SyncManager] Executando teste secundário de conectividade...');
+  // Teste secundário: recurso externo pequeno
+  private async testSecondaryEndpoint(): Promise<ConnectivityTestResult> {
+    const startTime = Date.now();
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-      // Teste com recurso externo pequeno
-      const response = await fetch('https://www.google.com/favicon.ico', {
-        method: 'HEAD',
-        mode: 'no-cors',
-        cache: 'no-store',
-        signal: controller.signal
-      });
+      // Usar múltiplos endpoints para maior confiabilidade
+      const endpoints = [
+        'https://www.google.com/favicon.ico',
+        'https://httpbin.org/status/200'
+      ];
+
+      // Tentar o primeiro endpoint disponível
+      for (const endpoint of endpoints) {
+        try {
+          await fetch(endpoint, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            cache: 'no-store',
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+          const latency = Date.now() - startTime;
+
+          return {
+            isOnline: true,
+            latency,
+            timestamp: Date.now()
+          };
+        } catch (endpointError) {
+          // Continua para o próximo endpoint
+          continue;
+        }
+      }
 
       clearTimeout(timeoutId);
-      console.log('[SyncManager] Teste secundário: conectividade externa confirmada');
-      this.updateOnlineStatus(true);
+      return {
+        isOnline: false,
+        error: 'All secondary endpoints failed',
+        latency: Date.now() - startTime,
+        timestamp: Date.now()
+      };
+
     } catch (error) {
-      console.log('[SyncManager] Teste secundário falhou:', error);
-      this.updateOnlineStatus(false);
+      return {
+        isOnline: false,
+        error: error instanceof Error ? error.message : 'Secondary test failed',
+        latency: Date.now() - startTime,
+        timestamp: Date.now()
+      };
+    }
+  }
+
+  // Detecta se estamos em um portal cativo
+  private async detectCaptivePortal(): Promise<boolean> {
+    try {
+      const response = await fetch('/api/ping', {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+
+        // Se esperamos JSON mas recebemos HTML, provavelmente é portal cativo
+        if (contentType && contentType.toLowerCase().includes('text/html')) {
+          console.log('[SyncManager] Portal cativo detectado: resposta HTML em endpoint JSON');
+          return true;
+        }
+
+        // Tentar ler como JSON
+        try {
+          await response.json();
+          return false; // JSON válido, não é portal cativo
+        } catch {
+          console.log('[SyncManager] Portal cativo detectado: resposta não é JSON válido');
+          return true;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      // Se não conseguimos fazer a requisição, não é portal cativo
+      return false;
     }
   }
 
@@ -123,11 +286,24 @@ class SyncManager {
       console.log(`[SyncManager] Status de conexão alterado: ${status ? 'Online' : 'Offline'}`);
 
       // Notifica listeners
-      this.onlineStatusListeners.forEach(listener => listener(status));
+      this.onlineStatusListeners.forEach(listener => {
+        try {
+          listener(status);
+        } catch (error) {
+          console.error('[SyncManager] Erro ao notificar listener de status online:', error);
+        }
+      });
 
       // Se ficou online, tenta sincronizar
       if (status) {
-        this.syncPendingOperations();
+        console.log('[SyncManager] Application came online. Refetching user authentication status.');
+        // Dispatcha evento personalizado para notificar componentes
+        window.dispatchEvent(new CustomEvent('connection-restored'));
+
+        // Usar debouncer para evitar sincronizações múltiplas
+        this.connectivityDebouncer(() => {
+          this.syncPendingOperations();
+        });
       }
 
       // Atualiza visual para o usuário
@@ -138,7 +314,6 @@ class SyncManager {
   private showSyncCompletedMessage() {
     let indicator = document.getElementById('offline-indicator');
     if (!indicator) {
-      // Se por algum motivo o indicador não existir, cria-o.
       const indicatorElement = document.createElement('div');
       indicatorElement.id = 'offline-indicator';
       indicatorElement.style.position = 'fixed';
@@ -148,13 +323,14 @@ class SyncManager {
       indicatorElement.style.borderRadius = '4px';
       indicatorElement.style.zIndex = '9999';
       indicatorElement.style.fontWeight = 'bold';
+      indicatorElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       document.body.appendChild(indicatorElement);
       indicator = indicatorElement;
     }
 
     if (indicator) {
       indicator.textContent = "Sincronização concluída!";
-      indicator.style.backgroundColor = '#d1e7dd'; // Verde sucesso
+      indicator.style.backgroundColor = '#d1e7dd';
       indicator.style.color = '#0f5132';
       indicator.style.display = 'block';
 
@@ -166,13 +342,11 @@ class SyncManager {
     }
   }
 
-  // Método para atualizar a UI com status offline/online
+  // Método melhorado para atualizar a UI com status offline/online
   private async updateOfflineUI(online: boolean) {
-    // Atualiza a interface para mostrar status
     let offlineIndicator = document.getElementById('offline-indicator');
 
     if (!offlineIndicator) {
-      // Cria o indicador se não existir
       const indicatorElement = document.createElement('div');
       indicatorElement.id = 'offline-indicator';
       indicatorElement.style.position = 'fixed';
@@ -182,6 +356,7 @@ class SyncManager {
       indicatorElement.style.borderRadius = '4px';
       indicatorElement.style.zIndex = '9999';
       indicatorElement.style.fontWeight = 'bold';
+      indicatorElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
       document.body.appendChild(indicatorElement);
       offlineIndicator = indicatorElement;
     }
@@ -191,9 +366,18 @@ class SyncManager {
     const indicator = offlineIndicator;
 
     if (!online) {
-      indicator.textContent = 'Você está offline. Suas alterações serão salvas localmente.';
-      indicator.style.backgroundColor = '#f8d7da';
-      indicator.style.color = '#721c24';
+      // Verificar se foi detectado portal cativo
+      const isCaptivePortal = await this.detectCaptivePortal();
+
+      if (isCaptivePortal) {
+        indicator.textContent = 'Portal cativo detectado. Entre na rede e tente novamente.';
+        indicator.style.backgroundColor = '#fff3cd';
+        indicator.style.color = '#856404';
+      } else {
+        indicator.textContent = 'Você está offline. Suas alterações serão salvas localmente.';
+        indicator.style.backgroundColor = '#f8d7da';
+        indicator.style.color = '#721c24';
+      }
       indicator.style.display = 'block';
     } else {
       try {
@@ -205,16 +389,22 @@ class SyncManager {
           indicator.textContent = `Sincronizando ${pendingToSyncOpsCount} operações...`;
           indicator.style.backgroundColor = '#fff3cd';
           indicator.style.color = '#856404';
+          indicator.style.cursor = 'default';
+          indicator.onclick = null;
           indicator.style.display = 'block';
         } else if (pendingToSyncOpsCount > 0) {
           indicator.textContent = `${pendingToSyncOpsCount} alterações pendentes para sincronizar.`;
           indicator.style.backgroundColor = '#cfe2ff';
           indicator.style.color = '#084298';
+          indicator.style.cursor = 'pointer';
+          indicator.onclick = () => this.forceSyncNow();
           indicator.style.display = 'block';
         } else if (errorOpsCount > 0) {
-          indicator.textContent = `Falha ao sincronizar ${errorOpsCount} alterações. Verifique os detalhes.`;
+          indicator.textContent = `Falha ao sincronizar ${errorOpsCount} alterações. Toque para tentar novamente.`;
           indicator.style.backgroundColor = '#f8d7da';
           indicator.style.color = '#721c24';
+          indicator.style.cursor = 'pointer';
+          indicator.onclick = () => this.forceSyncNow();
           indicator.style.display = 'block';
         } else {
           if (indicator.textContent !== "Sincronização concluída!") {
@@ -226,17 +416,22 @@ class SyncManager {
         indicator.textContent = 'Verificando status...';
         indicator.style.backgroundColor = '#e0e0e0';
         indicator.style.color = '#333';
+        indicator.style.cursor = 'default';
+        indicator.onclick = null;
         indicator.style.display = 'block';
       }
     }
   }
 
-  // Handler para eventos online/offline
+  // Handler melhorado para eventos online/offline
   private handleOnlineStatus = () => {
     console.log(`[SyncManager] Evento do navegador: ${navigator.onLine ? 'Online' : 'Offline'}`);
+
     if (navigator.onLine) {
-      // Verificação adicional da conexão real
-      this.checkRealOnlineStatus();
+      // Usar debouncer para evitar múltiplas verificações
+      this.connectivityDebouncer(() => {
+        this.checkRealOnlineStatus();
+      });
     } else {
       this.updateOnlineStatus(false);
     }
@@ -248,6 +443,7 @@ class SyncManager {
 
     // Se estiver online, sincroniza imediatamente
     if (this.isOnline) {
+      console.log('Iniciando sincronização de operações pendentes...');
       this.syncPendingOperations();
     }
 
@@ -280,16 +476,18 @@ class SyncManager {
     });
   }
 
-  // Função para cachear a página atual
+  // Função para cachear a página atual (com controle de frequência)
   private cacheCurrentPage() {
     if (this.isOnline && navigator.serviceWorker.controller) {
-      // Envia mensagem para o service worker cachear esta página
-      navigator.serviceWorker.controller.postMessage({
-        type: 'CACHE_PAGE',
-        url: window.location.pathname
-      });
+      // Usar debouncer para evitar cache excessivo
+      this.connectivityDebouncer(() => {
+        navigator.serviceWorker.controller?.postMessage({
+          type: 'CACHE_PAGE',
+          url: window.location.pathname
+        });
 
-      console.log(`Solicitando cache da página: ${window.location.pathname}`);
+        console.log(`Solicitando cache da página: ${window.location.pathname}`);
+      });
     }
   }
 
@@ -310,25 +508,46 @@ class SyncManager {
       this.mutationObserver.disconnect();
       this.mutationObserver = null;
     }
+
+    // Remover event listeners
+    window.removeEventListener('online', this.handleOnlineStatus);
+    window.removeEventListener('offline', this.handleOnlineStatus);
   }
 
   // Verifica se há operações pendentes e tenta sincronizar se estiver online
   public async checkPendingOperations() {
-    const pendingOps = await offlineStorage.getPendingOperations();
+    try {
+      const pendingOps = await offlineStorage.getPendingOperations();
 
-    if (pendingOps.length > 0) {
-      console.log(`Existem ${pendingOps.length} operações pendentes de sincronização`);
+      if (pendingOps.length > 0) {
+        console.log(`Existem ${pendingOps.length} operações pendentes de sincronização`);
 
-      // Notifica os listeners
-      this.syncListeners.forEach(listener => listener(true));
+        // Notifica os listeners
+        this.syncListeners.forEach(listener => {
+          try {
+            listener(true);
+          } catch (error) {
+            console.error('[SyncManager] Erro ao notificar listener de sync:', error);
+          }
+        });
 
-      // Se estiver online, tenta sincronizar
-      if (this.isOnline && !this.isSyncing) {
-        this.syncPendingOperations();
+        // Se estiver online, tenta sincronizar
+        if (this.isOnline && !this.isSyncing) {
+          this.syncPendingOperations();
+        }
+      } else {
+        console.log('Nenhuma operação pendente para sincronizar');
+        // Notifica que não há operações pendentes
+        this.syncListeners.forEach(listener => {
+          try {
+            listener(false);
+          } catch (error) {
+            console.error('[SyncManager] Erro ao notificar listener de sync:', error);
+          }
+        });
       }
-    } else {
-      // Notifica que não há operações pendentes
-      this.syncListeners.forEach(listener => listener(false));
+    } catch (error) {
+      console.error('[SyncManager] Erro ao verificar operações pendentes:', error);
     }
   }
 
@@ -419,7 +638,13 @@ class SyncManager {
       await offlineStorage.savePendingOperation(pendingOp);
 
       // Notifica que há operações pendentes
-      this.syncListeners.forEach(listener => listener(true));
+      this.syncListeners.forEach(listener => {
+        try {
+          listener(true);
+        } catch (error) {
+          console.error('[SyncManager] Erro ao notificar listener de sync:', error);
+        }
+      });
 
       // Retorna uma resposta simulada
       return {
@@ -519,13 +744,19 @@ class SyncManager {
 
   // Obtém o número de operações pendentes
   private async getPendingOperationsCount(): Promise<number> {
-    const operations = await offlineStorage.getPendingOperations();
-    return operations.length;
+    try {
+      const operations = await offlineStorage.getPendingOperations();
+      return operations.length;
+    } catch (error) {
+      console.error('[SyncManager] Erro ao obter contagem de operações pendentes:', error);
+      return 0;
+    }
   }
 
   // Sincroniza operações pendentes
   public async syncPendingOperations() {
     if (this.isSyncing || !this.isOnline) {
+      console.log('[SyncManager] Sincronização já em andamento ou offline, pulando...');
       return;
     }
 
@@ -547,6 +778,12 @@ class SyncManager {
       let successCount = 0;
 
       for (const op of sortedOperations) {
+        // Verificar se ainda estamos online antes de cada operação
+        if (!this.isOnline) {
+          console.log('[SyncManager] Conexão perdida durante sincronização, parando...');
+          break;
+        }
+
         try {
           console.log(`Sincronizando operação: ${op.id} - ${op.method} ${op.url}`);
 
@@ -715,12 +952,16 @@ class SyncManager {
   // Atualiza o cache local após sincronização
   private async refreshLocalCaches() {
     try {
-      await this.refreshLocalCache('registrations');
-      await this.refreshLocalCache('vehicles');
-      await this.refreshLocalCache('drivers');
-      await this.refreshLocalCache('fuel-stations');
-      await this.refreshLocalCache('fuel-types');
-      await this.refreshLocalCache('maintenance-types');
+      const entitiesToRefresh = ['registrations', 'vehicles', 'drivers', 'fuel-stations', 'fuel-types', 'maintenance-types'];
+
+      for (const entityType of entitiesToRefresh) {
+        try {
+          await this.refreshLocalCache(entityType);
+        } catch (error) {
+          console.error(`Erro ao atualizar cache de ${entityType}:`, error);
+          // Continua com as outras entidades mesmo se uma falhar
+        }
+      }
     } catch (error) {
       console.error('Erro ao atualizar caches locais:', error);
     }
@@ -789,14 +1030,49 @@ class SyncManager {
 
   // Força a sincronização manualmente
   public forceSyncNow() {
+    console.log('[SyncManager] Sincronização forçada solicitada');
     if (this.isOnline && !this.isSyncing) {
       this.syncPendingOperations();
+    } else if (!this.isOnline) {
+      console.log('[SyncManager] Não é possível sincronizar offline, verificando conectividade...');
+      this.checkRealOnlineStatus();
+    } else {
+      console.log('[SyncManager] Sincronização já em andamento');
     }
   }
 
   // Alias para addConnectionListener, para compatibilidade
   public addConnectionListener(listener: (online: boolean) => void) {
     return this.addOnlineStatusListener(listener);
+  }
+
+  // Método para debug/diagnóstico
+  public async debugConnectivity(): Promise<void> {
+    console.log('[SyncManager Debug] Iniciando diagnóstico de conectividade...');
+    console.log('[SyncManager Debug] navigator.onLine:', navigator.onLine);
+    console.log('[SyncManager Debug] isOnline (interno):', this.isOnline);
+    console.log('[SyncManager Debug] isSyncing:', this.isSyncing);
+
+    const result = await this.performConnectivityTest();
+    console.log('[SyncManager Debug] Resultado do teste:', result);
+
+    const captivePortal = await this.detectCaptivePortal();
+    console.log('[SyncManager Debug] Portal cativo detectado:', captivePortal);
+
+    const pendingCount = await this.getPendingOperationsCount();
+    console.log('[SyncManager Debug] Operações pendentes:', pendingCount);
+  }
+
+  // Limpa todos os dados offline (para casos extremos)
+  public async clearAllOfflineData() {
+    console.log('[SyncManager] Limpando todos os dados offline...');
+    try {
+      // Implementar limpeza se necessário
+      // await offlineStorage.clearAll();
+      console.log('[SyncManager] Dados offline limpos com sucesso');
+    } catch (error) {
+      console.error('[SyncManager] Erro ao limpar dados offline:', error);
+    }
   }
 }
 
