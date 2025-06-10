@@ -8,7 +8,7 @@ import memoize from "lodash.memoize";
 
 const getIssuer = memoize(async () => {
   console.log('🔍 Discovering Replit OIDC issuer...');
-  const issuer = await Issuer.discover("https://replit.com");
+  const issuer = await Issuer.discover("https://auth.replit.com");
   console.log('✅ OIDC Issuer discovered:', issuer.metadata);
   return issuer;
 });
