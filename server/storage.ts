@@ -384,20 +384,24 @@ export class MemStorage implements IStorage {
   async createRegistration(insertRegistration: InsertRegistration): Promise<VehicleRegistration> {
     const id = this.registrationCurrentId++;
     const registration: VehicleRegistration = { 
-      ...insertRegistration, 
+      type: insertRegistration.type,
+      vehicleId: insertRegistration.vehicleId,
+      driverId: insertRegistration.driverId,
+      initialKm: insertRegistration.initialKm,
       id,
       date: insertRegistration.date || new Date(),
       finalKm: insertRegistration.finalKm || null,
       fuelStationId: insertRegistration.fuelStationId || null,
       fuelTypeId: insertRegistration.fuelTypeId || null,
       liters: insertRegistration.liters || null,
-      costPerLiter: insertRegistration.costPerLiter || null,
-      totalCost: insertRegistration.totalCost || null,
-      origin: insertRegistration.origin || null,
-      destination: insertRegistration.destination || null,
-      description: insertRegistration.description || null,
-      cost: insertRegistration.cost || null,
+      fuelCost: insertRegistration.fuelCost || null,
+      fullTank: insertRegistration.fullTank || null,
+      arla: insertRegistration.arla || null,
       maintenanceTypeId: insertRegistration.maintenanceTypeId || null,
+      maintenanceCost: insertRegistration.maintenanceCost || null,
+      destination: insertRegistration.destination || null,
+      reason: insertRegistration.reason || null,
+      observations: insertRegistration.observations || null,
       photoUrl: insertRegistration.photoUrl || null
     };
     this.registrations.set(id, registration);
@@ -433,14 +437,21 @@ export class MemStorage implements IStorage {
   async getChecklistItems(templateId: number): Promise<ChecklistItem[]> {
     return Array.from(this.checklistItems.values())
       .filter(item => item.templateId === templateId)
-      .sort((a, b) => a.order - b.order);
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
   }
   async getChecklistItem(id: number): Promise<ChecklistItem | undefined> {
     return this.checklistItems.get(id);
   }
   async createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem> {
     const id = this.checklistItemCurrentId++;
-    const checklistItem: ChecklistItem = { ...item, id };
+    const checklistItem: ChecklistItem = { 
+      ...item, 
+      id,
+      description: item.description || null,
+      isRequired: item.isRequired || null,
+      category: item.category || null,
+      order: item.order || null
+    };
     this.checklistItems.set(id, checklistItem);
     return checklistItem;
   }
@@ -466,8 +477,13 @@ export class MemStorage implements IStorage {
   }
   async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
     const id = this.vehicleChecklistCurrentId++;
-    if (!checklist.date) checklist.date = new Date();
-    const vehicleChecklist: VehicleChecklist = { ...checklist, id };
+    const vehicleChecklist: VehicleChecklist = { 
+      ...checklist, 
+      id,
+      date: checklist.date || new Date(),
+      observations: checklist.observations || null,
+      photoUrl: checklist.photoUrl || null
+    };
     this.vehicleChecklists.set(id, vehicleChecklist);
     return vehicleChecklist;
   }
@@ -491,7 +507,12 @@ export class MemStorage implements IStorage {
   }
   async createChecklistResult(result: InsertChecklistResult): Promise<ChecklistResult> {
     const id = this.checklistResultCurrentId++;
-    const checklistResult: ChecklistResult = { ...result, id };
+    const checklistResult: ChecklistResult = { 
+      ...result, 
+      id,
+      photoUrl: result.photoUrl || null,
+      observation: result.observation || null
+    };
     this.checklistResults.set(id, checklistResult);
     return checklistResult;
   }
@@ -514,7 +535,11 @@ export class MemStorage implements IStorage {
   }
   async createRole(roleData: InsertRole): Promise<Role> {
     const id = this.roleCurrentId++;
-    const newRole: Role = { ...roleData, id };
+    const newRole: Role = { 
+      ...roleData, 
+      id,
+      description: roleData.description || null
+    };
     this.roles.set(id, newRole);
     return newRole;
   }
