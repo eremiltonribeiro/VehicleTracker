@@ -36,7 +36,7 @@ const getOidcClient = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 semana
   const PgStore = connectPgSimple(session);
-  const sessionStore = new pgStore({
+  const sessionStore = new PgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: true,
     ttl: sessionTtl,
