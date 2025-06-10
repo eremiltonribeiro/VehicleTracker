@@ -1,13 +1,19 @@
 import { Switch, Route } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 
-import Dashboard from "@/pages/Dashboard";
-import VehicleManagement from "@/pages/VehicleManagement";
-import MaintenanceScheduling from "@/pages/MaintenanceScheduling";
-import MaintenanceHistory from "@/pages/MaintenanceHistory";
+// Lazy load ReactQueryDevtools only in development
+const ReactQueryDevtools = lazy(() =>
+  process.env.NODE_ENV === 'development'
+    ? import("@tanstack/react-query-devtools").then(module => ({
+        default: module.ReactQueryDevtools
+      }))
+    : Promise.resolve({ default: () => null })
+);
+
+import Home from "@/pages/Home";
+import Checklists from "@/pages/Checklists";
 import Reports from "@/pages/Reports";
 import UserManagementV2 from "@/pages/UserManagementV2";
 import Login from "@/pages/Login";
@@ -188,25 +194,13 @@ function AppRouter() {
 
           <Route path="/">
             <PrivateRoute path="/">
-              <Dashboard />
+              <Home />
             </PrivateRoute>
           </Route>
 
-          <Route path="/vehicles">
-            <PrivateRoute path="/vehicles">
-              <VehicleManagement />
-            </PrivateRoute>
-          </Route>
-
-          <Route path="/maintenance">
-            <PrivateRoute path="/maintenance">
-              <MaintenanceScheduling />
-            </PrivateRoute>
-          </Route>
-
-          <Route path="/maintenance-history">
-            <PrivateRoute path="/maintenance-history">
-              <MaintenanceHistory />
+          <Route path="/checklists">
+            <PrivateRoute path="/checklists">
+              <Checklists />
             </PrivateRoute>
           </Route>
 
@@ -265,7 +259,9 @@ function App() {
       <AppRouter />
       <Toaster />
       {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} />
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
       )}
     </QueryClientProvider>
   );
