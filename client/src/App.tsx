@@ -83,7 +83,7 @@ function PrivateRoute({ component: Component, permission, ...rest }: PrivateRout
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isLoginPage = location === "/login";
 
   // Log para debug detalhado
@@ -105,6 +105,14 @@ function Router() {
       console.log('✅ Usuário autenticado, mostrando app principal');
     }
   }, [isAuthenticated, isLoading, location, isLoginPage]);
+
+  // Redirecionar para login se não autenticado
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !isLoginPage) {
+      console.log('🔄 Redirecionando para /login...');
+      setLocation('/login');
+    }
+  }, [isLoading, isAuthenticated, isLoginPage, setLocation]);
 
   // COMPONENTE DE DEBUG TEMPORÁRIO
   // Se nada está sendo renderizado após 3 segundos, mostrar estado
@@ -142,11 +150,11 @@ function Router() {
     );
   }
 
-  if (isLoading && !isLoginPage) {
+  if (isLoading) {
     return <div className="flex justify-center items-center h-screen"><p>Loading application...</p></div>;
   }
 
-  if (isLoginPage || (!isAuthenticated && !isLoading)) {
+  if (isLoginPage) {
     return (
       <div className="min-h-screen">
         <Switch>
@@ -154,6 +162,11 @@ function Router() {
         </Switch>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    // Isso não deveria acontecer devido ao redirect acima, mas é um fallback
+    return null;
   }
 
   return (
