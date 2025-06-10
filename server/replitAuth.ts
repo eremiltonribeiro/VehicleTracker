@@ -1,4 +1,6 @@
-import * as OpenIDClient from 'openid-client';
+import * as openidClient from 'openid-client';
+import { type VerifyCallbackWithUserInfo, type TokenSet, type UserinfoResponse, type Client } from 'openid-client';
+const { Issuer, Strategy } = openidClient;
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
@@ -12,7 +14,7 @@ if (!process.env.REPLIT_DOMAINS) {
 
 const getIssuer = memoize(
   async () => {
-    return await OpenIDClient.Issuer.discover(process.env.ISSUER_URL ?? "https://replit.com/oidc");
+    return await Issuer.discover(process.env.ISSUER_URL ?? "https://replit.com/oidc");
   },
   { maxAge: 3600 * 1000 }
 );
@@ -20,7 +22,7 @@ const getIssuer = memoize(
 const getOidcClient = memoize(
   async (domain: string) => {
     const issuer = await getIssuer();
-    return new OpenIDClient.Client({ // Assuming issuer.Client was effectively an alias for OpenIDClient.Client
+    return new issuer.Client({
       client_id: process.env.REPL_ID!,
       client_secret: process.env.REPLIT_CLIENT_SECRET, // Assuming you have a client secret
       redirect_uris: [`https://${domain}/api/callback`],
@@ -55,7 +57,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: OpenIDClient.TokenSet
+  tokens: TokenSet
 ) {
   user.claims = tokens.claims();
   user.id_token = tokens.id_token;
@@ -65,7 +67,7 @@ function updateUserSession(
 }
 
 async function upsertUser(
-  userInfo: OpenIDClient.UserinfoResponse,
+  userInfo: UserinfoResponse,
   claims: any // claims can be used as a fallback
 ) {
   const subject = userInfo.sub || claims?.sub;
@@ -91,9 +93,9 @@ export async function setupAuth(app: Express) {
 
   const issuer = await getIssuer();
 
-  const verify: OpenIDClient.VerifyCallbackWithUserInfo = async (
-    tokenset: OpenIDClient.TokenSet,
-    userinfo: OpenIDClient.UserinfoResponse,
+  const verify: VerifyCallbackWithUserInfo = async (
+    tokenset: TokenSet,
+    userinfo: UserinfoResponse,
     done: (err: any, user?: any) => void
   ) => {
     try {
@@ -119,7 +121,7 @@ export async function setupAuth(app: Express) {
 
     passport.use(
       `replitauth:${domain}`,
-      new OpenIDClient.Strategy(
+      new Strategy(
         {
           client,
           params,
