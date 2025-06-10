@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FileInput } from "@/components/ui/file-input";
 import { Loader2, Save, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { offlineStorage } from "@/services/offlineStorage";
@@ -27,19 +26,19 @@ interface DriverFormProps {
 export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Default values
   const defaultValues: Partial<DriverFormValues> = {
     name: editingDriver?.name || "",
     license: editingDriver?.license || "",
     phone: editingDriver?.phone || "",
   };
-  
+
   const form = useForm<DriverFormValues>({
     resolver: zodResolver(driverFormSchema),
     defaultValues,
   });
-  
+
   const createDriver = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       try {
@@ -47,38 +46,47 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         if (!navigator.onLine) {
           // Generate a temporary id (negative to avoid collisions with server ids)
           const tempId = -(Date.now());
-          
+
           // Create driver object
           const driver = {
             ...data,
             id: tempId,
           };
-          
+
           // Get current drivers
           const drivers = await offlineStorage.getDrivers();
-          
+
           // Add new driver
           drivers.push(driver);
-          
+
           // Save to local storage
           await offlineStorage.saveDrivers(drivers);
-          
+
           return driver;
         }
-        
-        // Send data to server using fetch directly
-        const response = await fetch('/api/drivers', {
+
+        // Send data to server using native fetch with proper error handling
+        const response = await window.fetch('/api/drivers', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(data),
+          credentials: 'include', // Para incluir cookies de sessão
         });
-        
+
         if (!response.ok) {
-          throw new Error('Erro ao salvar motorista');
+          // Capturar erro mais detalhado
+          let errorMessage = 'Erro ao salvar motorista';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
-        
+
         return await response.json();
       } catch (error) {
         console.error("Erro ao criar motorista:", error);
@@ -90,31 +98,31 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
         title: "Sucesso!",
         description: "Motorista cadastrado com sucesso.",
       });
-      
+
       // Reset form
       form.reset();
-      
+
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
-      
+
       // Call success callback if provided
       if (onSuccess) onSuccess();
     },
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: "Ocorreu um erro ao cadastrar o motorista. Tente novamente.",
+        description: error.message || "Ocorreu um erro ao cadastrar o motorista. Tente novamente.",
         variant: "destructive",
       });
-      
+
       console.error("Erro na mutação:", error);
     },
   });
-  
+
   const onSubmit = (data: DriverFormValues) => {
     createDriver.mutate(data);
   };
-  
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -148,7 +156,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="license"
@@ -166,7 +174,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="phone"
@@ -183,7 +191,7 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
                 </FormItem>
               )}
             />
-            
+
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 

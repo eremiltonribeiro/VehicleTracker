@@ -29,7 +29,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Default values
   const defaultValues: Partial<VehicleFormValues> = {
     name: editingVehicle?.name || "",
@@ -37,12 +37,12 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
     model: editingVehicle?.model || "",
     year: editingVehicle?.year || new Date().getFullYear(),
   };
-  
+
   const form = useForm<VehicleFormValues>({
     resolver: zodResolver(vehicleFormSchema),
     defaultValues,
   });
-  
+
   const createVehicle = useMutation({
     mutationFn: async (data: VehicleFormValues) => {
       try {
@@ -50,55 +50,64 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         if (!navigator.onLine) {
           // Generate a temporary id (negative to avoid collisions with server ids)
           const tempId = -(Date.now());
-          
+
           // Create vehicle object
           const vehicle = {
             ...data,
             id: tempId,
           };
-          
+
           // Get current vehicles
           const vehicles = await offlineStorage.getVehicles();
-          
+
           // Add new vehicle
           vehicles.push(vehicle);
-          
+
           // Save to local storage
           await offlineStorage.saveVehicles(vehicles);
-          
+
           // Save image if provided
           if (data.image && imagePreview) {
             await offlineStorage.saveImage(`vehicle_${tempId}`, imagePreview);
           }
-          
+
           return vehicle;
         }
-        
+
         // Online state - create FormData for file upload
         const formData = new FormData();
-        
+
         // Add all fields to form data
         Object.entries(data).forEach(([key, value]) => {
           if (key !== 'image') {
             formData.append(key, String(value));
           }
         });
-        
+
         // Add image if available
         if (data.image) {
           formData.append('image', data.image);
         }
-        
-        // Send data to server using fetch directly
-        const response = await fetch('/api/vehicles', {
+
+        // Send data to server using native fetch with proper error handling
+        const response = await window.fetch('/api/vehicles', {
           method: 'POST',
           body: formData,
+          credentials: 'include', // Para incluir cookies de sessão
         });
-        
+
         if (!response.ok) {
-          throw new Error('Erro ao salvar veículo');
+          // Capturar erro mais detalhado
+          let errorMessage = 'Erro ao salvar veículo';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
-        
+
         return await response.json();
       } catch (error) {
         console.error("Erro ao criar veículo:", error);
@@ -110,28 +119,28 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
         title: "Sucesso!",
         description: "Veículo cadastrado com sucesso.",
       });
-      
+
       // Reset form
       form.reset();
       setImagePreview(null);
-      
+
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/vehicles'] });
-      
+
       // Call success callback if provided
       if (onSuccess) onSuccess();
     },
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: "Ocorreu um erro ao cadastrar o veículo. Tente novamente.",
+        description: error.message || "Ocorreu um erro ao cadastrar o veículo. Tente novamente.",
         variant: "destructive",
       });
-      
+
       console.error("Erro na mutação:", error);
     },
   });
-  
+
   const handleImageChange = (file: File | null) => {
     if (file) {
       const reader = new FileReader();
@@ -143,11 +152,11 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
       setImagePreview(null);
     }
   };
-  
+
   const onSubmit = (data: VehicleFormValues) => {
     createVehicle.mutate(data);
   };
-  
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -181,7 +190,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="plate"
@@ -199,7 +208,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -214,7 +223,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="year"
@@ -234,7 +243,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="image"
@@ -260,7 +269,7 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
                 </FormItem>
               )}
             />
-            
+
             <div className="flex justify-end pt-4">
               <Button 
                 type="submit" 
