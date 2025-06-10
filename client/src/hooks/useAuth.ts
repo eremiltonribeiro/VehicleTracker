@@ -22,11 +22,11 @@ const fetchAuthUser = async (): Promise<AuthUser> => {
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["/api/auth/user"],
-    queryFn: fetchAuthUser, // Esta função estava faltando!
+    queryFn: fetchAuthUser, // ESTA LINHA ESTAVA FALTANDO!
     retry: false,
     staleTime: 5 * 60 * 1000, // 5 minutos
     cacheTime: 10 * 60 * 1000, // 10 minutos
-    refetchOnWindowFocus: false, // Evita refetch desnecessário
+    refetchOnWindowFocus: false,
   });
 
   return {
