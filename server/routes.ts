@@ -905,6 +905,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/checklist-templates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do template inválido." });
+      
+      const parsedData = insertChecklistTemplateSchema.partial().parse(req.body);
+      const updatedTemplate = await storage.updateChecklistTemplate(id, parsedData);
+      
+      if (!updatedTemplate) return res.status(404).json({ message: "Template de checklist não encontrado." });
+      res.json({ message: "Template atualizado com sucesso.", template: updatedTemplate });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Erro de validação ao atualizar template.", errors: error.errors });
+      }
+      console.error(`Error updating /api/checklist-templates/${req.params.id}:`, error);
+      res.status(500).json({ message: "Erro ao atualizar template de checklist.", details: error.message });
+    }
+  });
+
+  app.delete("/api/checklist-templates/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do template inválido." });
+      
+      const deleted = await storage.deleteChecklistTemplate(id);
+      if (!deleted) return res.status(404).json({ message: "Template de checklist não encontrado." });
+      
+      res.json({ message: "Template excluído com sucesso.", success: true, id: id });
+    } catch (error: any) {
+      console.error(`Error deleting /api/checklist-templates/${req.params.id}:`, error);
+      res.status(500).json({ message: "Erro ao excluir template de checklist.", details: error.message });
+    }
+  });
+
   // Checklist Item Routes (assuming items are managed in context of a template, or globally if needed)
    app.get("/api/checklist-templates/:templateId/items", isAuthenticated, async (req, res) => {
     try {

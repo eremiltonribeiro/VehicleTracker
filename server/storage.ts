@@ -85,6 +85,8 @@ export interface IStorage {
   getChecklistTemplates(): Promise<ChecklistTemplate[]>;
   getChecklistTemplate(id: number): Promise<ChecklistTemplate | undefined>;
   createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate>;
+  updateChecklistTemplate(id: number, data: Partial<InsertChecklistTemplate>): Promise<ChecklistTemplate | undefined>;
+  deleteChecklistTemplate(id: number): Promise<boolean>;
 
   // Checklist item methods
   getChecklistItems(templateId: number): Promise<ChecklistItem[]>;
