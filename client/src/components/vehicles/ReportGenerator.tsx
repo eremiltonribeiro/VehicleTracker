@@ -492,7 +492,7 @@ export function ReportGenerator() {
       doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18);
       
       // Texto do rodapé
-      doc.setTextColor(navyBlue[0], navyBlue[1], navyBlue[2]);
+      doc.setTextColor(blue[0], blue[1], blue[2]);
       doc.setFontSize(8);
       doc.text('Granduvale Mineração - Sistema de Gestão de Frota', margin, pageHeight - 10);
       
@@ -502,6 +502,12 @@ export function ReportGenerator() {
     
     // Salvar o PDF
     doc.save(`relatorio_${reportType}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      alert("Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Manipular geração de relatório

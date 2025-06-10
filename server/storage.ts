@@ -222,7 +222,11 @@ export class MemStorage implements IStorage {
   }
   async createVehicle(insertVehicle: InsertVehicle): Promise<Vehicle> {
     const id = this.vehicleCurrentId++;
-    const vehicle: Vehicle = { ...insertVehicle, id };
+    const vehicle: Vehicle = { 
+      ...insertVehicle, 
+      id,
+      imageUrl: insertVehicle.imageUrl || null
+    };
     this.vehicles.set(id, vehicle);
     return vehicle;
   }
@@ -248,7 +252,11 @@ export class MemStorage implements IStorage {
   }
   async createDriver(insertDriver: InsertDriver): Promise<Driver> {
     const id = this.driverCurrentId++;
-    const driver: Driver = { ...insertDriver, id };
+    const driver: Driver = { 
+      ...insertDriver, 
+      id,
+      imageUrl: insertDriver.imageUrl || null
+    };
     this.drivers.set(id, driver);
     return driver;
   }
@@ -274,7 +282,11 @@ export class MemStorage implements IStorage {
   }
   async createFuelStation(insertFuelStation: InsertFuelStation): Promise<FuelStation> {
     const id = this.fuelStationCurrentId++;
-    const fuelStation: FuelStation = { ...insertFuelStation, id };
+    const fuelStation: FuelStation = { 
+      ...insertFuelStation, 
+      id,
+      address: insertFuelStation.address || null
+    };
     this.fuelStations.set(id, fuelStation);
     return fuelStation;
   }
@@ -371,7 +383,23 @@ export class MemStorage implements IStorage {
   }
   async createRegistration(insertRegistration: InsertRegistration): Promise<VehicleRegistration> {
     const id = this.registrationCurrentId++;
-    const registration: VehicleRegistration = { ...insertRegistration, id };
+    const registration: VehicleRegistration = { 
+      ...insertRegistration, 
+      id,
+      date: insertRegistration.date || new Date(),
+      finalKm: insertRegistration.finalKm || null,
+      fuelStationId: insertRegistration.fuelStationId || null,
+      fuelTypeId: insertRegistration.fuelTypeId || null,
+      liters: insertRegistration.liters || null,
+      costPerLiter: insertRegistration.costPerLiter || null,
+      totalCost: insertRegistration.totalCost || null,
+      origin: insertRegistration.origin || null,
+      destination: insertRegistration.destination || null,
+      description: insertRegistration.description || null,
+      cost: insertRegistration.cost || null,
+      maintenanceTypeId: insertRegistration.maintenanceTypeId || null,
+      photoUrl: insertRegistration.photoUrl || null
+    };
     this.registrations.set(id, registration);
     return registration;
   }
@@ -390,7 +418,13 @@ export class MemStorage implements IStorage {
   }
   async createChecklistTemplate(template: InsertChecklistTemplate): Promise<ChecklistTemplate> {
     const id = this.checklistTemplateCurrentId++;
-    const checklistTemplate: ChecklistTemplate = { ...template, id };
+    const checklistTemplate: ChecklistTemplate = { 
+      ...template, 
+      id,
+      description: template.description || null,
+      isDefault: template.isDefault || null,
+      createdAt: new Date()
+    };
     this.checklistTemplates.set(id, checklistTemplate);
     return checklistTemplate;
   }
