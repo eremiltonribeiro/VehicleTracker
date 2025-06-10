@@ -120,16 +120,27 @@ self.addEventListener('fetch', event => {
           // Se não estiver no cache, buscar na rede
           return fetch(event.request)
             .then(response => {
-              if (!response || response.status !== 200) {
+              if (!response || response.status !== 200 || !response.ok) {
                 return response;
               }
 
-              // Clone BEFORE caching
+              // Clone the response immediately after fetch
               const responseToCache = response.clone();
+              
+              // Cache the cloned response asynchronously
               caches.open(STATIC_CACHE_NAME)
-                .then(cache => cache.put(event.request, responseToCache));
+                .then(cache => {
+                  cache.put(event.request, responseToCache);
+                })
+                .catch(error => {
+                  console.log('[Service Worker] Cache put failed:', error);
+                });
 
               return response;
+            })
+            .catch(error => {
+              console.log('[Service Worker] Fetch failed:', error);
+              throw error;
             });
         })
     );

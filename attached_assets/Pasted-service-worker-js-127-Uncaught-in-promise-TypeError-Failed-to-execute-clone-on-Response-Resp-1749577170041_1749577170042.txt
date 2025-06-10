@@ -1,0 +1,62 @@
+service-worker.js:127 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at service-worker.js:127:66
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:120
+Promise.then
+(anonymous) @ service-worker.js:100
+sistemadegestaofrotas.replit.app/:1 Error while trying to use the following icon from the Manifest: https://sistemadegestaofrotas.replit.app/icon-192x192.png (Download error or resource isn't a valid image)
+service-worker.js:127 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at service-worker.js:127:66
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:120
+Promise.then
+(anonymous) @ service-worker.js:100
+service-worker.js:127 Uncaught (in promise) TypeError: Failed to execute 'clone' on 'Response': Response body is already used
+    at service-worker.js:127:66
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:127
+Promise.then
+(anonymous) @ service-worker.js:120
+Promise.then
+(anonymous) @ service-worker.js:100
+index-CW3cR3v0.js:48 SyncManager iniciado
+index-CW3cR3v0.js:48 Iniciando sincronização de operações pendentes...
+index-CW3cR3v0.js:48 Solicitando cache da página: /
+service-worker.js:184 [Service Worker] Solicitação para cachear página: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:673 Status da conexão alterado: online
+index-CW3cR3v0.js:673 Application came online. Refetching user authentication status.
+index-CW3cR3v0.js:673 User authentication status refetched.
+content.js:1 Extensão carregada!
+index-CW3cR3v0.js:48 IndexedDB inicializado com sucesso
+index-CW3cR3v0.js:48 IndexedDB inicializado com sucesso
+index-CW3cR3v0.js:48 Solicitando cache da página: /
+service-worker.js:184 [Service Worker] Solicitação para cachear página: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:48 Solicitando cache da página: /
+service-worker.js:184 [Service Worker] Solicitação para cachear página: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:48 IndexedDB inicializado com sucesso
+index-CW3cR3v0.js:48 IndexedDB inicializado com sucesso
+index-CW3cR3v0.js:48 IndexedDB inicializado com sucesso
+index-CW3cR3v0.js:48 Solicitando cache da página: /
+(index):31 Service Worker registrado com sucesso: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:673 Service Worker registrado com sucesso: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:673 Service Worker registrado com sucesso: https://sistemadegestaofrotas.replit.app/
+sistemadegestaofrotas.replit.app/:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">
+index-CW3cR3v0.js:48 Solicitando cache da página: /
+index-CW3cR3v0.js:48 Nenhuma operação pendente para sincronizar
+service-worker.js:184 [Service Worker] Solicitação para cachear página: https://sistemadegestaofrotas.replit.app/
+service-worker.js:184 [Service Worker] Solicitação para cachear página: https://sistemadegestaofrotas.replit.app/
+index-CW3cR3v0.js:48 Conexão detectada, mas parece ser um portal cativo (HTML recebido). Tratando como offline.
+index-CW3cR3v0.js:48 Status de conexão alterado: Offline
+index-CW3cR3v0.js:673 Status da conexão alterado: offline
+service-worker.js:192 [Service Worker] Cacheando página: /
+service-worker.js:192 [Service Worker] Cacheando página: /
+service-worker.js:192 [Service Worker] Cacheando página: /
+service-worker.js:192 [Service Worker] Cacheando página: /
+service-worker.js:192 [Service Worker] Cacheando página: /
