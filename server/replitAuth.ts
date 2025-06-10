@@ -1,4 +1,5 @@
-import openidClient, { type VerifyCallbackWithUserInfo, type TokenSet, type UserinfoResponse, type Client } from 'openid-client';
+import * as openidClient from 'openid-client';
+import { type VerifyCallbackWithUserInfo, type TokenSet, type UserinfoResponse, type Client } from 'openid-client';
 const { Issuer, Strategy } = openidClient;
 import passport from "passport";
 import session from "express-session";
