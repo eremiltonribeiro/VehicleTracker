@@ -128,18 +128,11 @@ if ('serviceWorker' in navigator) {
 }
 */
 
-// Executar quando o DOM estiver pronto
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    if (setupDebug()) {
-      initializeApp();
-      registerServiceWorker();
-    }
-  });
-} else {
-  // DOM já está pronto
-  if (setupDebug()) {
-    initializeApp();
-    registerServiceWorker();
-  }
-}
+// Simplified initialization - execute immediately
+setupDebug();
+initializeApp();
+
+// Register service worker after app loads
+setTimeout(() => {
+  registerServiceWorker();
+}, 1000);
