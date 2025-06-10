@@ -13,15 +13,7 @@ declare module 'express-session' {
   }
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      session: session.Session & Partial<session.SessionData> & {
-        returnTo?: string;
-      };
-    }
-  }
-}
+
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Variável de ambiente REPLIT_DOMAINS não fornecida");

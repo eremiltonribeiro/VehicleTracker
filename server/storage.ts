@@ -598,12 +598,12 @@ export class MemStorage implements IStorage {
     } else {
       const newUser: User = {
         id: finalUserData.id,
-        email: finalUserData.email,
-        firstName: finalUserData.firstName,
-        lastName: finalUserData.lastName,
-        profileImageUrl: finalUserData.profileImageUrl,
-        passwordHash: finalUserData.passwordHash,
-        roleId: finalUserData.roleId,
+        email: finalUserData.email ?? null,
+        firstName: finalUserData.firstName ?? null,
+        lastName: finalUserData.lastName ?? null,
+        profileImageUrl: finalUserData.profileImageUrl ?? null,
+        passwordHash: finalUserData.passwordHash ?? null,
+        roleId: finalUserData.roleId ?? null,
         createdAt: finalUserData.createdAt || new Date(),
         updatedAt: new Date(),
       };
