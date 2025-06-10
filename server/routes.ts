@@ -116,6 +116,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const isAdmin = async (req: Request, res: Response, next: Function) => {
+    // Development bypass
+    if (process.env.NODE_ENV === 'development') {
+      return next();
+    }
+
     if (!req.user || !(req.user as any).claims) {
       return res.status(401).json({ message: "Não autenticado." });
     }
@@ -131,7 +136,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       next();
     } catch (error: any) {
-      // TODO: Use structured logger
       console.error("Error in isAdmin middleware:", error);
       res.status(500).json({ message: "Erro ao verificar função do usuário.", details: error.message });
     }
