@@ -223,6 +223,11 @@ self.addEventListener('message', event => {
       }
     });
   }
+
+  // Processar mensagem SKIP_WAITING
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Evento de sincronização em segundo plano
@@ -254,24 +259,3 @@ setInterval(() => {
     });
   }
 }, 60000); // Verificar a cada minuto
-
-// Adicionar evento de sincronização para o navegador
-self.addEventListener('sync', function(event) {
-  if (event.tag === 'sync-pending-operations') {
-    console.log('[Service Worker] Sincronizando operações pendentes via background sync');
-    event.waitUntil(
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'START_SYNC'
-          });
-        });
-      })
-    );
-  }
-});CK_SYNC'
-        });
-      }
-    });
-  }
-}, 300000); // A cada 5 minutos
