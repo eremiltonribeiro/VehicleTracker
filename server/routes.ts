@@ -1085,7 +1085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const parsedChecklistData = insertVehicleChecklistSchema.parse(rawData);
 
-      let checklist;
+      let checklist: any;
       await db.transaction(async (tx) => {
         checklist = await storage.createVehicleChecklist(parsedChecklistData, tx);
 

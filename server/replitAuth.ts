@@ -8,9 +8,15 @@ import memoize from "lodash.memoize";
 
 const getIssuer = memoize(async () => {
   console.log('🔍 Discovering Replit OIDC issuer...');
-  const issuer = await Issuer.discover("https://auth.replit.com");
-  console.log('✅ OIDC Issuer discovered:', issuer.metadata);
-  return issuer;
+  try {
+    const issuer = await Issuer.discover("https://auth.replit.com");
+    console.log('✅ OIDC Issuer discovered:', issuer.metadata);
+    return issuer;
+  } catch (error) {
+    console.error('❌ Failed to discover OIDC issuer:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`OIDC Discovery failed: ${errorMessage}`);
+  }
 });
 
 const getOidcClient = memoize(async (domain: string) => {
@@ -85,7 +91,37 @@ async function upsertUser(userInfo: UserinfoResponse, claims: any) {
 export async function setupAuth(app: Express) {
   console.log('🔧 Setting up authentication...');
 
-  // Verificar variáveis de ambiente necessárias
+  // Check if we're in production and missing critical environment variables
+  const isProduction = process.env.NODE_ENV === 'production';
+  const hasClientSecret = !!process.env.REPLIT_CLIENT_SECRET;
+  const hasReplitDomains = !!process.env.REPLIT_DOMAINS;
+  const hasReplId = !!process.env.REPL_ID;
+
+  console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+  console.log('🌍 Replit domains:', process.env.REPLIT_DOMAINS || 'not set');
+  console.log('🆔 Repl ID:', process.env.REPL_ID || 'not set');
+  console.log('🔒 Has client secret:', hasClientSecret);
+  console.log('🔑 Has session secret:', !!process.env.SESSION_SECRET);
+
+  // In production, if critical auth vars are missing, skip Replit auth setup
+  if (isProduction && (!hasClientSecret || !hasReplitDomains || !hasReplId)) {
+    console.warn('⚠️  Production environment detected with missing auth variables. Skipping Replit authentication setup.');
+    console.warn('⚠️  Application will run without authentication. Users will be treated as unauthenticated.');
+    
+    // Setup basic session management without Replit auth
+    app.set("trust proxy", 1);
+    app.use(getSession());
+    
+    // Add a dummy route that returns unauthenticated status
+    app.get("/api/auth/user", (req, res) => {
+      res.status(401).json({ message: "Authentication not configured", authenticated: false });
+    });
+    
+    console.log('✅ Basic session setup completed (no authentication)');
+    return;
+  }
+
+  // Verify required environment variables for auth setup
   const requiredEnvVars = ['REPL_ID', 'REPLIT_DOMAINS'];
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
@@ -94,16 +130,26 @@ export async function setupAuth(app: Express) {
     throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
   }
 
-  console.log('✅ Environment variables check passed');
-  console.log('🌍 Replit domains:', process.env.REPLIT_DOMAINS);
-  console.log('🆔 Repl ID:', process.env.REPL_ID);
-  console.log('🔒 Has client secret:', !!process.env.REPLIT_CLIENT_SECRET);
-  console.log('🔑 Has session secret:', !!process.env.SESSION_SECRET);
-
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  try {
+    const issuer = await getIssuer();
+  } catch (error) {
+    console.error('❌ Failed to setup OIDC issuer:', error);
+    if (isProduction) {
+      console.warn('⚠️  Production environment: Continuing without authentication due to OIDC setup failure');
+      // Add a dummy route that returns unauthenticated status
+      app.get("/api/auth/user", (req, res) => {
+        res.status(401).json({ message: "Authentication service unavailable", authenticated: false });
+      });
+      return;
+    } else {
+      throw error; // Re-throw in development
+    }
+  }
 
   const issuer = await getIssuer();
 

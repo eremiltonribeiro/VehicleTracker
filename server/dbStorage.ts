@@ -1,12 +1,11 @@
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm"; // Added 'and' and 'sql' for dynamic queries
 import { PgTransaction } from 'drizzle-orm/pg-core';
-import { NeonHttpProxy } from 'drizzle-orm/neon-http';
 import * as schemaShared from '@shared/schema';
 import { ExtractTablesWithRelations } from 'drizzle-orm';
 
-// Define a more precise transaction type
-type Transaction = PgTransaction<NeonHttpProxy<boolean, boolean>, typeof schemaShared, ExtractTablesWithRelations<typeof schemaShared>>;
+// Define a more precise transaction type using pg adapter
+type Transaction = PgTransaction<any, typeof schemaShared, ExtractTablesWithRelations<typeof schemaShared>>;
 
 import {
   User,
