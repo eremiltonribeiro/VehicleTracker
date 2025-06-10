@@ -1,6 +1,6 @@
 // Service Worker para aplicação offline
-const CACHE_NAME = 'granduvale-offline-v2';
-const STATIC_CACHE_NAME = 'granduvale-static-v2';
+const CACHE_NAME = 'granduvale-offline-v3';
+const STATIC_CACHE_NAME = 'granduvale-static-v3';
 const OFFLINE_URL = '/offline.html';
 
 // URLs estáticas que serão cacheadas para uso offline
@@ -30,6 +30,10 @@ const STATIC_EXTENSIONS = [
 const API_PATHS = [
   '/api/'
 ];
+
+// Controle para evitar cache excessivo
+let lastCacheRequest = '';
+let cacheRequestCount = 0;
 
 // Instalação do service worker
 self.addEventListener('install', event => {
@@ -99,19 +103,20 @@ self.addEventListener('fetch', event => {
       caches.match(event.request)
         .then(cachedResponse => {
           if (cachedResponse) {
-            // Retornar do cache, mas fazer fetch em background para atualizar
+            // Retornar do cache, mas fazer fetch em background para atualizar (stale-while-revalidate)
             fetch(event.request)
               .then(response => {
                 if (response && response.status === 200) {
-                  // Clone BEFORE using the response
                   const responseToCache = response.clone();
                   caches.open(STATIC_CACHE_NAME)
-                    .then(cache => cache.put(event.request, responseToCache));
+                    .then(cache => cache.put(event.request, responseToCache))
+                    .catch(error => {
+                      console.log('[Service Worker] Erro ao atualizar cache:', error);
+                    });
                 }
-                return response;
               })
               .catch(error => {
-                console.log('[Service Worker] Erro ao atualizar cache:', error);
+                console.log('[Service Worker] Erro ao fazer fetch em background:', error);
               });
 
             return cachedResponse;
@@ -124,10 +129,8 @@ self.addEventListener('fetch', event => {
                 return response;
               }
 
-              // Clone the response immediately after fetch
               const responseToCache = response.clone();
-              
-              // Cache the cloned response asynchronously
+
               caches.open(STATIC_CACHE_NAME)
                 .then(cache => {
                   cache.put(event.request, responseToCache);
@@ -147,25 +150,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Para navegação e outros recursos, usar estratégia Network First
+  // Para navegação e outros recursos, usar estratégia Network First com fallback melhorado
   event.respondWith(
     fetch(event.request)
       .then(response => {
         // Se a resposta for válida, armazenar no cache
         if (response && response.status === 200) {
-          // Clonar a resposta para o cache
           const responseToCache = response.clone();
 
           caches.open(CACHE_NAME)
             .then(cache => {
               cache.put(event.request, responseToCache);
+            })
+            .catch(error => {
+              console.log('[Service Worker] Erro ao salvar no cache:', error);
             });
         }
 
         return response;
       })
       .catch(async error => {
-        // Se a rede falhar, tentar do cache
         console.log('[Service Worker] Falha na rede, tentando cache para:', event.request.url);
 
         const cachedResponse = await caches.match(event.request);
@@ -174,10 +178,25 @@ self.addEventListener('fetch', event => {
           return cachedResponse;
         }
 
-        // Para navegação, fornecer página offline
+        // Para navegação, primeiro tentar servir a aplicação principal do cache
         if (event.request.mode === 'navigate') {
+          // Tentar servir a página principal da aplicação primeiro
+          const mainAppResponse = await caches.match('/');
+          if (mainAppResponse) {
+            console.log('[Service Worker] Servindo aplicação principal do cache para navegação offline');
+            return mainAppResponse;
+          }
+
+          // Se não houver cache da app principal, mostrar página offline
           const offlineResponse = await caches.match(OFFLINE_URL);
-          return offlineResponse;
+          if (offlineResponse) {
+            return offlineResponse;
+          }
+
+          return new Response('App não disponível offline', {
+            status: 503,
+            statusText: 'Serviço indisponível'
+          });
         }
 
         return new Response('Recurso não disponível offline', {
@@ -191,9 +210,20 @@ self.addEventListener('fetch', event => {
 // Ouvir mensagens do cliente
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'CACHE_PAGE') {
-    // Recebeu solicitação para cachear uma página específica
     const url = event.data.url || '/';
     const fullUrl = self.location.origin + url;
+
+    // Verificar se já não estamos cacheando a mesma URL repetidamente
+    if (lastCacheRequest === fullUrl) {
+      cacheRequestCount++;
+      if (cacheRequestCount > 3) {
+        console.log('[Service Worker] Limitando cache excessivo para:', url);
+        return;
+      }
+    } else {
+      lastCacheRequest = fullUrl;
+      cacheRequestCount = 1;
+    }
 
     console.log('[Service Worker] Solicitação para cachear página:', fullUrl);
 
@@ -201,12 +231,14 @@ self.addEventListener('message', event => {
     fetch(fullUrl)
       .then(response => {
         if (response && response.status === 200) {
-          // Clone BEFORE caching
           const responseToCache = response.clone();
           caches.open(CACHE_NAME)
             .then(cache => {
               console.log('[Service Worker] Cacheando página:', url);
               cache.put(fullUrl, responseToCache);
+            })
+            .catch(error => {
+              console.error('[Service Worker] Erro ao salvar página no cache:', error);
             });
         }
       })
@@ -260,16 +292,35 @@ self.addEventListener('sync', event => {
   }
 });
 
-// Periodicamente, verificar conexão e tentar sincronizar
+// Verificação periódica reduzida e mais inteligente
+let lastSyncCheck = 0;
+const SYNC_CHECK_INTERVAL = 300000; // 5 minutos
+
 setInterval(() => {
+  const now = Date.now();
+
+  // Só verificar se passou tempo suficiente desde a última verificação
+  if (now - lastSyncCheck < SYNC_CHECK_INTERVAL) {
+    return;
+  }
+
   if (navigator.onLine) {
     console.log('[Service Worker] Verificação periódica de sincronização');
+    lastSyncCheck = now;
+
     self.clients.matchAll().then(clients => {
       if (clients.length > 0) {
-        clients[0].postMessage({
-          type: 'CHECK_SYNC'
-        });
+        // Verificar se algum cliente está ativo antes de enviar mensagem
+        const activeClients = clients.filter(client => 
+          client.visibilityState === 'visible' || client.focused
+        );
+
+        if (activeClients.length > 0) {
+          activeClients[0].postMessage({
+            type: 'CHECK_SYNC'
+          });
+        }
       }
     });
   }
-}, 60000); // Verificar a cada minuto
+}, 60000); // Verificar a cada minuto, mas só executar a cada 5 minutos
