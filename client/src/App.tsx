@@ -1,299 +1,272 @@
-import React, { useEffect, useState } from 'react';
-import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { toast } from "@/hooks/use-toast";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/Home";
-import Settings from "@/pages/SettingsNew";
-import CentralDeCadastros from "@/pages/CentralDeCadastros";
-import Welcome from "@/pages/Welcome";
-import Reports from "@/pages/Reports";
-import Login from "@/pages/Login";
-import UserManagement from "@/pages/UserManagementV2";
-import Checklists from "@/pages/Checklists";
-import NewChecklist from "@/pages/NewChecklist";
-import ChecklistDetails from "@/pages/ChecklistDetails";
-import ChecklistTemplates from "@/pages/ChecklistTemplates";
-import ChecklistSimple from "@/pages/ChecklistSimple";
-import AppConfig from "@/pages/AppConfig";
-import RegistrationForm from "@/components/vehicles/RegistrationForm";
-import { SideNavigation } from "@/components/vehicles/SideNavigation";
-import { syncManager } from './services/syncManager';
-import { useAuth, AuthUser } from './hooks/useAuth';
+import { Switch, Route } from "wouter";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { useLocation } from "wouter";
+import { useEffect, useState } from "react";
 
-// Componente PrivateRoute para proteger rotas
-interface PrivateRouteProps {
-  component: React.ComponentType<any>;
-  path: string;
-  permission?: string;
-  exact?: boolean;
+import Dashboard from "@/pages/Dashboard";
+import VehicleManagement from "@/pages/VehicleManagement";
+import MaintenanceScheduling from "@/pages/MaintenanceScheduling";
+import MaintenanceHistory from "@/pages/MaintenanceHistory";
+import Reports from "@/pages/Reports";
+import UserManagementV2 from "@/pages/UserManagementV2";
+import Login from "@/pages/Login";
+import { SideNavigation } from "@/components/vehicles/SideNavigation";
+import { Toaster } from "@/components/ui/toaster";
+import { useAuth, AuthUser } from "@/hooks/useAuth";
+
+// Criar cliente do React Query com configurações otimizadas
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Não retry em erros 401/403
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          return false;
+        }
+        return failureCount < 2;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000, // 10 minutos
+      refetchOnWindowFocus: false,
+      refetchOnMount: true,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+
+// Componente para loading centralizado
+function LoadingScreen({ message = "Carregando...", subtitle }: { message?: string; subtitle?: string }) {
+  return (
+    <div className="flex justify-center items-center h-screen bg-gray-100">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 font-medium">{message}</p>
+        {subtitle && <p className="text-gray-500 text-sm mt-2">{subtitle}</p>}
+      </div>
+    </div>
+  );
 }
 
-function PrivateRoute({ component: Component, permission, ...rest }: PrivateRouteProps) {
+// Componente para rotas protegidas
+function PrivateRoute({ 
+  children, 
+  permission, 
+  path 
+}: { 
+  children: React.ReactNode; 
+  permission?: string; 
+  path?: string;
+}) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading) {
+      console.log('⏳ PrivateRoute: Aguardando verificação de autenticação...');
+      return;
+    }
 
     if (!isAuthenticated) {
-      if (rest.path && !rest.path.startsWith('/api') && rest.path !== '/login') {
-        console.log(`PrivateRoute: Not authenticated, redirecting to /login. Attempted path: ${rest.path}`);
-      }
+      console.log(`🔒 PrivateRoute: Usuário não autenticado. Rota: ${path || 'unknown'}`);
       setLocation("/login");
+      return;
     }
-  }, [isAuthenticated, isLoading, setLocation, rest.path]);
+
+    console.log(`✅ PrivateRoute: Usuário autenticado para rota: ${path || 'unknown'}`);
+  }, [isAuthenticated, isLoading, setLocation, path]);
 
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen"><p>Loading authentication...</p></div>;
+    return <LoadingScreen message="Verificando autenticação..." />;
   }
 
   if (!isAuthenticated) {
-    return null;
+    return null; // Vai redirecionar
   }
 
+  // Verificar permissões se necessário
   if (permission) {
     const typedUser = user as AuthUser | undefined;
     const userPermissions = typedUser?.role?.permissions;
 
+    console.log(`🔐 Verificando permissão '${permission}' para usuário:`, {
+      hasRole: !!typedUser?.role,
+      permissions: userPermissions,
+      hasPermission: userPermissions?.[permission]
+    });
+
     if (!userPermissions || !userPermissions[permission]) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
-          <h2 className="text-2xl font-bold text-red-600 mb-2">Acesso Negado</h2>
-          <p className="text-gray-600 mb-4">
-            Você não tem permissão para acessar esta página.
-          </p>
-          <Button
-            onClick={() => setLocation("/")}
-            className="bg-blue-700 hover:bg-blue-800"
-          >
-            Voltar para a página inicial
-          </Button>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Acesso Negado</h1>
+            <p className="text-gray-600">Você não tem permissão para acessar esta página.</p>
+            <p className="text-gray-500 text-sm mt-2">Permissão necessária: {permission}</p>
+          </div>
         </div>
       );
     }
   }
 
-  return <Route {...rest} component={Component} />;
+  return <>{children}</>;
 }
 
-function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+// Componente principal do roteador
+function AppRouter() {
+  const { isAuthenticated, isLoading, error } = useAuth();
   const [location, setLocation] = useLocation();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Log para debug
+  // Log detalhado para debug
   useEffect(() => {
-    console.log('Router State:', {
+    console.log('🔍 Router State Update:', {
       isAuthenticated,
       isLoading,
-      location
+      hasError: !!error,
+      location,
+      hasInitialized,
+      timestamp: new Date().toISOString()
     });
-  }, [isAuthenticated, isLoading, location]);
+  }, [isAuthenticated, isLoading, location, error, hasInitialized]);
 
-  // CORREÇÃO PRINCIPAL: Redirecionamento imediato para login quando não autenticado
+  // Marcar como inicializado após primeira verificação
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && location !== '/login') {
-      console.log('🔄 Redirecionando para /login...');
+    if (!isLoading && !hasInitialized) {
+      console.log('🏁 App inicializado');
+      setHasInitialized(true);
+    }
+  }, [isLoading, hasInitialized]);
+
+  // Redirecionamento para login quando não autenticado
+  useEffect(() => {
+    if (!isLoading && hasInitialized && !isAuthenticated && location !== '/login') {
+      console.log('🔄 Redirecionando para /login - usuário não autenticado');
       setLocation('/login');
     }
-  }, [isLoading, isAuthenticated, location, setLocation]);
+  }, [isLoading, isAuthenticated, location, setLocation, hasInitialized]);
 
-  // Mostra loading enquanto verifica autenticação
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
+  // Redirecionamento da página de login quando autenticado
+  useEffect(() => {
+    if (!isLoading && hasInitialized && isAuthenticated && location === '/login') {
+      console.log('🔄 Redirecionando para / - usuário já autenticado');
+      setLocation('/');
+    }
+  }, [isLoading, isAuthenticated, location, setLocation, hasInitialized]);
+
+  // Mostrar loading durante verificação inicial de autenticação
+  if (isLoading || !hasInitialized) {
+    return <LoadingScreen message="Inicializando aplicação..." subtitle="Verificando autenticação" />;
   }
 
-  // Se não está autenticado, mostra apenas as rotas públicas
+  // Se não autenticado, mostrar apenas a página de login
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen">
-        <Switch>
-          <Route path="/login" component={Login} />
-          <Route path="/:rest*" component={Login} /> {/* Qualquer outra rota vai para login */}
-        </Switch>
-      </div>
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route>
+          <Login />
+        </Route>
+      </Switch>
     );
   }
 
-  // Se está autenticado, mostra a aplicação principal
+  // Se autenticado, mostrar a aplicação completa
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="flex h-screen bg-gray-100">
       <SideNavigation />
-      <main className="flex-grow lg:ml-64 px-4 py-6 pb-12">
-        <div className="max-w-6xl mx-auto">
-          <Switch>
-            <PrivateRoute path="/" component={Welcome} />
-            <PrivateRoute path="/registros/edit/:id" component={RegistrationForm} permission="registrations" />
-            <PrivateRoute path="/registros/dashboard" component={Home} permission="dashboard" />
-            <PrivateRoute path="/registros/history" component={Home} permission="history" />
-            <PrivateRoute path="/registros" component={Home} permission="registrations" />
-            <PrivateRoute path="/relatorios" component={Reports} permission="reports" />
-            <PrivateRoute path="/configuracoes" component={Settings} permission="settings" />
-            <PrivateRoute path="/cadastros" component={CentralDeCadastros} permission="settings" />
-            <PrivateRoute path="/configuracoes/app" component={AppConfig} permission="settings" />
-            <PrivateRoute path="/usuarios" component={UserManagement} permission="userManagement" />
-            <PrivateRoute path="/checklists" component={ChecklistSimple} permission="checklists" />
-            <PrivateRoute path="/checklists/new" component={NewChecklist} permission="checklists" />
-            <PrivateRoute path="/checklists/edit/:id" component={NewChecklist} permission="checklists" />
-            <PrivateRoute path="/checklists/:id" component={ChecklistDetails} permission="checklists" />
-            <PrivateRoute path="/checklist-templates" component={ChecklistTemplates} permission="settings" />
-            <Route component={NotFound} />
-          </Switch>
-        </div>
+      <main className="flex-1 overflow-auto">
+        <Switch>
+          <Route path="/login">
+            <div className="flex justify-center items-center h-full">
+              <div className="text-center">
+                <p className="text-gray-600">Você já está logado. Redirecionando...</p>
+              </div>
+            </div>
+          </Route>
+
+          <Route path="/">
+            <PrivateRoute path="/">
+              <Dashboard />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/vehicles">
+            <PrivateRoute path="/vehicles">
+              <VehicleManagement />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/maintenance">
+            <PrivateRoute path="/maintenance">
+              <MaintenanceScheduling />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/maintenance-history">
+            <PrivateRoute path="/maintenance-history">
+              <MaintenanceHistory />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/reports">
+            <PrivateRoute path="/reports">
+              <Reports />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/users">
+            <PrivateRoute path="/users" permission="userManagement">
+              <UserManagementV2 />
+            </PrivateRoute>
+          </Route>
+
+          <Route>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">Página não encontrada</h1>
+                <p className="text-gray-600">A página que você procura não existe.</p>
+                <button 
+                  onClick={() => setLocation('/')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Voltar ao Dashboard
+                </button>
+              </div>
+            </div>
+          </Route>
+        </Switch>
       </main>
     </div>
   );
 }
 
+// Componente principal da aplicação
 function App() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [pendingSync, setPendingSync] = useState(0);
-
   useEffect(() => {
-    // Inicializa o gerenciador de sincronização
-    syncManager.start();
+    console.log('🚀 Iniciando aplicação...');
+    console.log('📍 URL:', window.location.href);
+    console.log('🌐 Online:', navigator.onLine);
 
-    // Monitora mudanças no status online/offline
-    const unsubscribe = syncManager.addConnectionListener((online) => {
-      setIsOnline(online);
-      console.log(`Status da conexão alterado: ${online ? 'online' : 'offline'}`);
-    });
-
-    // Função para verificar operações pendentes
-    const checkPendingOps = async () => {
-      if (window.indexedDB) {
-        try {
-          const db = await window.indexedDB.open('granduvale_offline_db', 1);
-          db.onsuccess = () => {
-            const transaction = db.result.transaction(['pendingOperations'], 'readonly');
-            const store = transaction.objectStore('pendingOperations');
-            const countRequest = store.count();
-
-            countRequest.onsuccess = () => {
-              setPendingSync(countRequest.result);
-            };
-          };
-        } catch (err) {
-          console.error('Erro ao verificar operações pendentes:', err);
-        }
-      }
-    };
-
-    // Verificar operações pendentes inicialmente e a cada 30 segundos
-    checkPendingOps();
-    const intervalId = setInterval(checkPendingOps, 30000);
-
-    // Adicionar listener para mensagens do service worker
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data && (event.data.type === 'SYNC_COMPLETED' || event.data.type === 'SYNC_SUCCESS')) {
-          checkPendingOps();
-        }
-      });
+    // Verificar se há elementos necessários
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      console.log('✅ Elemento root encontrado');
+    } else {
+      console.error('❌ Elemento root não encontrado!');
     }
 
-    // Limpa listeners e intervalos quando o componente é desmontado
-    return () => {
-      unsubscribe();
-      syncManager.stop();
-      clearInterval(intervalId);
-    };
+    console.log('✅ React inicializado com sucesso');
   }, []);
-
-  useEffect(() => {
-    // Configurar listener para mensagens do Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data.type === 'START_SYNC') {
-          // Iniciar sincronização quando solicitado pelo service worker
-          syncManager.syncPendingOperations();
-        }
-      });
-    }
-
-    // Verificar dados pendentes na inicialização
-    syncManager.checkPendingOperations();
-
-    // Registrar ouvintes para mudanças de status de conexão
-    const handleOnlineStatus = (online: boolean) => {
-      setIsOnline(online);
-
-      // Notificar o usuário sobre o status da conexão
-      if (online) {
-        console.log("Application came online. Refetching user authentication status.");
-        queryClient.refetchQueries({ queryKey: ['/api/auth/user'] })
-          .then(() => console.log("User authentication status refetched."))
-          .catch(err => console.error("Error refetching user authentication status:", err));
-
-        toast({
-          title: "Você está online",
-          description: "Sincronizando e verificando status da sessão.",
-          duration: 3000,
-        });
-      } else {
-        toast({
-          title: "Você está offline",
-          description: "Seus dados serão salvos localmente e sincronizados quando a conexão for restaurada.",
-          duration: 5000,
-          variant: "destructive"
-        });
-      }
-    };
-
-    // Registrar listener para notificações de sincronização
-    const handleSyncStatus = (hasPendingOperations: boolean) => {
-      if (hasPendingOperations && isOnline) {
-        toast({
-          title: "Sincronizando dados",
-          description: "Estamos enviando suas alterações para o servidor...",
-          duration: 3000,
-        });
-      }
-    };
-
-    // Adicionar listeners ao syncManager
-    syncManager.addOnlineStatusListener(handleOnlineStatus);
-    syncManager.addSyncListener(handleSyncStatus);
-
-    // Definir status inicial
-    setIsOnline(syncManager.getOnlineStatus());
-
-    // Limpar event listeners ao desmontar o componente
-    return () => {
-      syncManager.removeOnlineStatusListener(handleOnlineStatus);
-      syncManager.removeSyncListener(handleSyncStatus);
-    };
-  }, [isOnline]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        {!isOnline && (
-          <div className="fixed top-0 left-0 right-0 bg-red-500 text-white p-2 text-center z-50">
-            Você está offline. Os dados serão sincronizados quando a conexão for restabelecida.
-          </div>
-        )}
-        {isOnline && pendingSync > 0 && (
-          <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white p-2 text-center z-50">
-            Sincronizando {pendingSync} operações pendentes...
-          </div>
-        )}
-        <div className={`${(!isOnline || (isOnline && pendingSync > 0)) ? 'pt-10' : ''}`}>
-          <Router />
-        </div>
-      </TooltipProvider>
+      <AppRouter />
+      <Toaster />
+      {process.env.NODE_ENV === 'development' && (
+        <ReactQueryDevtools initialIsOpen={false} />
+      )}
     </QueryClientProvider>
   );
 }

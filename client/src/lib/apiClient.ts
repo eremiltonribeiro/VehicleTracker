@@ -1,86 +1,153 @@
-// client/src/lib/apiClient.ts
-import axios, { AxiosError } from 'axios';
-import { toast } from '@/hooks/use-toast';
+import axios from "axios";
+import { toast } from "@/hooks/use-toast";
 
-const handleUnauthorized = (reasonMessage?: string, errorCode?: string) => {
-  // Clear any potentially stale auth error code stored on window
-  if ((window as any).__lastAuthErrorCode) {
-    delete (window as any).__lastAuthErrorCode;
-  }
-
-  if (window.location.pathname !== '/login') {
-    let redirectUrl = '/login?reason=' + encodeURIComponent(reasonMessage || 'session_expired');
-    if (errorCode) {
-      redirectUrl += `&code=${encodeURIComponent(errorCode)}`;
-    }
-    window.location.href = redirectUrl;
-  }
-};
-
-const apiClient = axios.create({
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest',
-  },
+// Criar instância do axios
+export const apiClient = axios.create({
+  baseURL: "/",
+  timeout: 30000,
   withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
+// Flag para evitar múltiplos redirecionamentos
+let isRedirecting = false;
+let redirectTimer: NodeJS.Timeout | null = null;
+
+// Função para lidar com erro 401
+const handleUnauthorized = (message?: string, errorCode?: string) => {
+  if (isRedirecting) {
+    console.log('⏸️ Redirecionamento já em andamento, ignorando...');
+    return;
+  }
+
+  isRedirecting = true;
+  console.log('🚪 Iniciando redirecionamento para login devido a 401');
+
+  // Limpar qualquer estado de autenticação local se necessário
+  try {
+    localStorage.removeItem('auth-state');
+    sessionStorage.clear();
+  } catch (e) {
+    console.warn('Warning: Could not clear storage:', e);
+  }
+
+  // Cancelar timer anterior se existir
+  if (redirectTimer) {
+    clearTimeout(redirectTimer);
+  }
+
+  // Redirecionar para o endpoint de login do servidor
+  redirectTimer = setTimeout(() => {
+    console.log('🔄 Executando redirecionamento para /api/login');
+    window.location.href = '/api/login';
+  }, 500);
+};
+
+// Interceptor de resposta para lidar com erros
 apiClient.interceptors.response.use(
   (response) => {
+    // Reset flag em respostas bem-sucedidas
+    if (response.status === 200 && response.config.url?.includes('/api/auth/user')) {
+      isRedirecting = false;
+      if (redirectTimer) {
+        clearTimeout(redirectTimer);
+        redirectTimer = null;
+      }
+    }
     return response;
   },
-  (error: AxiosError<any>) => {
-    if (error.response) {
-      const responseData = error.response.data;
-      const serverMessage = responseData?.message || 'Ocorreu um erro desconhecido.';
-      const errorCode = responseData?.code;
+  (error) => {
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || '';
+    const responseData = error.response?.data;
+    const serverMessage = responseData?.message || 'Ocorreu um erro desconhecido.';
+    const errorCode = responseData?.code;
 
-      if (error.response.status === 401) {
-        const requestUrl = error.config?.url || '';
+    console.log(`❌ API Error - Status: ${status}, URL: ${requestUrl}`, {
+      message: serverMessage,
+      errorCode,
+      isRedirecting
+    });
 
-        if (requestUrl.endsWith('/api/auth/user') || requestUrl.includes('/api/login')) {
-          console.warn(`Auth endpoint ${requestUrl} returned 401. This should be handled by useAuth or login flow.`);
-          if (requestUrl.endsWith('/api/auth/user') && errorCode) {
-            (window as any).__lastAuthErrorCode = errorCode;
-          }
-        } else {
-          console.error('Received 401 Unauthorized for general API request. Logging out.');
+    if (status === 401) {
+      if (requestUrl.endsWith('/api/auth/user')) {
+        console.warn(`🔐 Auth endpoint returned 401 - user not authenticated`);
+        // Para o endpoint de auth, não fazemos redirecionamento automático
+        // Deixamos o useAuth lidar com isso
+        if (errorCode) {
+          (window as any).__lastAuthErrorCode = errorCode;
+        }
+      } else if (requestUrl.includes('/api/login') || requestUrl.includes('/api/callback')) {
+        console.warn(`🔐 Login/callback endpoint returned 401`);
+        // Endpoints de login/callback podem retornar 401 durante o fluxo normal
+      } else {
+        // Outros endpoints recebendo 401 = sessão expirada
+        console.error('🚨 401 Unauthorized for general API request. Session expired.');
+
+        if (!isRedirecting) {
           toast({
             title: "Sessão Expirada",
-            description: serverMessage || "Sua sessão expirou ou é inválida. Você será redirecionado para o login.",
+            description: serverMessage || "Sua sessão expirou. Você será redirecionado para o login.",
             variant: "destructive",
-            duration: 4000,
+            duration: 3000,
           });
+
           setTimeout(() => {
             handleUnauthorized(serverMessage, errorCode);
-          }, 3000);
+          }, 1000);
         }
-      } else if (error.response.status === 403) {
-        console.error('Received 403 Forbidden. Access denied.');
+      }
+    } else if (status >= 500) {
+      // Erros de servidor
+      console.error(`🔥 Server Error ${status}:`, serverMessage);
+      toast({
+        title: "Erro do Servidor",
+        description: "Ocorreu um erro interno. Tente novamente em alguns instantes.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } else if (status >= 400) {
+      // Outros erros de cliente
+      console.warn(`⚠️ Client Error ${status}:`, serverMessage);
+      if (status !== 401) { // Já tratamos 401 acima
         toast({
-          title: "Acesso Negado",
-          description: serverMessage || "Você não tem permissão para realizar esta ação.",
-          variant: "destructive"
-        });
-      } else if (error.response.status >= 500) {
-        console.error('Received 5xx server error.');
-        toast({
-          title: "Erro no Servidor",
-          description: serverMessage || "Ocorreu um erro inesperado no servidor. Por favor, tente novamente mais tarde.",
-          variant: "destructive"
-        });
-      } else if (responseData && typeof responseData === 'object' && 'message' in responseData) {
-        // Fallback for other client errors (4xx) that have a message structure
-        console.warn(`Received ${error.response.status} error: ${serverMessage}`);
-        toast({
-            title: `Erro ${error.response.status}`,
-            description: serverMessage,
-            variant: "destructive"
+          title: "Erro",
+          description: serverMessage,
+          variant: "destructive",
+          duration: 4000,
         });
       }
     }
+
     return Promise.reject(error);
   }
 );
 
-export { apiClient };
+// Interceptor de requisição para logs e reset de flags
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+
+    // Reset flag de redirecionamento em novas requisições (exceto auth)
+    if (config.url && !config.url.includes('/api/auth') && !config.url.includes('/api/login')) {
+      if (isRedirecting) {
+        console.log('🔄 Resetting redirect flag for new non-auth request');
+        isRedirecting = false;
+        if (redirectTimer) {
+          clearTimeout(redirectTimer);
+          redirectTimer = null;
+        }
+      }
+    }
+
+    return config;
+  },
+  (error) => {
+    console.error('❌ Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+export default apiClient;
