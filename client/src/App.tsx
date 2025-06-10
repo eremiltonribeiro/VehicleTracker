@@ -86,10 +86,61 @@ function Router() {
   const [location] = useLocation();
   const isLoginPage = location === "/login";
 
-  // Log para debug
+  // Log para debug detalhado
   useEffect(() => {
-    console.log('Router Debug:', { isAuthenticated, isLoading, location });
-  }, [isAuthenticated, isLoading, location]);
+    console.log('Router Debug:', {
+      isAuthenticated,
+      isLoading,
+      location,
+      isLoginPage,
+      authUser: (window as any).authUser // Para debug apenas
+    });
+
+    // Log adicional para entender o fluxo
+    if (isLoading && !isLoginPage) {
+      console.log('🔄 Mostrando tela de loading...');
+    } else if (isLoginPage || (!isAuthenticated && !isLoading)) {
+      console.log('🔐 Mostrando tela de login...');
+    } else if (isAuthenticated) {
+      console.log('✅ Usuário autenticado, mostrando app principal');
+    }
+  }, [isAuthenticated, isLoading, location, isLoginPage]);
+
+  // COMPONENTE DE DEBUG TEMPORÁRIO
+  // Se nada está sendo renderizado após 3 segundos, mostrar estado
+  const [showDebug, setShowDebug] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const root = document.getElementById('root');
+      if (root && root.children.length === 0) {
+        setShowDebug(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showDebug) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'monospace' }}>
+        <h2>🔍 Debug Mode</h2>
+        <pre style={{ background: '#f0f0f0', padding: '10px' }}>
+          {JSON.stringify({
+            isAuthenticated,
+            isLoading,
+            location,
+            isLoginPage,
+            timestamp: new Date().toISOString()
+          }, null, 2)}
+        </pre>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{ marginTop: '10px', padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px' }}
+        >
+          Recarregar
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading && !isLoginPage) {
     return <div className="flex justify-center items-center h-screen"><p>Loading application...</p></div>;
@@ -141,6 +192,39 @@ function Router() {
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [pendingSync, setPendingSync] = useState(0);
+  const [appError, setAppError] = useState<Error | null>(null);
+
+  // Error boundary simples
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Erro capturado no App:', event.error);
+      setAppError(event.error);
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  // Se houver erro, mostrar tela de erro
+  if (appError) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+        <h1 style={{ color: '#dc2626' }}>Erro na Aplicação</h1>
+        <pre style={{ background: '#fee', padding: '10px', overflow: 'auto' }}>
+          {appError.stack || appError.message}
+        </pre>
+        <button 
+          onClick={() => {
+            setAppError(null);
+            window.location.reload();
+          }}
+          style={{ marginTop: '10px', padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px' }}
+        >
+          Recarregar
+        </button>
+      </div>
+    );
+  }
 
   useEffect(() => {
     // Inicializa o gerenciador de sincronização
