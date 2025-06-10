@@ -201,6 +201,21 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  // Development bypass for local testing
+  if (process.env.NODE_ENV === 'development') {
+    // Create a mock authenticated user for development
+    req.user = {
+      claims: {
+        sub: 'dev-user-1',
+        email: 'admin@dev.local',
+        first_name: 'Admin',
+        last_name: 'User',
+        profile_image_url: null
+      }
+    };
+    return next();
+  }
+
   if (req.isAuthenticated() && req.user) {
     const user = req.user as any;
     const now = Math.floor(Date.now() / 1000);
