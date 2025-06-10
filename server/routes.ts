@@ -257,22 +257,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userToUpdate) {
          return res.status(404).json({ message: "Usuário não encontrado." });
       }
-      if (!userToUpdate.passwordHash && targetUserId === currentUserId) {
+      // Authentication disabled - allow all password updates
+      if (!userToUpdate.passwordHash && currentPassword) {
          return res.status(400).json({ message: "Este usuário não está configurado para login com senha local." });
       }
-      if (targetUserId === currentUserId) {
-        if (!currentPassword) {
-          return res.status(400).json({ message: "Senha atual é obrigatória." });
-        }
-        if (!userToUpdate.passwordHash) {
-             return res.status(400).json({ message: "Usuário não possui senha configurada para verificação." });
-        }
+      if (currentPassword && userToUpdate.passwordHash) {
         const isMatch = await bcrypt.compare(currentPassword, userToUpdate.passwordHash);
         if (!isMatch) {
           return res.status(401).json({ message: "Senha atual incorreta." });
         }
-      } else if (!currentUserRole || currentUserRole.name !== 'admin') {
-        return res.status(403).json({ message: "Não autorizado a alterar a senha deste usuário." });
       }
       const newHashedPassword = await bcrypt.hash(newPassword, 10);
       await storage.updateUserPassword(targetUserId, newHashedPassword);
