@@ -3,8 +3,25 @@ import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
-import connectPgSimple from "connect-pg-simple";
+import MemoryStore from "memorystore";
 import { storage } from "./storage";
+
+// Extend Session interface to include returnTo
+declare module 'express-session' {
+  interface SessionData {
+    returnTo?: string;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      session: session.Session & Partial<session.SessionData> & {
+        returnTo?: string;
+      };
+    }
+  }
+}
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Variável de ambiente REPLIT_DOMAINS não fornecida");
@@ -33,12 +50,9 @@ const getOidcClient = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 semana
-  const PgStore = connectPgSimple(session);
-  const sessionStore = new PgStore({
-    conString: process.env.DATABASE_URL,
-    createTableIfMissing: true,
-    ttl: sessionTtl,
-    tableName: "sessions",
+  const MemStore = MemoryStore(session);
+  const sessionStore = new MemStore({
+    checkPeriod: sessionTtl, // prune expired entries every 7 days
   });
   return session({
     secret: process.env.SESSION_SECRET || "granduvale-secret-key-for-development",
