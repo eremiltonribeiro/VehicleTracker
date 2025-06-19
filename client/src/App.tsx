@@ -53,6 +53,16 @@ function HomeWithParams({ mode }: { mode: "edit" | "view" }) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0] as string;
+        const response = await fetch(url, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      },
       retry: (failureCount, error: any) => {
         // Não retry em erros 401/403
         if (error?.response?.status === 401 || error?.response?.status === 403) {
