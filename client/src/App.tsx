@@ -12,7 +12,10 @@ const ReactQueryDevtools = lazy(() =>
     : Promise.resolve({ default: () => null })
 );
 
+import Portal from "@/pages/Portal";
 import Home from "@/pages/Home";
+import VehicleDetail from "@/pages/VehicleDetail";
+import DriverDetail from "@/pages/DriverDetail";
 import Checklists from "@/pages/Checklists";
 import SimpleChecklists from "@/pages/SimpleChecklists";
 import Reports from "@/pages/Reports";
@@ -153,7 +156,7 @@ function AppRouter() {
 
           <Route path="/">
             <PrivateRoute path="/">
-              <Home />
+              <Portal />
             </PrivateRoute>
           </Route>
           
@@ -191,6 +194,32 @@ function AppRouter() {
           <Route path="/registros/dashboard">
             <PrivateRoute path="/registros/dashboard">
               <Home defaultView="dashboard" />
+            </PrivateRoute>
+          </Route>
+          
+          {/* New routes for portal navigation */}
+          <Route path="/historico">
+            <PrivateRoute path="/historico">
+              <Home defaultView="history" />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/dashboard">
+            <PrivateRoute path="/dashboard">
+              <Home defaultView="dashboard" />
+            </PrivateRoute>
+          </Route>
+          
+          {/* Vehicle and Driver Detail Pages */}
+          <Route path="/vehicles/:id">
+            <PrivateRoute path="/vehicles/:id">
+              <VehicleDetail />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/drivers/:id">
+            <PrivateRoute path="/drivers/:id">
+              <DriverDetail />
             </PrivateRoute>
           </Route>
 

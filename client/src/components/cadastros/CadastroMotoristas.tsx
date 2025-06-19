@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, UserCircle, Plus, Edit, Trash } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, UserCircle, Plus, Edit, Trash, Eye, Search, Phone, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Driver, insertDriverSchema } from "@shared/schema"; // Import Zod schema
-import { ZodIssue } from "zod"; // Import ZodIssue for error formatting
+import { Driver, insertDriverSchema } from "@shared/schema";
+import { ZodIssue } from "zod";
 // import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
 
 export function CadastroMotoristas() {
@@ -16,7 +18,8 @@ export function CadastroMotoristas() {
   const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentDriver, setCurrentDriver] = useState<Driver | null>(null);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // State for Zod errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); 
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     license: "",
@@ -298,10 +301,25 @@ export function CadastroMotoristas() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Motoristas Cadastrados</CardTitle>
-          <CardDescription>
-            {drivers.length} motorista(s) registrado(s) no sistema.
-          </CardDescription>
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div>
+              <CardTitle>Motoristas Cadastrados</CardTitle>
+              <CardDescription>
+                {drivers.length} motorista(s) registrado(s) no sistema.
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar motoristas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 w-[200px]"
+                />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading && drivers.length === 0 && (
@@ -322,31 +340,67 @@ export function CadastroMotoristas() {
                     <TableHead>Nome</TableHead>
                     <TableHead>CNH</TableHead>
                     <TableHead>Telefone</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {drivers.map((driver) => (
-                    <TableRow key={driver.id}>
+                  {drivers
+                    .filter(driver => 
+                      driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      driver.license.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      driver.phone.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((driver) => (
+                    <TableRow key={driver.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
-                        <div className="flex items-center">
+                        <div className="flex items-center cursor-pointer">
                           {driver.imageUrl ? (
-                            <img src={driver.imageUrl} alt={driver.name} className="h-8 w-8 mr-2 rounded-full object-cover" />
+                            <img src={driver.imageUrl} alt={driver.name} className="h-10 w-10 mr-3 rounded-full object-cover border" />
                           ) : (
-                            <UserCircle className="h-6 w-6 mr-2 text-muted-foreground" />
+                            <div className="h-10 w-10 mr-3 rounded-full border bg-muted flex items-center justify-center">
+                              <UserCircle className="h-6 w-6 text-muted-foreground" />
+                            </div>
                           )}
-                          {driver.name}
+                          <div>
+                            <div className="font-medium">{driver.name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {driver.phone}
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>{driver.license || "-"}</TableCell>
-                      <TableCell>{driver.phone || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <Badge variant="outline" className="font-mono">
+                            {driver.license}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                          {driver.phone}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">Ativo</Badge>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Link href={`/drivers/${driver.id}`}>
+                            <Button variant="ghost" size="sm" title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(driver)}
                             disabled={deleteDriverMutation.isPending}
+                            title="Editar"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -356,6 +410,7 @@ export function CadastroMotoristas() {
                             className="text-red-500 hover:text-red-700"
                             onClick={() => handleDelete(driver.id)}
                             disabled={deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id}
+                            title="Excluir"
                           >
                             {deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />

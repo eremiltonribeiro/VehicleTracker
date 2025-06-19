@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Car, Plus, Edit, Trash } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Car, Plus, Edit, Trash, Eye, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Vehicle, insertVehicleSchema } from "@shared/schema"; // Import Zod schema
-import { ZodIssue } from "zod"; // Import ZodIssue for error formatting
+import { Vehicle, insertVehicleSchema } from "@shared/schema";
+import { ZodIssue } from "zod";
 // import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
 
 export function CadastroVeiculos() {
@@ -16,7 +18,8 @@ export function CadastroVeiculos() {
   const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // State for Zod errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); 
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     plate: "",
@@ -327,10 +330,25 @@ export function CadastroVeiculos() {
       
       <Card>
         <CardHeader>
-          <CardTitle>Veículos Cadastrados</CardTitle>
-          <CardDescription>
-            {vehicles.length} veículo(s) registrado(s) no sistema.
-          </CardDescription>
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div>
+              <CardTitle>Veículos Cadastrados</CardTitle>
+              <CardDescription>
+                {vehicles.length} veículo(s) registrado(s) no sistema.
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar veículos..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 w-[200px]"
+                />
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading && vehicles.length === 0 && ( // Show loader only if loading and no vehicles yet
@@ -352,32 +370,57 @@ export function CadastroVeiculos() {
                     <TableHead>Placa</TableHead>
                     <TableHead>Modelo</TableHead>
                     <TableHead>Ano</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
+                  {vehicles
+                    .filter(vehicle => 
+                      vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (vehicle.model && vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()))
+                    )
+                    .map((vehicle) => (
+                    <TableRow key={vehicle.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
-                        <div className="flex items-center">
+                        <div className="flex items-center cursor-pointer">
                           {vehicle.imageUrl ? (
-                            <img src={vehicle.imageUrl} alt={vehicle.name} className="h-8 w-8 mr-2 rounded-sm object-cover" />
+                            <img src={vehicle.imageUrl} alt={vehicle.name} className="h-10 w-10 mr-3 rounded-lg object-cover border" />
                           ) : (
-                            <Car className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <div className="h-10 w-10 mr-3 rounded-lg border bg-muted flex items-center justify-center">
+                              <Car className="h-5 w-5 text-muted-foreground" />
+                            </div>
                           )}
-                          {vehicle.name}
+                          <div>
+                            <div className="font-medium">{vehicle.name}</div>
+                            <div className="text-sm text-muted-foreground">{vehicle.plate}</div>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell>{vehicle.plate}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="font-mono">
+                          {vehicle.plate}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{vehicle.model || "-"}</TableCell>
                       <TableCell>{vehicle.year || "-"}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">Ativo</Badge>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Link href={`/vehicles/${vehicle.id}`}>
+                            <Button variant="ghost" size="sm" title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(vehicle)}
                             disabled={deleteVehicleMutation.isPending}
+                            title="Editar"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -387,6 +430,7 @@ export function CadastroVeiculos() {
                             className="text-red-500 hover:text-red-700"
                             onClick={() => handleDelete(vehicle.id)}
                             disabled={deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id}
+                            title="Excluir"
                           >
                             {deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />
