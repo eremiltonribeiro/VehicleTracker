@@ -462,7 +462,8 @@ export function DashboardWithFilters() {
     }));
 
   // Componente de filtros avançados
-  const AdvancedFilters = () => (
+  function AdvancedFilters() {
+    return (
     <Collapsible 
       open={showFilters} 
       onOpenChange={setShowFilters}
@@ -519,7 +520,12 @@ export function DashboardWithFilters() {
                     <CalendarComponent
                       mode="range"
                       selected={dateRange}
-                      onSelect={setDateRange}
+                      onSelect={(range) => {
+                        setDateRange({
+                          from: range?.from,
+                          to: range?.to
+                        });
+                      }}
                       locale={pt}
                       initialFocus
                     />
@@ -647,7 +653,8 @@ export function DashboardWithFilters() {
         </div>
       </CollapsibleContent>
     </Collapsible>
-  );
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -988,7 +995,7 @@ export function DashboardWithFilters() {
                           km: totalKm,
                           abastecimentos: fuelRegs.length
                         };
-                      }).filter(d => d.consumo > 0)}
+                      }).filter((d: any) => d.consumo > 0)}
                     >
                       <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                       <YAxis label={{ value: 'L/100km', angle: -90, position: 'insideLeft' }} />
