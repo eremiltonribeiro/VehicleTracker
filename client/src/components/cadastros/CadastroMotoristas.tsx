@@ -92,6 +92,9 @@ export function CadastroMotoristas() {
           : "Motorista atualizado com sucesso.",
       });
       resetForm();
+      
+      // Disparar evento para atualizar outras telas que dependem dos dados de motoristas
+      window.dispatchEvent(new CustomEvent("driver-updated"));
     },
     onError: (error) => {
       toast({
@@ -116,6 +119,9 @@ export function CadastroMotoristas() {
         title: "Sucesso!",
         description: "Motorista excluído com sucesso.",
       });
+      
+      // Disparar evento para atualizar outras telas que dependem dos dados de motoristas
+      window.dispatchEvent(new CustomEvent("driver-updated"));
     },
     onError: (error) => {
       toast({

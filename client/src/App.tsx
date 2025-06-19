@@ -14,7 +14,13 @@ const ReactQueryDevtools = lazy(() =>
 
 import Home from "@/pages/Home";
 import Checklists from "@/pages/Checklists";
+import SimpleChecklists from "@/pages/SimpleChecklists";
 import Reports from "@/pages/Reports";
+import SimpleReports from "@/pages/SimpleReports";
+import SimpleCadastros from "@/pages/SimpleCadastros";
+import Cadastros from "@/pages/Cadastros";
+import SimpleConfiguracoes from "@/pages/SimpleConfiguracoes";
+import SimpleUsuarios from "@/pages/SimpleUsuarios";
 import UserManagementV2 from "@/pages/UserManagementV2";
 import Login from "@/pages/Login";
 import CentralDeCadastros from "@/pages/CentralDeCadastros";
@@ -28,9 +34,20 @@ import ConfiguracoesSimples from "@/pages/ConfiguracoesSimples";
 import NovaConfiguracao from "@/pages/NovaConfiguracao";
 import AppConfig from "@/pages/AppConfig";
 import Welcome from "@/pages/Welcome";
+import Debug from "@/pages/Debug";
 import { SideNavigation } from "@/components/vehicles/SideNavigation";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth, AuthUser } from "@/hooks/useAuth";
+
+// Componente wrapper para extrair parâmetros da URL
+function HomeWithParams({ mode }: { mode: "edit" | "view" }) {
+  const [location] = useLocation();
+  const pathParts = location.split('/');
+  const id = pathParts[3] || undefined; // /registros/edit/ID ou /registros/view/ID
+  const type = pathParts[4] || undefined; // /registros/edit/ID/TYPE
+
+  return <Home mode={mode} editId={id} editType={type} />;
+}
 
 // Criar cliente do React Query com configurações otimizadas
 const queryClient = new QueryClient({
@@ -129,34 +146,86 @@ function AppRouter() {
               <Home />
             </PrivateRoute>
           </Route>
-
-          <Route path="/checklists">
-            <PrivateRoute path="/checklists">
-              <Checklists />
+          
+          {/* Rotas de registros */}
+          <Route path="/registros">
+            <PrivateRoute path="/registros">
+              <Home />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/edit/:id">
+            <PrivateRoute path="/registros/edit/:id">
+              <HomeWithParams mode="edit" />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/edit/:id/:type">
+            <PrivateRoute path="/registros/edit/:id/:type">
+              <HomeWithParams mode="edit" />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/view/:id">
+            <PrivateRoute path="/registros/view/:id">
+              <HomeWithParams mode="view" />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/view/:id/:type">
+            <PrivateRoute path="/registros/view/:id/:type">
+              <HomeWithParams mode="view" />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/history">
+            <PrivateRoute path="/registros/history">
+              <Home defaultView="history" />
+            </PrivateRoute>
+          </Route>
+          <Route path="/registros/dashboard">
+            <PrivateRoute path="/registros/dashboard">
+              <Home defaultView="dashboard" />
             </PrivateRoute>
           </Route>
 
+          <Route path="/checklists/templates">
+            <PrivateRoute path="/checklists/templates" permission="admin">
+              <ChecklistTemplates />
+            </PrivateRoute>
+          </Route>
+
+          <Route path="/checklists" component={Checklists} />
+          <Route path="/checklists/:rest*" component={Checklists} />
+
           <Route path="/reports">
             <PrivateRoute path="/reports">
-              <Reports />
+              <SimpleReports />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/relatorios">
+            <PrivateRoute path="/relatorios">
+              <SimpleReports />
             </PrivateRoute>
           </Route>
 
           <Route path="/users">
             <PrivateRoute path="/users" permission="userManagement">
-              <UserManagementV2 />
+              <SimpleUsuarios />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/usuarios">
+            <PrivateRoute path="/usuarios" permission="userManagement">
+              <SimpleUsuarios />
             </PrivateRoute>
           </Route>
 
           <Route path="/cadastros">
             <PrivateRoute path="/cadastros">
-              <CentralDeCadastros />
+              <Cadastros />
             </PrivateRoute>
           </Route>
 
           <Route path="/configuracoes">
             <PrivateRoute path="/configuracoes">
-              <Settings />
+              <SimpleConfiguracoes />
             </PrivateRoute>
           </Route>
 
@@ -184,12 +253,6 @@ function AppRouter() {
             </PrivateRoute>
           </Route>
 
-          <Route path="/checklist-templates">
-            <PrivateRoute path="/checklist-templates">
-              <ChecklistTemplates />
-            </PrivateRoute>
-          </Route>
-
           <Route path="/new-checklist">
             <PrivateRoute path="/new-checklist">
               <NewChecklist />
@@ -214,11 +277,16 @@ function AppRouter() {
             </PrivateRoute>
           </Route>
 
+          <Route path="/debug">
+            <Debug />
+          </Route>
+
           <Route>
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-gray-800 mb-4">Página não encontrada</h1>
-                <p className="text-gray-600">A página que você procura não existe.</p>
+                <p className="text-gray-600 mb-4">A página que você procura não existe.</p>
+                <p className="text-sm text-gray-500 mb-4">URL atual: {location}</p>
                 <button 
                   onClick={() => setLocation('/')}
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

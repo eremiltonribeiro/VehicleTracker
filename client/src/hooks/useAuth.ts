@@ -26,7 +26,27 @@ export function useAuth() {
   console.log('🔧 Auth disabled - bypassing authentication requirements');
   
   return {
-    user: undefined,
+    user: {
+      id: '1',
+      email: 'user@example.com',
+      firstName: 'Test',
+      lastName: 'User',
+      profileImageUrl: null,
+      role: {
+        name: 'admin',
+        permissions: {
+          dashboard: true,
+          registrations: true,
+          history: true,
+          reports: true,
+          checklists: true,
+          settings: true,
+          userManagement: true,
+          vehicleManagement: true,
+          driverManagement: true,
+        },
+      },
+    },
     isLoading: false,
     isAuthenticated: true, // Always return true to bypass auth checks
     error: null,

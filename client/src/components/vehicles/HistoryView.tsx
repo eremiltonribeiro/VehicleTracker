@@ -61,6 +61,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
 export function HistoryView() {
+  // Debug: log para verificar se o componente está sendo montado
+  console.log("🔍 HistoryView montado");
+  
   // Estado para filtros
   const [filters, setFilters] = useState({
     type: "all",
@@ -114,21 +117,35 @@ export function HistoryView() {
         url += `?${queryString}`;
       }
 
+      console.log("🌐 Fazendo requisição para:", url);
+
       try {
         const res = await fetch(url, {
           credentials: "include",
+          cache: "no-cache", // Força buscar dados frescos
+          headers: {
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
+          }
         });
 
         if (!res.ok) {
           throw new Error("Failed to fetch registrations");
         }
 
-        return res.json();
+        const data = await res.json();
+        console.log("🔍 HistoryView - Dados carregados:", data);
+        return data;
       } catch (error) {
         console.error("Erro ao buscar registros:", error);
         return [];
       }
     },
+    // Configurações para sempre buscar dados frescos
+    staleTime: 0, // Considerar dados sempre como obsoletos
+    gcTime: 0, // Não manter cache
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Listener para atualização automática após sincronização
@@ -139,9 +156,41 @@ export function HistoryView() {
       refetch();
     }
     
+    function handleDriverUpdate() {
+      console.log("Motorista atualizado, invalidando cache de registros");
+      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      refetch();
+    }
+    
+    function handleVehicleUpdate() {
+      console.log("Veículo atualizado, invalidando cache de registros");
+      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      refetch();
+    }
+    
+    function handleRegistrationUpdate() {
+      console.log("🔄 Registro atualizado, invalidando cache e recarregando dados");
+      // Invalidar todas as queries relacionadas a registrations
+      queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      queryClient.removeQueries({ queryKey: ["/api/registrations"] });
+      
+      // Forçar refetch imediato
+      refetch();
+      
+      console.log("� Cache invalidado e dados sendo recarregados");
+    }
+    
+    // Adicionar listeners para atualizações de motoristas, veículos e registros
     window.addEventListener("data-synchronized", handleDataSync);
+    window.addEventListener("driver-updated", handleDriverUpdate);
+    window.addEventListener("vehicle-updated", handleVehicleUpdate);
+    window.addEventListener("registration-updated", handleRegistrationUpdate);
+    
     return () => {
       window.removeEventListener("data-synchronized", handleDataSync);
+      window.removeEventListener("driver-updated", handleDriverUpdate);
+      window.removeEventListener("vehicle-updated", handleVehicleUpdate);
+      window.removeEventListener("registration-updated", handleRegistrationUpdate);
     };
   }, [queryClient, refetch]);
 
@@ -342,6 +391,11 @@ export function HistoryView() {
         currentPage * itemsPerPage
       )
     : [];
+
+  // Debug: log para verificar os registros
+  console.log("🔍 HistoryView - Registros totais:", registrations?.length || 0);
+  console.log("🔍 HistoryView - Filtros atuais:", filters);
+  console.log("🔍 HistoryView - Registros paginados:", paginatedRegistrations?.length || 0);
     
   // Verifica se a página atual está vazia e se devemos voltar para a anterior
   useEffect(() => {
@@ -349,6 +403,18 @@ export function HistoryView() {
       setCurrentPage(currentPage - 1);
     }
   }, [paginatedRegistrations.length, currentPage, registrations.length]);
+
+  // Atualizar selectedRegistration quando os dados dos registros são atualizados
+  useEffect(() => {
+    if (selectedRegistration && registrations.length > 0) {
+      console.log("🔄 Atualizando dados do registro selecionado após recarregamento");
+      const updatedRegistration = registrations.find((reg: any) => reg.id === selectedRegistration.id);
+      if (updatedRegistration) {
+        console.log("✅ Registro atualizado encontrado, atualizando selectedRegistration");
+        setSelectedRegistration(updatedRegistration);
+      }
+    }
+  }, [registrations, selectedRegistration?.id]);
 
   return (
     <Card className="w-full">
@@ -543,7 +609,7 @@ export function HistoryView() {
                       <p className="font-medium">
                         {registration.type === 'fuel' && formatCurrency(registration.fuelCost)}
                         {registration.type === 'maintenance' && formatCurrency(registration.maintenanceCost)}
-                        {registration.type === 'trip' && `${registration.tripDistance || 0} km`}
+                        {registration.type === 'trip' && `${(registration.finalKm && registration.initialKm) ? (registration.finalKm - registration.initialKm) : 0} km`}
                       </p>
                       <p className="text-sm text-gray-600">
                         {formatDate(registration.date)}
@@ -574,14 +640,23 @@ export function HistoryView() {
                     {registration.type === 'trip' && (
                       <>
                         <div className="flex items-center">
-                          <MapPin className="h-3.5 w-3.5 mr-1" />
-                          <span>{`${registration.origin || "?"} → ${registration.destination || "?"}`}</span>
+                          <MapPin className="h-3.5 w-3.5 mr-1 text-green-600" />
+                          <span>Origem: {registration.origin || "Não especificado"}</span>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <MapPin className="h-3.5 w-3.5 mr-1 text-red-600" />
+                          <span>Destino: {registration.destination || "Não especificado"}</span>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <Route className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                          <span className="text-blue-600 font-medium">
+                            {registration.reason || "Motivo não especificado"}
+                          </span>
                         </div>
                         <div className="flex items-center mt-1">
                           <TrendingUp className="h-3.5 w-3.5 mr-1 text-green-600" />
                           <span className="text-green-600 font-medium">
-                            {registration.tripDistance ? `${registration.tripDistance} km percorridos` : 
-                             (registration.finalKm && registration.initialKm) ? 
+                            {(registration.finalKm && registration.initialKm) ? 
                              `${registration.finalKm - registration.initialKm} km percorridos` : 
                              "Distância não especificada"}
                           </span>
@@ -796,18 +871,22 @@ export function HistoryView() {
                   </div>
                   
                   <div>
-                    <Label className="text-gray-500">Distância</Label>
+                    <Label className="text-gray-500">Motivo da Viagem</Label>
+                    <p className="font-medium">{selectedRegistration.reason || "Não especificado"}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-gray-500">Distância Percorrida</Label>
                     <p className="font-medium">
-                      {selectedRegistration.tripDistance ? `${selectedRegistration.tripDistance} km` : 
-                      (selectedRegistration.finalKm && selectedRegistration.initialKm) ? 
+                      {(selectedRegistration.finalKm && selectedRegistration.initialKm) ? 
                       `${selectedRegistration.finalKm - selectedRegistration.initialKm} km` : 
                       "Não especificado"}
                     </p>
                   </div>
                   
                   <div>
-                    <Label className="text-gray-500">Finalidade</Label>
-                    <p className="font-medium">{selectedRegistration.reason || "Não especificado"}</p>
+                    <Label className="text-gray-500">KM Final</Label>
+                    <p className="font-medium">{selectedRegistration.finalKm ? `${selectedRegistration.finalKm} km` : "Não especificado"}</p>
                   </div>
                 </>
               )}

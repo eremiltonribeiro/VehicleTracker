@@ -99,6 +99,9 @@ export function CadastroVeiculos() {
           : "Veículo atualizado com sucesso.",
       });
       resetForm();
+      
+      // Disparar evento para atualizar outras telas que dependem dos dados de veículos
+      window.dispatchEvent(new CustomEvent("vehicle-updated"));
     },
     onError: (error) => {
       toast({
@@ -124,6 +127,9 @@ export function CadastroVeiculos() {
         title: "Sucesso!",
         description: "Veículo excluído com sucesso.",
       });
+      
+      // Disparar evento para atualizar outras telas que dependem dos dados de veículos
+      window.dispatchEvent(new CustomEvent("vehicle-updated"));
     },
     onError: (error) => {
       toast({

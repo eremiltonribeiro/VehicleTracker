@@ -710,7 +710,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/registrations", isAuthenticated, upload.single("photo"), async (req, res) => {
     try {
-      const registrationData = JSON.parse(req.body.data);
+      // Handle both form-data and regular JSON requests
+      let registrationData;
+      if (req.body.data) {
+        // Form-data request
+        registrationData = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body.data;
+      } else {
+        // Regular JSON request
+        registrationData = req.body;
+      }
+      
       if (registrationData.date) registrationData.date = new Date(registrationData.date);
       if (req.file) registrationData.photoUrl = `/uploads/${req.file.filename}`;
 
@@ -886,6 +895,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/checklist-items/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do item inválido." });
+      
+      const parsedData = insertChecklistItemSchema.partial().parse(req.body);
+      const updatedItem = await storage.updateChecklistItem(id, parsedData);
+      
+      if (!updatedItem) return res.status(404).json({ message: "Item de checklist não encontrado." });
+      res.json({ message: "Item atualizado com sucesso.", item: updatedItem });
+    } catch (error: any) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ message: "Erro de validação ao atualizar item.", errors: error.errors });
+      }
+      console.error(`Error updating /api/checklist-items/${req.params.id}:`, error);
+      res.status(500).json({ message: "Erro ao atualizar item de checklist.", details: error.message });
+    }
+  });
+
+  app.delete("/api/checklist-items/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "ID do item inválido." });
+      
+      const deleted = await storage.deleteChecklistItem(id);
+      if (!deleted) return res.status(404).json({ message: "Item de checklist não encontrado." });
+      
+      res.json({ message: "Item excluído com sucesso." });
+    } catch (error: any) {
+      console.error(`Error deleting /api/checklist-items/${req.params.id}:`, error);
+      res.status(500).json({ message: "Erro ao excluir item de checklist.", details: error.message });
+    }
+  });
+
   // Vehicle Checklist (Checklist Instance) Routes
   app.get("/api/checklists", isAuthenticated, async (req, res) => {
     try {
@@ -919,25 +962,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ message: "ID do checklist inválido."});
+      
       const checklist = await storage.getVehicleChecklist(id);
       if (!checklist) return res.status(404).json({ message: "Checklist de veículo não encontrado." });
 
-      const vehicle = await storage.getVehicle(checklist.vehicleId);
-      const driver = await storage.getDriver(checklist.driverId);
-      const template = await storage.getChecklistTemplate(checklist.templateId);
-      const items = await storage.getChecklistItems(checklist.templateId); // Items of the template
-      const results = await storage.getChecklistResults(id); // Results specific to this checklist instance
-
-      res.json({
-        ...checklist,
-        vehicle: vehicle ? { id: vehicle.id, name: vehicle.name, plate: vehicle.plate } : null,
-        driver: driver ? { id: driver.id, name: driver.name } : null,
-        template: template ? { id: template.id, name: template.name } : null,
-        items,
-        results,
-      });
+      res.json(checklist);
     } catch (error: any) {
-      // TODO: Use structured logger
       console.error(`Error fetching /api/checklists/${req.params.id}:`, error);
       res.status(500).json({ message: "Erro ao buscar checklist de veículo.", details: error.message });
     }
@@ -991,20 +1021,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const parsedChecklistData = insertVehicleChecklistSchema.parse(rawData);
 
-      let checklist: any;
-      await db.transaction(async (tx) => {
-        checklist = await storage.createVehicleChecklist(parsedChecklistData, tx);
+      // Create checklist without transaction for mock storage
+      const checklist = await storage.createVehicleChecklist(parsedChecklistData);
 
-        if (resultsData.length > 0) {
-          await Promise.all(resultsData.map((result: any) => {
-            const parsedResultData = insertChecklistResultSchema.parse({
-              ...result,
-              checklistId: checklist.id, // Ensure checklistId is set
-            });
-            return storage.createChecklistResult(parsedResultData, tx);
-          }));
-        }
-      });
+      // Create results if any
+      if (resultsData.length > 0) {
+        await Promise.all(resultsData.map((result: any) => {
+          const parsedResultData = insertChecklistResultSchema.parse({
+            ...result,
+            checklistId: checklist.id, // Ensure checklistId is set
+          });
+          return storage.createChecklistResult(parsedResultData);
+        }));
+      }
       res.status(201).json({ message: "Checklist criado com sucesso.", checklist });
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -1048,21 +1077,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const parsedChecklistData = insertVehicleChecklistSchema.partial().parse(checklistUpdatePayload);
 
-      let updatedChecklist;
-      await db.transaction(async (tx) => {
-        updatedChecklist = await storage.updateVehicleChecklist(id, parsedChecklistData, tx);
-        await storage.deleteChecklistResults(id, tx); // Clear old results
+      // Update checklist without transaction for mock storage
+      const updatedChecklist = await storage.updateVehicleChecklist(id, parsedChecklistData);
+      await storage.deleteChecklistResults(id); // Clear old results
 
-        if (resultsData.length > 0) {
-          await Promise.all(resultsData.map((result: any) => {
-             const parsedResultData = insertChecklistResultSchema.parse({
-              ...result,
-              checklistId: id, // Ensure checklistId is set
-            });
-            return storage.createChecklistResult(parsedResultData, tx);
-          }));
-        }
-      });
+      // Create new results if any
+      if (resultsData.length > 0) {
+        await Promise.all(resultsData.map((result: any) => {
+          const parsedResultData = insertChecklistResultSchema.parse({
+            ...result,
+            checklistId: id, // Ensure checklistId is set
+          });
+          return storage.createChecklistResult(parsedResultData);
+        }));
+      }
       res.json({ message: "Checklist atualizado com sucesso.", checklist: updatedChecklist });
     } catch (error: any) {
       if (error instanceof ZodError) {

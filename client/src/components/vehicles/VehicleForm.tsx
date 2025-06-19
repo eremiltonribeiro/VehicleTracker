@@ -127,6 +127,9 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/vehicles'] });
 
+      // Disparar evento para atualizar outras telas que dependem dos dados de veículos
+      window.dispatchEvent(new CustomEvent("vehicle-updated"));
+
       // Call success callback if provided
       if (onSuccess) onSuccess();
     },

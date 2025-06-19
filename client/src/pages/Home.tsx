@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { RegistrationForm } from "@/components/vehicles/RegistrationForm";
+import { SimpleRegistrationForm } from "@/components/vehicles/SimpleRegistrationForm";
 import { HistoryView } from "@/components/vehicles/HistoryView";
 import { DashboardWithFilters } from "@/components/vehicles/DashboardWithFilters";
 import { Header } from "@/components/vehicles/Header";
@@ -16,24 +17,27 @@ interface HomeProps {
   mode?: "edit" | "view";
 }
 
-export default function Home({ defaultView = "dashboard", editId, editType, mode }: HomeProps) {
+export default function Home({ defaultView = "form", editId, editType, mode }: HomeProps) {
   const [location, setLocation] = useLocation();
-  const params = location.split("/");
-  const view = params[params.length - 1];
   
   // Lógica corrigida para determinar a visualização ativa
   let activeView;
   
-  if (location === "/registros") {
-    // Se a URL for exatamente /registros, mostra o formulário de registro (não dashboard)
+  console.log("🔍 Home component - Current location:", location);
+  
+  if (location === "/" || location === "/registros") {
+    // Página inicial ou registros - mostra o formulário
     activeView = "form";
-  } else if (location === "/registros/history") {
+  } else if (location === "/registros/history" || location.includes("history")) {
     activeView = "history";
-  } else if (location === "/registros/dashboard") {
+  } else if (location === "/registros/dashboard" || location.includes("dashboard")) {
     activeView = "dashboard";
   } else {
+    // Use defaultView se fornecido, senão form
     activeView = defaultView;
   }
+
+  console.log("🎯 Active view determined:", activeView);
 
   // Monitor network status for offline functionality
   useEffect(() => {
@@ -102,28 +106,7 @@ export default function Home({ defaultView = "dashboard", editId, editType, mode
   const showDashboard = activeView === "dashboard";
   const showForm = activeView === "form";
 
-  // Fetch data, with offline capability
-  const { data: vehicles = [] } = useQuery({
-    queryKey: ["/api/vehicles"],
-    queryFn: async () => {
-      try {
-        if (navigator.onLine) {
-          const res = await fetch("/api/vehicles");
-          if (res.ok) {
-            const data = await res.json();
-            await offlineStorage.saveVehicles(data);
-            return data;
-          }
-        }
-
-        // Fallback to offline data
-        return await offlineStorage.getVehicles();
-      } catch (error) {
-        console.error("Erro ao buscar veículos:", error);
-        return await offlineStorage.getVehicles();
-      }
-    }
-  });
+  console.log("🎯 Home render state:", { showHistory, showDashboard, showForm });
 
   return (
     <div id="app-container" className="flex flex-col">

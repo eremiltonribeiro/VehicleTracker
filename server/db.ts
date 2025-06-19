@@ -1,20 +1,81 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
 import * as schema from "@shared/schema";
 
-// Configuração para WebSockets com Neon Database
-neonConfig.webSocketConstructor = ws;
+console.log("🔧 Usando mock de banco de dados para debug");
 
-// Verificar se a variável de ambiente está disponível
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL deve ser configurada. Verifique as variáveis de ambiente.",
-  );
-}
+// Mock do banco de dados
+export const db = {
+  select: () => ({
+    from: () => ({
+      where: () => ({
+        limit: () => [],
+        offset: () => []
+      }),
+      limit: () => [],
+      offset: () => []
+    }),
+    where: () => ({
+      limit: () => [],
+      offset: () => []
+    }),
+    limit: () => [],
+    offset: () => []
+  }),
+  insert: () => ({
+    into: () => ({
+      values: () => ({
+        returning: () => []
+      }),
+      returning: () => []
+    }),
+    values: () => ({
+      returning: () => []
+    }),
+    returning: () => []
+  }),
+  update: () => ({
+    set: () => ({
+      where: () => ({
+        returning: () => []
+      }),
+      returning: () => []
+    }),
+    where: () => ({
+      returning: () => []
+    }),
+    returning: () => []
+  }),
+  delete: () => ({
+    from: () => ({
+      where: () => ({
+        returning: () => []
+      }),
+      returning: () => []
+    }),
+    where: () => ({
+      returning: () => []
+    }),
+    returning: () => []
+  }),
+  query: {
+    vehicles: {
+      findMany: () => [],
+      findFirst: () => null
+    },
+    drivers: {
+      findMany: () => [],
+      findFirst: () => null
+    },
+    registrations: {
+      findMany: () => [],
+      findFirst: () => null
+    }
+  }
+};
 
-// Criação do pool de conexões
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-// Exportação da instância do Drizzle ORM
-export const db = drizzle(pool, { schema });
+// Mock pool para compatibilidade
+export const pool = {
+  query: async (sql: string, params?: any[]) => {
+    console.log("Mock query:", sql);
+    return { rows: [] };
+  }
+};

@@ -62,10 +62,22 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
     defaultValues: {
       type: "fuel",
       date: new Date(),
+      vehicleId: undefined,
+      driverId: undefined,
       initialKm: undefined,
       finalKm: undefined,
+      fuelStationId: undefined,
+      fuelTypeId: undefined,
+      maintenanceTypeId: undefined,
+      liters: undefined,
+      fuelCost: undefined,
+      maintenanceCost: undefined,
       fullTank: false,
       arla: false,
+      origin: undefined,
+      destination: undefined,
+      reason: undefined,
+      observations: undefined,
     },
   });
 
@@ -96,35 +108,55 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
   // --- Buscar dados para edição, se houver ID ---
   useEffect(() => {
     if (id) {
-      console.log(`Buscando dados do registro ${id} para edição`);
+      console.log(`🔍 Iniciando busca de dados para edição - ID: ${id}`);
       fetch(`/api/registrations/${id}`, { credentials: "include" })
         .then((res) => {
-          console.log(`Resposta da API:`, res.status, res.statusText);
+          console.log(`📡 Resposta da API:`, res.status, res.statusText);
           if (!res.ok) {
             throw new Error(`Erro ao buscar registro: ${res.status} ${res.statusText}`);
           }
           return res.json();
         })
         .then((data) => {
-          console.log(`Dados recebidos para edição:`, data);
+          console.log(`📊 Dados recebidos para edição:`, data);
           // Certifique-se de que todos os campos necessários estão presentes
-          form.reset({
-            ...data,
+          const formData = {
             type: data.type || "fuel",
             date: data.date ? new Date(data.date) : new Date(),
-            vehicleId: data.vehicleId?.toString() || "",
-            driverId: data.driverId?.toString() || "",
-            fuelCost: data.fuelCost ? data.fuelCost / 100 : undefined,
-            maintenanceCost: data.maintenanceCost ? data.maintenanceCost / 100 : undefined,
-            fuelStationId: data.fuelStationId?.toString() || undefined,
-            fuelTypeId: data.fuelTypeId?.toString() || undefined,
-            maintenanceTypeId: data.maintenanceTypeId?.toString() || undefined,
-          });
+            // IDs devem ser números válidos ou undefined (não null)
+            vehicleId: data.vehicleId && data.vehicleId > 0 ? data.vehicleId : undefined,
+            driverId: data.driverId && data.driverId > 0 ? data.driverId : undefined,
+            fuelStationId: data.fuelStationId && data.fuelStationId > 0 ? data.fuelStationId : undefined,
+            fuelTypeId: data.fuelTypeId && data.fuelTypeId > 0 ? data.fuelTypeId : undefined,
+            maintenanceTypeId: data.maintenanceTypeId && data.maintenanceTypeId > 0 ? data.maintenanceTypeId : undefined,
+            // Campos numéricos
+            initialKm: data.initialKm && data.initialKm > 0 ? data.initialKm : undefined,
+            finalKm: data.finalKm && data.finalKm > 0 ? data.finalKm : undefined,
+            liters: data.liters && data.liters > 0 ? data.liters : undefined,
+            // Conversão de centavos para reais
+            fuelCost: data.fuelCost && data.fuelCost > 0 ? data.fuelCost / 100 : undefined,
+            maintenanceCost: data.maintenanceCost && data.maintenanceCost > 0 ? data.maintenanceCost / 100 : undefined,
+            // Campos booleanos
+            fullTank: data.fullTank === true,
+            arla: data.arla === true,
+            // Campos de texto
+            origin: data.origin || undefined,
+            destination: data.destination || undefined,
+            reason: data.reason || undefined,
+            observations: data.observations || undefined,
+          };
+          
+          console.log(`🎯 Dados mapeados para o formulário:`, formData);
+          console.log(`🔧 Estado antes do reset:`, form.getValues());
+          form.reset(formData);
+          console.log(`✅ Estado após o reset:`, form.getValues());
           setSelectedType(data.type || "fuel");
+          console.log(`🏷️ Tipo selecionado definido como:`, data.type || "fuel");
           setExistingPhotoUrl(data.photoUrl || "");
+          console.log(`📸 URL da foto existente:`, data.photoUrl || "Nenhuma");
         })
         .catch((error) => {
-          console.error(`Erro ao carregar dados para edição:`, error);
+          console.error(`❌ Erro ao carregar dados para edição:`, error);
           toast({
             title: "Erro",
             description: "Não foi possível carregar os dados do registro. Tente novamente.",
@@ -135,20 +167,25 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
     // eslint-disable-next-line
   }, [id]);
 
+  // Sincronizar selectedType com o valor do formulário
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "type" && value.type) {
+        setSelectedType(value.type);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   // Mutation para criar ou editar
   const createOrUpdateRegistration = useMutation({
     mutationFn: async (values: FormValues) => {
       const formData = new FormData();
       const data = {
         ...values,
+        // Mapear campos do formulário para o formato do banco se necessário
         fuelCost: values.fuelCost ? Math.round(values.fuelCost * 100) : undefined,
         maintenanceCost: values.maintenanceCost ? Math.round(values.maintenanceCost * 100) : undefined,
-        // Certifique-se de que os IDs sejam convertidos para números
-        vehicleId: values.vehicleId ? Number(values.vehicleId) : undefined,
-        driverId: values.driverId ? Number(values.driverId) : undefined,
-        fuelStationId: values.fuelStationId ? Number(values.fuelStationId) : undefined,
-        fuelTypeId: values.fuelTypeId ? Number(values.fuelTypeId) : undefined,
-        maintenanceTypeId: values.maintenanceTypeId ? Number(values.maintenanceTypeId) : undefined,
       };
       
       console.log(`Preparando ${id ? 'edição' : 'criação'} de registro:`, data);
@@ -199,7 +236,16 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
       });
       form.reset();
       setSelectedFile(null);
+      
+      // Invalidação mais agressiva do cache
+      console.log("🔄 Invalidando cache de registrations");
       queryClient.invalidateQueries({ queryKey: ["/api/registrations"] });
+      queryClient.removeQueries({ queryKey: ["/api/registrations"] });
+      
+      // Disparar evento customizado para notificar outros componentes
+      console.log("🔄 Disparando evento registration-updated");
+      window.dispatchEvent(new CustomEvent("registration-updated"));
+      
       setLocation("/registros/history"); // URL corrigida para o histórico
     },
     onError: (error: Error) => {
@@ -315,57 +361,69 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
               <FormField
                 control={form.control}
                 name="vehicleId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Veículo <span className="text-red-500">*</span></FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      defaultValue={field.value?.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o veículo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Array.isArray(vehicles) && vehicles.map((vehicle: any) => (
-                          <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
-                            {vehicle.name} - {vehicle.plate}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  console.log(`🚗 Select Veículo - Field Value:`, field.value, `Vehicles:`, Array.isArray(vehicles) ? vehicles.length : 0);
+                  return (
+                    <FormItem>
+                      <FormLabel>Veículo <span className="text-red-500">*</span></FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          console.log(`🚗 Veículo selecionado:`, value);
+                          field.onChange(parseInt(value));
+                        }}
+                        value={field.value?.toString() || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o veículo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.isArray(vehicles) && vehicles.map((vehicle: any) => (
+                            <SelectItem key={vehicle.id} value={vehicle.id.toString()}>
+                              {vehicle.name} - {vehicle.plate}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
                 control={form.control}
                 name="driverId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Motorista <span className="text-red-500">*</span></FormLabel>
-                    <Select
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      defaultValue={field.value?.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o motorista" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Array.isArray(drivers) && drivers.map((driver: any) => (
-                          <SelectItem key={driver.id} value={driver.id.toString()}>
-                            {driver.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  console.log(`👨‍💼 Select Motorista - Field Value:`, field.value, `Drivers:`, Array.isArray(drivers) ? drivers.length : 0);
+                  return (
+                    <FormItem>
+                      <FormLabel>Motorista <span className="text-red-500">*</span></FormLabel>
+                      <Select
+                        onValueChange={(value) => {
+                          console.log(`👨‍💼 Motorista selecionado:`, value);
+                          field.onChange(parseInt(value));
+                        }}
+                        value={field.value?.toString() || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o motorista" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.isArray(drivers) && drivers.map((driver: any) => (
+                            <SelectItem key={driver.id} value={driver.id.toString()}>
+                              {driver.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
 
               <FormField
@@ -422,8 +480,8 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                         <Input
                           type="number"
                           placeholder="Ex: 45000"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -445,7 +503,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                           placeholder="Ex: 45050"
                           value={field.value || ''}
                           onChange={(e) => 
-                            field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                            field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
                           }
                         />
                       </FormControl>
@@ -469,7 +527,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                       <FormLabel>Posto <span className="text-red-500">*</span></FormLabel>
                       <Select
                         onValueChange={(value) => field.onChange(parseInt(value))}
-                        defaultValue={field.value?.toString()}
+                        value={field.value?.toString() || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -497,7 +555,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                       <FormLabel>Tipo de Combustível <span className="text-red-500">*</span></FormLabel>
                       <Select
                         onValueChange={(value) => field.onChange(parseInt(value))}
-                        defaultValue={field.value?.toString()}
+                        value={field.value?.toString() || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -531,7 +589,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                             placeholder="Ex: 45.5"
                             value={field.value || ''}
                             onChange={(e) => 
-                              field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                              field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
                             }
                           />
                         </FormControl>
@@ -553,7 +611,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                             placeholder="Ex: 250.00"
                             value={field.value || ''}
                             onChange={(e) => 
-                              field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                              field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
                             }
                             className="pl-7"
                           />
@@ -576,7 +634,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                         </div>
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={field.value || false}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
@@ -594,7 +652,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                         </div>
                         <FormControl>
                           <Switch
-                            checked={field.value}
+                            checked={field.value || false}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
@@ -639,7 +697,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                       <FormLabel>Tipo de Manutenção <span className="text-red-500">*</span></FormLabel>
                       <Select
                         onValueChange={(value) => field.onChange(parseInt(value))}
-                        defaultValue={field.value?.toString()}
+                        value={field.value?.toString() || ""}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -672,7 +730,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                           placeholder="Ex: 350.00"
                           value={field.value || ''}
                           onChange={(e) => 
-                            field.onChange(e.target.value ? parseFloat(e.target.value) : null)
+                            field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
                           }
                           className="pl-7"
                         />
@@ -719,7 +777,7 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
                       <FormLabel>Origem <span className="text-red-500">*</span></FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Ex: Belo Horizonte - MG" 
+                          placeholder="Ex: Rio de Janeiro - RJ" 
                           {...field} 
                           value={field.value || ''}
                         />

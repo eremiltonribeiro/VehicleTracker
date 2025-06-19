@@ -105,6 +105,9 @@ export function DriverForm({ onSuccess, editingDriver }: DriverFormProps) {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['/api/drivers'] });
 
+      // Disparar evento para atualizar outras telas que dependem dos dados de motoristas
+      window.dispatchEvent(new CustomEvent("driver-updated"));
+
       // Call success callback if provided
       if (onSuccess) onSuccess();
     },

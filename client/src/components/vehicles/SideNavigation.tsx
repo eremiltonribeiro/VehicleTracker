@@ -101,19 +101,18 @@ export function SideNavigation() {
     }
   }, []);
 
-  // If auth is loading, or user is not authenticated (which means SideNavigation shouldn't be shown by App.tsx anyway),
-  // you might render nothing or a placeholder. For now, link visibility will be handled by userPermissions.
-  // App.tsx should ideally not render SideNavigation if !isAuthenticated.
+  // If auth is loading, show a loading state
   if (isLoading) {
-    // Optionally, render a slim loading version of the sidebar or nothing
-    return null;
+    return (
+      <div className="hidden lg:flex h-screen fixed left-0 top-0 bg-blue-800 text-white w-64 shadow-lg flex-col">
+        <div className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      </div>
+    );
   }
 
-  // If not authenticated (e.g. after logout and useAuth updates), this component might still be briefly rendered
-  // by App.tsx's Router before a redirect. Returning null is safest.
-  if (!isAuthenticated) {
-    return null;
-  }
+  // Always show navigation since auth is disabled
 
   return (
     <>
@@ -121,7 +120,9 @@ export function SideNavigation() {
       <div className="lg:hidden bg-blue-800 text-white shadow-md w-full side-navigation">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center">
-            <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3 company-logo" />
+            <div className="w-10 h-10 mr-3 bg-blue-600 rounded-lg flex items-center justify-center">
+              <Car className="h-6 w-6 text-white" />
+            </div>
             <h1 className="text-lg font-bold company-name">Sistema de Gestão de Frota</h1>
           </div>
           <Button
@@ -299,7 +300,9 @@ export function SideNavigation() {
       {/* Sidebar for desktop */}
       <div className="hidden lg:flex h-screen fixed left-0 top-0 bg-blue-800 text-white w-64 shadow-lg flex-col side-navigation">
         <div className="p-4 flex items-center border-b border-blue-700">
-          <img src="/src/assets/granduvale-logo.svg" alt="Granduvale" className="w-10 h-10 mr-3 company-logo" />
+          <div className="w-10 h-10 mr-3 bg-blue-600 rounded-lg flex items-center justify-center">
+            <Car className="h-6 w-6 text-white" />
+          </div>
           <h1 className="text-xl font-bold company-name">Sistema de Gestão de Frota</h1>
         </div>
         
@@ -424,6 +427,18 @@ export function SideNavigation() {
         </nav>
         
         <div className="p-4 border-t border-blue-700">
+          {/* Debug link - only in development */}
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              variant="ghost"
+              className="flex items-center justify-start gap-3 rounded-md w-full p-3 text-gray-300 hover:bg-blue-700 mb-2"
+              onClick={() => setLocation("/debug")}
+            >
+              <Settings className="h-4 w-4" />
+              <span className="text-xs font-medium">Debug</span>
+            </Button>
+          )}
+          
           <Button
             variant="ghost"
             className="flex items-center justify-start gap-3 rounded-md w-full p-3 text-white hover:bg-blue-700"

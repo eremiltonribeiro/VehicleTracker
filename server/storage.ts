@@ -19,6 +19,7 @@ import {
   ChecklistItem,
   InsertChecklistItem,
   VehicleChecklist,
+  VehicleChecklistWithDetails,
   InsertVehicleChecklist,
   ChecklistResult,
   InsertChecklistResult,
@@ -92,6 +93,8 @@ export interface IStorage {
   getChecklistItems(templateId: number): Promise<ChecklistItem[]>;
   getChecklistItem(id: number): Promise<ChecklistItem | undefined>;
   createChecklistItem(item: InsertChecklistItem): Promise<ChecklistItem>;
+  updateChecklistItem(id: number, updates: Partial<InsertChecklistItem>): Promise<ChecklistItem | undefined>;
+  deleteChecklistItem(id: number): Promise<boolean>;
 
   // Vehicle checklist methods
   getVehicleChecklists(filters?: {
@@ -100,7 +103,7 @@ export interface IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<VehicleChecklist[]>;
-  getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined>;
+  getVehicleChecklist(id: number): Promise<VehicleChecklistWithDetails | undefined>;
   createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist>;
   updateVehicleChecklist(id: number, data: any): Promise<VehicleChecklist | undefined>;
   deleteVehicleChecklist(id: number): Promise<boolean>;
@@ -186,10 +189,207 @@ export class MemStorage implements IStorage {
   }
 
   private initializeData() {
-    // ... (Seu código original de inserção de dados iniciais)
     // Add initial roles for MemStorage
     this.createRole({ name: "admin", description: "Administrator", permissions: JSON.stringify({ dashboard: true, userManagement: true, settings: true }) });
     this.createRole({ name: "user", description: "Regular User", permissions: JSON.stringify({ dashboard: true }) });
+
+    // Add sample vehicles
+    this.createVehicle({
+      name: "Gol",
+      plate: "ABC-1234",
+      model: "Gol",
+      year: 2020
+    });
+
+    this.createVehicle({
+      name: "Uno",
+      plate: "XYZ-5678",
+      model: "Uno",
+      year: 2019
+    });
+
+    this.createVehicle({
+      name: "HB20",
+      plate: "DEF-9876",
+      model: "HB20",
+      year: 2021
+    });
+
+    // Add sample drivers
+    this.createDriver({
+      name: "João Silva",
+      license: "12345678901",
+      phone: "(11) 99999-9999"
+    });
+
+    this.createDriver({
+      name: "Maria Santos", 
+      license: "10987654321",
+      phone: "(11) 88888-8888"
+    });
+
+    this.createDriver({
+      name: "Carlos Oliveira",
+      license: "11122233344",
+      phone: "(11) 77777-7777"
+    });
+
+    // Add sample fuel stations
+    this.createFuelStation({
+      name: "Posto Shell",
+      address: "Rua das Flores, 100"
+    });
+
+    this.createFuelStation({
+      name: "Posto Ipiranga",
+      address: "Av. Paulista, 1000"
+    });
+
+    this.createFuelStation({
+      name: "Posto BR",
+      address: "Rua Augusta, 500"
+    });
+
+    // Add sample fuel types
+    this.createFuelType({
+      name: "Gasolina Comum"
+    });
+
+    this.createFuelType({
+      name: "Etanol"
+    });
+
+    this.createFuelType({
+      name: "Diesel"
+    });
+
+    // Add sample maintenance types
+    this.createMaintenanceType({
+      name: "Troca de Óleo"
+    });
+
+    this.createMaintenanceType({
+      name: "Alinhamento"
+    });
+
+    this.createMaintenanceType({
+      name: "Reparo de Motor"
+    });
+
+    this.createMaintenanceType({
+      name: "Revisão Geral"
+    });
+
+    this.createMaintenanceType({
+      name: "Troca de Pneus"
+    });
+
+    // Adicionar dados de exemplo de registros para dashboard
+    this.initializeSampleRegistrations();
+    
+    // Adicionar dados de exemplo de checklists
+    this.initializeSampleChecklists();
+  }
+
+  private initializeSampleRegistrations() {
+    const now = new Date();
+    
+    // Dados dos últimos 6 meses para análises realistas
+    const dates: Date[] = [];
+    for (let i = 0; i < 180; i += 7) { // A cada 7 dias
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      dates.push(date);
+    }
+
+    // Registros de Abastecimento (dados realistas)
+    const fuelData = [
+      { vehicleId: 1, liters: 45, cost: 25000, station: 1, type: 1, km: 25000 }, // Gol
+      { vehicleId: 1, liters: 42, cost: 23500, station: 2, type: 1, km: 25500 },
+      { vehicleId: 1, liters: 48, cost: 26800, station: 1, type: 1, km: 26000 },
+      { vehicleId: 1, liters: 44, cost: 24600, station: 3, type: 1, km: 26500 },
+      { vehicleId: 1, liters: 46, cost: 25700, station: 1, type: 1, km: 27000 },
+      
+      { vehicleId: 2, liters: 38, cost: 21300, station: 2, type: 1, km: 18000 }, // Uno
+      { vehicleId: 2, liters: 40, cost: 22400, station: 1, type: 1, km: 18400 },
+      { vehicleId: 2, liters: 37, cost: 20700, station: 3, type: 1, km: 18800 },
+      { vehicleId: 2, liters: 39, cost: 21800, station: 2, type: 1, km: 19200 },
+      
+      { vehicleId: 3, liters: 50, cost: 28000, station: 1, type: 1, km: 12000 }, // HB20
+      { vehicleId: 3, liters: 48, cost: 26800, station: 2, type: 1, km: 12500 },
+      { vehicleId: 3, liters: 52, cost: 29100, station: 3, type: 1, km: 13000 },
+    ];
+
+    fuelData.forEach((data, index) => {
+      this.createRegistration({
+        type: "fuel",
+        vehicleId: data.vehicleId,
+        driverId: (data.vehicleId % 3) + 1, // Distribuir motoristas
+        date: dates[index % dates.length],
+        initialKm: data.km,
+        fuelStationId: data.station,
+        fuelTypeId: data.type,
+        liters: data.liters,
+        fuelCost: data.cost,
+        fullTank: true,
+        arla: false
+      });
+    });
+
+    // Registros de Manutenção (dados realistas)
+    const maintenanceData = [
+      { vehicleId: 1, type: 1, cost: 8000, km: 25200 }, // Troca de óleo - Gol
+      { vehicleId: 1, type: 2, cost: 15000, km: 26200 }, // Alinhamento
+      { vehicleId: 1, type: 4, cost: 35000, km: 27200 }, // Revisão geral
+      
+      { vehicleId: 2, type: 1, cost: 7500, km: 18200 }, // Troca de óleo - Uno
+      { vehicleId: 2, type: 5, cost: 80000, km: 19000 }, // Troca de pneus
+      
+      { vehicleId: 3, type: 1, cost: 9000, km: 12200 }, // Troca de óleo - HB20
+      { vehicleId: 3, type: 3, cost: 120000, km: 13200 }, // Reparo de motor
+    ];
+
+    maintenanceData.forEach((data, index) => {
+      this.createRegistration({
+        type: "maintenance",
+        vehicleId: data.vehicleId,
+        driverId: (data.vehicleId % 3) + 1,
+        date: dates[(index * 3) % dates.length],
+        initialKm: data.km,
+        maintenanceTypeId: data.type,
+        maintenanceCost: data.cost
+      });
+    });
+
+    // Registros de Viagem (dados realistas com origem)
+    const tripData = [
+      { vehicleId: 1, origin: "São Paulo", dest: "Campinas", reason: "Reunião", initialKm: 25000, finalKm: 25120 },
+      { vehicleId: 1, origin: "Campinas", dest: "São Paulo", reason: "Retorno", initialKm: 25120, finalKm: 25240 },
+      { vehicleId: 1, origin: "São Paulo", dest: "Santos", reason: "Entrega", initialKm: 25240, finalKm: 25320 },
+      { vehicleId: 1, origin: "Santos", dest: "São Paulo", reason: "Retorno", initialKm: 25320, finalKm: 25400 },
+      
+      { vehicleId: 2, origin: "São Paulo", dest: "Ribeirão Preto", reason: "Visita técnica", initialKm: 18000, finalKm: 18350 },
+      { vehicleId: 2, origin: "Ribeirão Preto", dest: "São Paulo", reason: "Retorno", initialKm: 18350, finalKm: 18700 },
+      { vehicleId: 2, origin: "São Paulo", dest: "Sorocaba", reason: "Treinamento", initialKm: 18700, finalKm: 18800 },
+      
+      { vehicleId: 3, origin: "São Paulo", dest: "Guarulhos", reason: "Aeroporto", initialKm: 12000, finalKm: 12050 },
+      { vehicleId: 3, origin: "Guarulhos", dest: "São Paulo", reason: "Retorno", initialKm: 12050, finalKm: 12100 },
+      { vehicleId: 3, origin: "São Paulo", dest: "ABC", reason: "Cliente", initialKm: 12100, finalKm: 12180 },
+    ];
+
+    tripData.forEach((data, index) => {
+      this.createRegistration({
+        type: "trip",
+        vehicleId: data.vehicleId,
+        driverId: (data.vehicleId % 3) + 1,
+        date: dates[(index * 2) % dates.length],
+        initialKm: data.initialKm,
+        finalKm: data.finalKm,
+        origin: data.origin,
+        destination: data.dest,
+        reason: data.reason
+      });
+    });
   }
 
   // --- User methods (MemStorage specific, not all in IStorage) ---
@@ -403,6 +603,7 @@ export class MemStorage implements IStorage {
       arla: insertRegistration.arla || null,
       maintenanceTypeId: insertRegistration.maintenanceTypeId || null,
       maintenanceCost: insertRegistration.maintenanceCost || null,
+      origin: insertRegistration.origin || null,
       destination: insertRegistration.destination || null,
       reason: insertRegistration.reason || null,
       observations: insertRegistration.observations || null,
@@ -480,6 +681,24 @@ export class MemStorage implements IStorage {
     return checklistItem;
   }
 
+  async updateChecklistItem(id: number, updates: Partial<InsertChecklistItem>): Promise<ChecklistItem | undefined> {
+    const existingItem = this.checklistItems.get(id);
+    if (!existingItem) return undefined;
+    
+    const updatedItem: ChecklistItem = {
+      ...existingItem,
+      ...updates,
+      id, // Preserve the original ID
+    };
+    
+    this.checklistItems.set(id, updatedItem);
+    return updatedItem;
+  }
+
+  async deleteChecklistItem(id: number): Promise<boolean> {
+    return this.checklistItems.delete(id);
+  }
+
   // --- Vehicle checklist methods ---
   async getVehicleChecklists(filters?: {
     vehicleId?: number;
@@ -496,8 +715,36 @@ export class MemStorage implements IStorage {
     }
     return checklists.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
-  async getVehicleChecklist(id: number): Promise<VehicleChecklist | undefined> {
-    return this.vehicleChecklists.get(id);
+  async getVehicleChecklist(id: number): Promise<VehicleChecklistWithDetails | undefined> {
+    const checklist = this.vehicleChecklists.get(id);
+    if (!checklist) return undefined;
+
+    // Buscar os resultados associados
+    const results = await this.getChecklistResults(id);
+    
+    // Para cada resultado, buscar as informações do item
+    const resultsWithItems = await Promise.all(
+      results.map(async (result) => {
+        const item = await this.getChecklistItem(result.itemId);
+        return {
+          ...result,
+          item: item
+        };
+      })
+    );
+
+    // Buscar informações do veículo, motorista e template
+    const vehicle = await this.getVehicle(checklist.vehicleId);
+    const driver = await this.getDriver(checklist.driverId);
+    const template = await this.getChecklistTemplate(checklist.templateId);
+
+    return {
+      ...checklist,
+      results: resultsWithItems,
+      vehicle: vehicle,
+      driver: driver,
+      template: template
+    };
   }
   async createVehicleChecklist(checklist: InsertVehicleChecklist): Promise<VehicleChecklist> {
     const id = this.vehicleChecklistCurrentId++;
@@ -690,8 +937,149 @@ export class MemStorage implements IStorage {
       return null;
     }
   }
+
+  private initializeSampleChecklists() {
+    // Criar templates de checklist
+    const inspectionTemplate = this.createChecklistTemplate({
+      name: "Inspeção Diária",
+      description: "Checklist padrão para inspeção diária de veículos",
+      isDefault: true
+    });
+
+    const maintenanceTemplate = this.createChecklistTemplate({
+      name: "Checklist de Manutenção",
+      description: "Verificação antes de manutenção preventiva",
+      isDefault: false
+    });
+
+    // Criar itens para o template de inspeção diária
+    const dailyInspectionItems = [
+      { name: "Verificar nível de óleo do motor", category: "motor", isRequired: true, order: 1 },
+      { name: "Verificar nível do líquido de arrefecimento", category: "motor", isRequired: true, order: 2 },
+      { name: "Verificar pressão dos pneus", category: "pneus", isRequired: true, order: 3 },
+      { name: "Verificar estado dos pneus (desgaste)", category: "pneus", isRequired: true, order: 4 },
+      { name: "Testar funcionamento dos faróis", category: "luzes", isRequired: true, order: 5 },
+      { name: "Testar funcionamento das lanternas", category: "luzes", isRequired: true, order: 6 },
+      { name: "Verificar funcionamento das setas", category: "luzes", isRequired: true, order: 7 },
+      { name: "Verificar limpeza dos espelhos", category: "exterior", isRequired: false, order: 8 },
+      { name: "Verificar funcionamento dos limpadores", category: "exterior", isRequired: true, order: 9 },
+      { name: "Verificar documentação do veículo", category: "documentacao", isRequired: true, order: 10 },
+      { name: "Verificar kit de primeiros socorros", category: "seguranca", isRequired: true, order: 11 },
+      { name: "Verificar extintor de incêndio", category: "seguranca", isRequired: true, order: 12 },
+      { name: "Verificar triângulo de sinalização", category: "seguranca", isRequired: true, order: 13 },
+      { name: "Verificar funcionamento do ar condicionado", category: "interior", isRequired: false, order: 14 },
+      { name: "Verificar limpeza interna", category: "interior", isRequired: false, order: 15 }
+    ];
+
+    dailyInspectionItems.forEach(item => {
+      this.createChecklistItem({
+        templateId: 1, // inspectionTemplate.id
+        name: item.name,
+        category: item.category,
+        isRequired: item.isRequired,
+        order: item.order
+      });
+    });
+
+    // Criar itens para o template de manutenção
+    const maintenanceItems = [
+      { name: "Verificar nível de fluido de freio", category: "motor", isRequired: true, order: 1 },
+      { name: "Verificar estado das pastilhas de freio", category: "motor", isRequired: true, order: 2 },
+      { name: "Verificar alinhamento e balanceamento", category: "pneus", isRequired: true, order: 3 },
+      { name: "Verificar sistema de suspensão", category: "motor", isRequired: true, order: 4 },
+      { name: "Verificar bateria e sistema elétrico", category: "motor", isRequired: true, order: 5 },
+      { name: "Verificar correia do motor", category: "motor", isRequired: true, order: 6 },
+      { name: "Verificar filtro de ar", category: "motor", isRequired: false, order: 7 },
+      { name: "Verificar sistema de escape", category: "exterior", isRequired: true, order: 8 }
+    ];
+
+    maintenanceItems.forEach(item => {
+      this.createChecklistItem({
+        templateId: 2, // maintenanceTemplate.id
+        name: item.name,
+        category: item.category,
+        isRequired: item.isRequired,
+        order: item.order
+      });
+    });
+
+    // Criar alguns checklists de exemplo
+    const now = new Date();
+    
+    // Checklist 1 - Gol
+    const checklist1 = this.createVehicleChecklist({
+      vehicleId: 1,
+      driverId: 1,
+      templateId: 1,
+      odometer: 25100,
+      status: "complete",
+      date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)
+    });
+
+    // Checklist 2 - Uno (com problemas)
+    const checklist2 = this.createVehicleChecklist({
+      vehicleId: 2,
+      driverId: 2,
+      templateId: 1,
+      odometer: 18250,
+      status: "failed",
+      date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
+    });
+
+    // Checklist 3 - HB20 (manutenção)
+    const checklist3 = this.createVehicleChecklist({
+      vehicleId: 3,
+      driverId: 3,
+      templateId: 2,
+      odometer: 12150,
+      status: "complete",
+      date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+    });
+
+    // Adicionar resultados para cada checklist
+    // Para checklist1 (completo)
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].forEach(itemId => {
+      this.createChecklistResult({
+        checklistId: 1,
+        itemId: itemId,
+        status: "ok",
+        observation: null
+      });
+    });
+
+    // Para checklist2 (com problemas)
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].forEach(itemId => {
+      let status = "ok";
+      let observation = null;
+      
+      if (itemId === 1) {
+        status = "issue";
+        observation = "Nível baixo de óleo do motor";
+      } else if (itemId === 3) {
+        status = "issue";
+        observation = "Pressão baixa no pneu dianteiro direito";
+      }
+      
+      this.createChecklistResult({
+        checklistId: 2,
+        itemId: itemId,
+        status: status,
+        observation: observation
+      });
+    });
+
+    // Para checklist3 (manutenção completa)
+    [16, 17, 18, 19, 20, 21, 22, 23].forEach(itemId => {
+      this.createChecklistResult({
+        checklistId: 3,
+        itemId: itemId,
+        status: "ok",
+        observation: null
+      });
+    });
+  }
 }
 
-// export const storage = new MemStorage();
-import { DatabaseStorage } from "./dbStorage";
-export const storage = new DatabaseStorage();
+export const storage = new MemStorage();
+// import { DatabaseStorage } from "./dbStorage";
+// export const storage = new DatabaseStorage();

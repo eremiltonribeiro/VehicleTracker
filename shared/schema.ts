@@ -164,6 +164,7 @@ export const vehicleRegistrations = pgTable("vehicle_registrations", {
   maintenanceCost: integer("maintenance_cost"), // in cents
 
   // Trip fields
+  origin: text("origin"),
   destination: text("destination"),
   reason: text("reason"),
   
@@ -181,21 +182,22 @@ export const extendedRegistrationSchema = insertRegistrationSchema.extend({
   type: z.enum(["fuel", "maintenance", "trip"]),
   
   // Common required fields
-  vehicleId: z.number().min(1, "Veículo é obrigatório"),
-  driverId: z.number().min(1, "Motorista é obrigatório"),
-  date: z.date({ required_error: "Data é obrigatória" }),
-  initialKm: z.number().min(0, "KM inicial é obrigatório"),
+  vehicleId: z.coerce.number().min(1, "Veículo é obrigatório"),
+  driverId: z.coerce.number().min(1, "Motorista é obrigatório"),
+  date: z.coerce.date({ required_error: "Data é obrigatória" }),
+  initialKm: z.coerce.number().min(0, "KM inicial é obrigatório"),
 
   // Conditional validation based on type
-  finalKm: z.number().optional().nullable(),
-  fuelStationId: z.number().optional().nullable(),
-  fuelTypeId: z.number().optional().nullable(),
-  liters: z.number().optional().nullable(),
-  fuelCost: z.number().optional().nullable(),
+  finalKm: z.coerce.number().optional().nullable(),
+  fuelStationId: z.coerce.number().optional().nullable(),
+  fuelTypeId: z.coerce.number().optional().nullable(),
+  liters: z.coerce.number().optional().nullable(),
+  fuelCost: z.coerce.number().optional().nullable(),
   fullTank: z.boolean().optional().nullable(),
   arla: z.boolean().optional().nullable(),
-  maintenanceTypeId: z.number().optional().nullable(),
-  maintenanceCost: z.number().optional().nullable(),
+  maintenanceTypeId: z.coerce.number().optional().nullable(),
+  maintenanceCost: z.coerce.number().optional().nullable(),
+  origin: z.string().optional().nullable(),
   destination: z.string().optional().nullable(),
   reason: z.string().optional().nullable(),
   observations: z.string().optional().nullable(),
@@ -207,9 +209,12 @@ export type VehicleRegistration = typeof vehicleRegistrations.$inferSelect;
 
 // Actual form schemas with conditional validation
 export const fuelRegistrationSchema = extendedRegistrationSchema.refine(
-  (data) => data.type === "fuel" ? 
-    data.fuelStationId && data.fuelTypeId && data.liters && data.fuelCost : 
-    true,
+  (data) => {
+    if (data.type === "fuel") {
+      return data.fuelStationId && data.fuelTypeId && data.liters && data.fuelCost;
+    }
+    return true;
+  },
   {
     message: "Posto, tipo de combustível, litros e valor são obrigatórios para abastecimento",
     path: ["type"],
@@ -217,9 +222,12 @@ export const fuelRegistrationSchema = extendedRegistrationSchema.refine(
 );
 
 export const maintenanceRegistrationSchema = extendedRegistrationSchema.refine(
-  (data) => data.type === "maintenance" ? 
-    data.maintenanceTypeId && data.maintenanceCost : 
-    true,
+  (data) => {
+    if (data.type === "maintenance") {
+      return data.maintenanceTypeId && data.maintenanceCost;
+    }
+    return true;
+  },
   {
     message: "Tipo de manutenção e valor são obrigatórios para manutenção",
     path: ["type"],
@@ -227,11 +235,14 @@ export const maintenanceRegistrationSchema = extendedRegistrationSchema.refine(
 );
 
 export const tripRegistrationSchema = extendedRegistrationSchema.refine(
-  (data) => data.type === "trip" ? 
-    data.destination && data.finalKm : 
-    true,
+  (data) => {
+    if (data.type === "trip") {
+      return data.origin && data.destination && data.reason && data.finalKm;
+    }
+    return true;
+  },
   {
-    message: "Destino e KM final são obrigatórios para viagem",
+    message: "Origem, destino, motivo e KM final são obrigatórios para viagem",
     path: ["type"],
   }
 );
@@ -314,3 +325,13 @@ export const insertChecklistResultSchema = createInsertSchema(checklistResults).
 
 export type InsertChecklistResult = z.infer<typeof insertChecklistResultSchema>;
 export type ChecklistResult = typeof checklistResults.$inferSelect;
+
+// Tipo estendido para checklist com resultados e relacionamentos
+export type VehicleChecklistWithDetails = VehicleChecklist & {
+  results?: (ChecklistResult & { 
+    item?: ChecklistItem 
+  })[];
+  vehicle?: Vehicle;
+  driver?: Driver;
+  template?: ChecklistTemplate;
+};
