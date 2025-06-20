@@ -12,7 +12,10 @@ const ReactQueryDevtools = lazy(() =>
     : Promise.resolve({ default: () => null })
 );
 
+import Portal from "@/pages/Portal";
 import Home from "@/pages/Home";
+import VehicleDetail from "@/pages/VehicleDetail";
+import DriverDetail from "@/pages/DriverDetail";
 import Checklists from "@/pages/Checklists";
 import SimpleChecklists from "@/pages/SimpleChecklists";
 import Reports from "@/pages/Reports";
@@ -53,6 +56,16 @@ function HomeWithParams({ mode }: { mode: "edit" | "view" }) {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0] as string;
+        const response = await fetch(url, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      },
       retry: (failureCount, error: any) => {
         // Não retry em erros 401/403
         if (error?.response?.status === 401 || error?.response?.status === 403) {
@@ -143,7 +156,11 @@ function AppRouter() {
 
           <Route path="/">
             <PrivateRoute path="/">
+<<<<<<< HEAD
               <Welcome />
+=======
+              <Portal />
+>>>>>>> f637565a40665382154ff66e15537e66e19f2dc7
             </PrivateRoute>
           </Route>
           
@@ -181,6 +198,32 @@ function AppRouter() {
           <Route path="/registros/dashboard">
             <PrivateRoute path="/registros/dashboard">
               <Home defaultView="dashboard" />
+            </PrivateRoute>
+          </Route>
+          
+          {/* New routes for portal navigation */}
+          <Route path="/historico">
+            <PrivateRoute path="/historico">
+              <Home defaultView="history" />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/dashboard">
+            <PrivateRoute path="/dashboard">
+              <Home defaultView="dashboard" />
+            </PrivateRoute>
+          </Route>
+          
+          {/* Vehicle and Driver Detail Pages */}
+          <Route path="/vehicles/:id">
+            <PrivateRoute path="/vehicles/:id">
+              <VehicleDetail />
+            </PrivateRoute>
+          </Route>
+          
+          <Route path="/drivers/:id">
+            <PrivateRoute path="/drivers/:id">
+              <DriverDetail />
             </PrivateRoute>
           </Route>
 

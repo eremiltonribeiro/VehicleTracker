@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+<<<<<<< HEAD
 import { Separator } from "@/components/ui/separator";
 import { 
   AlertDialog,
@@ -23,15 +25,27 @@ import { useToast } from "@/hooks/use-toast";
 import { Driver, insertDriverSchema } from "@shared/schema";
 import { ZodIssue } from "zod";
 import { brandColors } from "@/lib/colors";
+=======
+import { Loader2, UserCircle, Plus, Edit, Trash, Eye, Search, Phone, CreditCard } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Driver, insertDriverSchema } from "@shared/schema";
+import { ZodIssue } from "zod";
+// import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
+>>>>>>> f637565a40665382154ff66e15537e66e19f2dc7
 
 export function CadastroMotoristas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentDriver, setCurrentDriver] = useState<Driver | null>(null);
+<<<<<<< HEAD
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(true);
+=======
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); 
+  const [searchTerm, setSearchTerm] = useState("");
+>>>>>>> f637565a40665382154ff66e15537e66e19f2dc7
   const [formData, setFormData] = useState({
     name: "",
     license: "",
@@ -264,6 +278,7 @@ export function CadastroMotoristas() {
                 {isFormVisible ? "Ocultar Formulário" : "Novo Motorista"}
               </Button>
             </div>
+<<<<<<< HEAD
           </div>
         </div>
 
@@ -490,6 +505,132 @@ export function CadastroMotoristas() {
                       <TableHead>Telefone</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
+=======
+          </form>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div>
+              <CardTitle>Motoristas Cadastrados</CardTitle>
+              <CardDescription>
+                {drivers.length} motorista(s) registrado(s) no sistema.
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar motoristas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 w-[200px]"
+                />
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading && drivers.length === 0 && (
+            <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          )}
+          {!isLoading && drivers.length === 0 && (
+            <div className="text-center py-6 text-muted-foreground">
+              <UserCircle className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>Nenhum motorista cadastrado.</p>
+              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo motorista.</p>
+            </div>
+          )}
+          {drivers.length > 0 && (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>CNH</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {drivers
+                    .filter(driver => 
+                      driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      driver.license.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      driver.phone.toLowerCase().includes(searchTerm.toLowerCase())
+                    )
+                    .map((driver) => (
+                    <TableRow key={driver.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <div className="flex items-center cursor-pointer">
+                          {driver.imageUrl ? (
+                            <img src={driver.imageUrl} alt={driver.name} className="h-10 w-10 mr-3 rounded-full object-cover border" />
+                          ) : (
+                            <div className="h-10 w-10 mr-3 rounded-full border bg-muted flex items-center justify-center">
+                              <UserCircle className="h-6 w-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div>
+                            <div className="font-medium">{driver.name}</div>
+                            <div className="text-sm text-muted-foreground flex items-center">
+                              <Phone className="h-3 w-3 mr-1" />
+                              {driver.phone}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <Badge variant="outline" className="font-mono">
+                            {driver.license}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                          {driver.phone}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary">Ativo</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Link href={`/drivers/${driver.id}`}>
+                            <Button variant="ghost" size="sm" title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(driver)}
+                            disabled={deleteDriverMutation.isPending}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDelete(driver.id)}
+                            disabled={deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id}
+                            title="Excluir"
+                          >
+                            {deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash className="h-4 w-4" />
+                            }
+                          </Button>
+                        </div>
+                      </TableCell>
+>>>>>>> f637565a40665382154ff66e15537e66e19f2dc7
                     </TableRow>
                   </TableHeader>
                   <TableBody>

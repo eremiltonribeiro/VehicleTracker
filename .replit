@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -7,9 +7,9 @@ channel = "stable-24_05"
 packages = ["imagemagick"]
 
 [deployment]
-deploymentTarget = "cloudrun"
-build = ["sh", "-c", "npm run build"]
-run = ["sh", "-c", "NODE_ENV=production node dist/index.js"]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
@@ -20,7 +20,7 @@ localPort = 5001
 externalPort = 3000
 
 [workflows]
-runButton = "Build and Start"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"

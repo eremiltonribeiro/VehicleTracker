@@ -1,0 +1,35 @@
+The above error occurred in the <DashboardWithFilters> component:
+
+    at DashboardWithFilters (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/components/vehicles/DashboardWithFilters.tsx:70:39)
+    at main
+    at div
+    at Home (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/pages/Home.tsx:26:32)
+    at PrivateRoute (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/App.tsx?v=Qi9qsEgTLJFss_hHTXcf5:126:3)
+    at Route (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=782ed402:323:16)
+    at Switch (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=782ed402:379:17)
+    at main
+    at div
+    at AppRouter (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/App.tsx?v=Qi9qsEgTLJFss_hHTXcf5:140:35)
+    at QueryClientProvider (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-PMXIEUQT.js?v=782ed402:2932:3)
+    at App (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/App.tsx?v=Qi9qsEgTLJFss_hHTXcf5:622:3)
+    at ThemeProvider (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/components/ui/theme-provider.tsx:25:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+Cannot access 'AdvancedFilters' before initialization
+❌ ERRO GLOBAL: 
+ReferenceError {}
+
+Arquivo: https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402
+Linha: 9129 Coluna: 15
+Stack: ReferenceError: Cannot access 'AdvancedFilters' before initialization
+    at DashboardWithFilters (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/src/components/vehicles/DashboardWithFilters.tsx:364:30)
+    at renderWithHooks (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:11548:26)
+    at updateFunctionComponent (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:14582:28)
+    at beginWork (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:15924:22)
+    at beginWork$1 (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:19753:22)
+    at performUnitOfWork (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:19198:20)
+    at workLoopSync (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:19137:13)
+    at renderRootSync (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:19116:15)
+    at recoverFromConcurrentError (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:18736:28)
+    at performSyncWorkOnRoot (https://3b655662-7966-4796-884e-2ae18f7b1eb1-00-20mb9yd6zpjwl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-RPCDYKBN.js?v=782ed402:18879:28)

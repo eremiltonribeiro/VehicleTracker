@@ -649,6 +649,204 @@ export function DashboardWithFilters() {
       consumo: parseFloat(v.avgConsumption.toFixed(2))
     }));
 
+<<<<<<< HEAD
+=======
+  // Componente de filtros avançados
+  function AdvancedFilters() {
+    return (
+    <Collapsible 
+      open={showFilters} 
+      onOpenChange={setShowFilters}
+      className="mt-2"
+    >
+      <CollapsibleTrigger asChild>
+        <Button variant="outline" size="sm" className="flex items-center gap-2 mb-4">
+          <Search className="h-4 w-4" />
+          <span>Filtros avançados</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-6 border p-4 rounded-md bg-slate-50/50 backdrop-blur-sm mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Filtro de data */}
+          <div className="space-y-3">
+            <h3 className="font-medium flex items-center gap-2 text-gray-700">
+              <Calendar className="h-4 w-4" />
+              <span>Período</span>
+            </h3>
+            <div className="flex items-center gap-2 mb-3">
+              <Checkbox 
+                id="custom-date" 
+                checked={useCustomDateRange}
+                onCheckedChange={(checked) => setUseCustomDateRange(checked === true)}
+              />
+              <Label htmlFor="custom-date" className="text-sm">Seleção personalizada</Label>
+            </div>
+            {useCustomDateRange ? (
+              <div className="flex flex-col gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="justify-start text-left font-normal w-full"
+                    >
+                      <CalendarRange className="h-4 w-4 mr-2" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                            {format(dateRange.to, "dd/MM/yyyy")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd/MM/yyyy")
+                        )
+                      ) : (
+                        "Selecione um período"
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="range"
+                      selected={dateRange}
+                      onSelect={(range) => {
+                        setDateRange({
+                          from: range?.from,
+                          to: range?.to
+                        });
+                      }}
+                      locale={pt}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            ) : (
+              <div className="flex flex-col space-y-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-all" 
+                    checked={timeFilter === 'all'}
+                    onCheckedChange={() => setTimeFilter('all')}
+                  />
+                  <Label htmlFor="period-all">Todo o período</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-month" 
+                    checked={timeFilter === 'month'}
+                    onCheckedChange={() => setTimeFilter('month')}
+                  />
+                  <Label htmlFor="period-month">Último mês</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-3months" 
+                    checked={timeFilter === '3months'}
+                    onCheckedChange={() => setTimeFilter('3months')}
+                  />
+                  <Label htmlFor="period-3months">Últimos 3 meses</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-6months" 
+                    checked={timeFilter === '6months'}
+                    onCheckedChange={() => setTimeFilter('6months')}
+                  />
+                  <Label htmlFor="period-6months">Últimos 6 meses</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="period-year" 
+                    checked={timeFilter === 'year'}
+                    onCheckedChange={() => setTimeFilter('year')}
+                  />
+                  <Label htmlFor="period-year">Último ano</Label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Filtro de veículos */}
+          <div className="space-y-3">
+            <h3 className="font-medium flex items-center gap-2 text-gray-700">
+              <Car className="h-4 w-4" />
+              <span>Veículos</span>
+              {selectedVehicleIds.length > 0 && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  {selectedVehicleIds.length} selecionado(s)
+                </span>
+              )}
+            </h3>
+            <div className="max-h-48 overflow-y-auto border rounded-md p-2 bg-white">
+              {vehicles.map((vehicle: any) => (
+                <div key={vehicle.id} className="flex items-center gap-2 mb-2 p-1 hover:bg-gray-50 rounded">
+                  <Checkbox 
+                    id={`vehicle-${vehicle.id}`} 
+                    checked={isVehicleSelected(vehicle.id)}
+                    onCheckedChange={() => toggleVehicleSelection(vehicle.id)}
+                  />
+                  <Label htmlFor={`vehicle-${vehicle.id}`} className="text-sm flex-1 cursor-pointer">
+                    <span className="font-medium">{vehicle.name}</span>
+                    <span className="text-gray-500 ml-1">({vehicle.plate})</span>
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Filtro de motoristas */}
+          <div className="space-y-3">
+            <h3 className="font-medium flex items-center gap-2 text-gray-700">
+              <User className="h-4 w-4" />
+              <span>Motoristas</span>
+              {selectedDriverIds.length > 0 && (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                  {selectedDriverIds.length} selecionado(s)
+                </span>
+              )}
+            </h3>
+            <div className="max-h-48 overflow-y-auto border rounded-md p-2 bg-white">
+              {drivers.map((driver: any) => (
+                <div key={driver.id} className="flex items-center gap-2 mb-2 p-1 hover:bg-gray-50 rounded">
+                  <Checkbox 
+                    id={`driver-${driver.id}`} 
+                    checked={isDriverSelected(driver.id)}
+                    onCheckedChange={() => toggleDriverSelection(driver.id)}
+                  />
+                  <Label htmlFor={`driver-${driver.id}`} className="text-sm flex-1 cursor-pointer font-medium">
+                    {driver.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={resetFilters}
+            className="flex items-center gap-2 w-full sm:w-auto"
+          >
+            <FilterX className="h-4 w-4" />
+            Limpar filtros
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowFilters(false)}
+            className="w-full sm:w-auto"
+          >
+            Aplicar filtros
+          </Button>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+    );
+  }
+
+>>>>>>> f637565a40665382154ff66e15537e66e19f2dc7
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
