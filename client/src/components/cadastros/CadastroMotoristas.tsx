@@ -5,18 +5,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, UserCircle, Plus, Edit, Trash } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, UserCircle, Plus, Edit, Trash, Search, X, Phone, CreditCard, User, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Driver, insertDriverSchema } from "@shared/schema"; // Import Zod schema
-import { ZodIssue } from "zod"; // Import ZodIssue for error formatting
-// import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
+import { Driver, insertDriverSchema } from "@shared/schema";
+import { ZodIssue } from "zod";
+import { brandColors } from "@/lib/colors";
 
 export function CadastroMotoristas() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentDriver, setCurrentDriver] = useState<Driver | null>(null);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // State for Zod errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isFormVisible, setIsFormVisible] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     license: "",
@@ -27,7 +42,6 @@ export function CadastroMotoristas() {
   const { data: drivers = [], isLoading } = useQuery<Driver[], Error>({
     queryKey: ["/api/drivers"],
     queryFn: async () => {
-      // Simplified online-only queryFn for this refactor
       const res = await fetch("/api/drivers");
       if (!res.ok) {
         throw new Error("Falha ao buscar motoristas da API");
@@ -35,6 +49,13 @@ export function CadastroMotoristas() {
       return res.json();
     },
   });
+
+  // Filter drivers based on search term
+  const filteredDrivers = drivers.filter(driver =>
+    driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (driver.license && driver.license.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (driver.phone && driver.phone.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   // Mutations
   const saveDriverMutation = useMutation<Driver, Error, Partial<Driver>>({
@@ -146,6 +167,8 @@ export function CadastroMotoristas() {
     });
     setFormMode("create");
     setCurrentDriver(null);
+    setFormErrors({});
+    setIsFormVisible(true);
   };
 
   const handleEdit = (driver: Driver) => {
@@ -157,12 +180,13 @@ export function CadastroMotoristas() {
       imageUrl: driver.imageUrl || ""
     });
     setFormMode("edit");
+    setFormErrors({});
+    setIsFormVisible(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este motorista?")) return;
-    deleteDriverMutation.mutate(id);
+  const handleDelete = (driver: Driver) => {
+    deleteDriverMutation.mutate(driver.id);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -202,176 +226,375 @@ export function CadastroMotoristas() {
     saveDriverMutation.mutate(finalDriverData);
   };
 
-  if (isLoading) { // This isLoading is from useQuery for fetching drivers
-    return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: brandColors.primary[600] }} />
+          <p className="text-sm text-gray-600">Carregando motoristas...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {formMode === "create" ? <Plus className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
-            {formMode === "create" ? "Novo Motorista" : "Editar Motorista"}
-          </CardTitle>
-          <CardDescription>
-            {formMode === "create" 
-              ? "Cadastre um novo motorista no sistema" 
-              : "Altere os dados do motorista selecionado"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do Motorista*</Label>
-                <Input 
-                  id="name"
-                  name="name"
-                  placeholder="Ex: João Silva"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                />
-                {formErrors.name && <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="license">CNH</Label>
-                <Input 
-                  id="license"
-                  name="license"
-                  placeholder="Ex: 12345678901"
-                  value={formData.license}
-                  onChange={handleInputChange}
-                />
-                {formErrors.license && <p className="text-sm text-red-500 mt-1">{formErrors.license}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input 
-                  id="phone"
-                  name="phone"
-                  placeholder="Ex: (11) 99999-9999"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-                {formErrors.phone && <p className="text-sm text-red-500 mt-1">{formErrors.phone}</p>}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="imageUrl">URL da Imagem</Label>
-                <Input 
-                  id="imageUrl"
-                  name="imageUrl"
-                  placeholder="URL da foto do motorista"
-                  value={formData.imageUrl}
-                  onChange={handleInputChange}
-                />
-                 {/* Assuming imageUrl is not in the Zod schema for this example, so no formErrors.imageUrl */}
-              </div>
+    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="p-2 rounded-lg" style={{ backgroundColor: brandColors.primary[100] }}>
+                  <UserCircle className="h-8 w-8" style={{ color: brandColors.primary[600] }} />
+                </div>
+                Gestão de Motoristas
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Cadastre e gerencie os motoristas da sua frota
+              </p>
             </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
-              {formMode === "edit" && (
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={resetForm}
-                >
-                  Cancelar
-                </Button>
-              )}
-              
-              <Button 
-                type="submit"
-                className="flex items-center gap-1"
-                disabled={saveDriverMutation.isPending}
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => setIsFormVisible(!isFormVisible)}
+                variant="outline"
+                className="flex items-center gap-2"
               >
-                {saveDriverMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {formMode === "create" ? "Cadastrar Motorista" : "Atualizar Motorista"}
+                {isFormVisible ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {isFormVisible ? "Ocultar Formulário" : "Novo Motorista"}
               </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Motoristas Cadastrados</CardTitle>
-          <CardDescription>
-            {drivers.length} motorista(s) registrado(s) no sistema.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading && drivers.length === 0 && (
-            <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          )}
-          {!isLoading && drivers.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              <UserCircle className="h-12 w-12 mx-auto mb-2 opacity-20" />
-              <p>Nenhum motorista cadastrado.</p>
-              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo motorista.</p>
+          </div>
+        </div>
+
+        {/* Form Section */}
+        {isFormVisible && (
+          <Card className="mb-8 shadow-lg border-0" style={{ borderTop: `4px solid ${brandColors.primary[500]}` }}>
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                {formMode === "create" ? (
+                  <>
+                    <Plus className="h-5 w-5" style={{ color: brandColors.success[600] }} />
+                    Novo Motorista
+                  </>
+                ) : (
+                  <>
+                    <Edit className="h-5 w-5" style={{ color: brandColors.warning[600] }} />
+                    Editar Motorista
+                  </>
+                )}
+              </CardTitle>
+              <CardDescription>
+                {formMode === "create" 
+                  ? "Preencha os dados para cadastrar um novo motorista" 
+                  : `Altere os dados de ${currentDriver?.name}`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Nome do Motorista*
+                    </Label>
+                    <Input 
+                      id="name"
+                      name="name"
+                      placeholder="Ex: João Silva"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      className={`transition-all duration-200 ${
+                        formErrors.name 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                          : 'focus:border-blue-500 focus:ring-blue-500/20'
+                      }`}
+                    />
+                    {formErrors.name && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <X className="h-3 w-3" />
+                        {formErrors.name}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="license" className="text-sm font-medium flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      CNH
+                    </Label>
+                    <Input 
+                      id="license"
+                      name="license"
+                      placeholder="Ex: 12345678901"
+                      value={formData.license}
+                      onChange={handleInputChange}
+                      className={`transition-all duration-200 ${
+                        formErrors.license
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                          : 'focus:border-blue-500 focus:ring-blue-500/20'
+                      }`}
+                    />
+                    {formErrors.license && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <X className="h-3 w-3" />
+                        {formErrors.license}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Telefone
+                    </Label>
+                    <Input 
+                      id="phone"
+                      name="phone"
+                      placeholder="Ex: (11) 99999-9999"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className={`transition-all duration-200 ${
+                        formErrors.phone
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
+                          : 'focus:border-blue-500 focus:ring-blue-500/20'
+                      }`}
+                    />
+                    {formErrors.phone && (
+                      <p className="text-sm text-red-600 flex items-center gap-1">
+                        <X className="h-3 w-3" />
+                        {formErrors.phone}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="imageUrl" className="text-sm font-medium">
+                      URL da Imagem
+                    </Label>
+                    <Input 
+                      id="imageUrl"
+                      name="imageUrl"
+                      placeholder="URL da foto do motorista"
+                      value={formData.imageUrl}
+                      onChange={handleInputChange}
+                      className="focus:border-blue-500 focus:ring-blue-500/20 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="flex justify-end gap-3 pt-2">
+                  {formMode === "edit" && (
+                    <Button 
+                      type="button" 
+                      variant="outline"
+                      onClick={resetForm}
+                      className="px-6"
+                    >
+                      Cancelar
+                    </Button>
+                  )}
+                  
+                  <Button 
+                    type="submit"
+                    className="flex items-center gap-2 px-6"
+                    disabled={saveDriverMutation.isPending}
+                    style={{ 
+                      backgroundColor: formMode === "create" ? brandColors.success[600] : brandColors.warning[600],
+                      borderColor: formMode === "create" ? brandColors.success[600] : brandColors.warning[600]
+                    }}
+                  >
+                    {saveDriverMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {formMode === "create" ? "Cadastrar Motorista" : "Atualizar Motorista"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Drivers List */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl">Motoristas Cadastrados</CardTitle>
+                <CardDescription>
+                  {filteredDrivers.length} de {drivers.length} motorista(s) {searchTerm && 'encontrado(s)'}
+                </CardDescription>
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar por nome, CNH ou telefone..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-full sm:w-80"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
             </div>
-          )}
-          {drivers.length > 0 && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>CNH</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {drivers.map((driver) => (
-                    <TableRow key={driver.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          {driver.imageUrl ? (
-                            <img src={driver.imageUrl} alt={driver.name} className="h-8 w-8 mr-2 rounded-full object-cover" />
-                          ) : (
-                            <UserCircle className="h-6 w-6 mr-2 text-muted-foreground" />
-                          )}
-                          {driver.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>{driver.license || "-"}</TableCell>
-                      <TableCell>{driver.phone || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(driver)}
-                            disabled={deleteDriverMutation.isPending}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => handleDelete(driver.id)}
-                            disabled={deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id}
-                          >
-                            {deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Trash className="h-4 w-4" />
-                            }
-                          </Button>
-                        </div>
-                      </TableCell>
+          </CardHeader>
+          <CardContent>
+            {!isLoading && drivers.length === 0 && (
+              <div className="text-center py-12">
+                <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <UserCircle className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum motorista cadastrado</h3>
+                <p className="text-gray-600 mb-4">Comece cadastrando o primeiro motorista da sua frota.</p>
+                <Button 
+                  onClick={() => setIsFormVisible(true)}
+                  className="flex items-center gap-2"
+                  style={{ backgroundColor: brandColors.primary[600] }}
+                >
+                  <Plus className="h-4 w-4" />
+                  Cadastrar Primeiro Motorista
+                </Button>
+              </div>
+            )}
+
+            {!isLoading && drivers.length > 0 && filteredDrivers.length === 0 && searchTerm && (
+              <div className="text-center py-8">
+                <Search className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum resultado encontrado</h3>
+                <p className="text-gray-600 mb-4">
+                  Não encontramos motoristas que correspondam à sua busca por "{searchTerm}".
+                </p>
+                <Button variant="outline" onClick={() => setSearchTerm("")}>
+                  Limpar busca
+                </Button>
+              </div>
+            )}
+
+            {filteredDrivers.length > 0 && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Motorista</TableHead>
+                      <TableHead>CNH</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredDrivers.map((driver) => (
+                      <TableRow key={driver.id} className="hover:bg-gray-50 transition-colors">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {driver.imageUrl ? (
+                              <img 
+                                src={driver.imageUrl} 
+                                alt={driver.name} 
+                                className="h-10 w-10 rounded-full object-cover border-2 border-gray-200" 
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <UserCircle className="h-6 w-6 text-gray-500" />
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium text-gray-900">{driver.name}</div>
+                              <div className="text-sm text-gray-500">ID: {driver.id}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {driver.license ? (
+                            <Badge variant="outline" className="font-mono">
+                              {driver.license}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400">Não informado</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {driver.phone ? (
+                            <span className="font-medium">{driver.phone}</span>
+                          ) : (
+                            <span className="text-gray-400">Não informado</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className="text-green-700 border-green-200 bg-green-50"
+                          >
+                            Ativo
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(driver)}
+                              disabled={saveDriverMutation.isPending}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={deleteDriverMutation.isPending}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  {deleteDriverMutation.isPending && deleteDriverMutation.variables === driver.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir o motorista <strong>{driver.name}</strong>?
+                                    Esta ação não pode ser desfeita e removerá todos os registros associados.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(driver)}
+                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                                  >
+                                    Confirmar Exclusão
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

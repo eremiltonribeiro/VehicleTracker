@@ -62,6 +62,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(express.json());
   await setupAuth(app);
 
+  // Health check endpoint
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
   const isAdmin = async (req: Request, res: Response, next: Function) => {
     // Authentication disabled - allow all requests
     next();
@@ -720,7 +730,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         registrationData = req.body;
       }
       
-      if (registrationData.date) registrationData.date = new Date(registrationData.date);
+      if (registrationData.date) registrationData.date = new Date(registrationData.date).getTime();
       if (req.file) registrationData.photoUrl = `/uploads/${req.file.filename}`;
 
       let schema;
@@ -731,7 +741,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         default: schema = extendedRegistrationSchema;
       }
       const parsedData = schema.parse(registrationData);
-      const registration = await storage.createRegistration(parsedData);
+      
+      // Convert Date to timestamp for database storage
+      if (parsedData.date instanceof Date) {
+        (parsedData as any).date = parsedData.date.getTime();
+      }
+      
+      const registration = await storage.createRegistration(parsedData as any);
       res.status(201).json(registration);
     } catch (error: any) {
       if (error instanceof ZodError) {
@@ -1194,6 +1210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error deleting checklist result:", error);
       res.status(500).json({ message: "Erro ao excluir resultado.", details: error.message });
     }
+  });
+
+  // Health check endpoint
+  app.get('/api/health', (req: Request, res: Response) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      version: '1.0.0',
+      environment: process.env.NODE_ENV || 'development'
+    });
   });
 
   const httpServer = createServer(app);

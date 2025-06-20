@@ -447,7 +447,9 @@ export default function ChecklistDetails() {
                                     className="absolute inset-0 w-full h-full object-contain"
                                     onClick={() => {
                                       // Abrir imagem em tamanho completo em uma nova aba
-                                      window.open(result.photoUrl, '_blank');
+                                      if (result.photoUrl) {
+                                        window.open(result.photoUrl, '_blank');
+                                      }
                                     }}
                                     style={{ cursor: 'pointer' }}
                                     onError={(e) => {
@@ -456,7 +458,7 @@ export default function ChecklistDetails() {
                                       console.log("Erro ao carregar imagem:", result.photoUrl);
 
                                       // Tentativas de correção de caminho
-                                      if (!result.photoUrl.startsWith("/")) {
+                                      if (result.photoUrl && !result.photoUrl.startsWith("/")) {
                                         target.src = "/" + result.photoUrl;
                                       } else if (result.photoUrl && result.photoUrl.startsWith("/uploads/")) {
                                         // Se o caminho já começa com /uploads, tentar caminho absoluto

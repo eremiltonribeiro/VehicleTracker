@@ -1,47 +1,47 @@
-import { pgTable, text, integer, serial, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Session storage para Replit Auth
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
+    sid: text("sid").primaryKey(),
     sess: text("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    expire: integer("expire").notNull(),
   }
 );
 
 // Tabela de usuários melhorada com Replit Auth
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  passwordHash: varchar("password_hash"), // For users created manually / not via Replit Auth
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().notNull(),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  passwordHash: text("password_hash"), // For users created manually / not via Replit Auth
   roleId: integer("role_id").references(() => roles.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at").default(Date.now()),
+  updatedAt: integer("updated_at").default(Date.now()),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 // Roles table
-export const roles = pgTable("roles", {
-  id: serial("id").primaryKey(),
-  name: varchar("name").unique().notNull(),
+export const roles = sqliteTable("roles", {
+  id: integer("id").primaryKey(),
+  name: text("name").unique().notNull(),
   description: text("description"),
-  permissions: text("permissions").notNull(), // Storing JSON as text, will parse in application layer. Drizzle doesn't have jsonb for sqlite by default.
+  permissions: text("permissions").notNull(), // Storing JSON as text
 });
 
 export type InsertRole = typeof roles.$inferInsert;
 export type Role = typeof roles.$inferSelect;
 
 // Vehicles table
-export const vehicles = pgTable("vehicles", {
-  id: serial("id").primaryKey(),
+export const vehicles = sqliteTable("vehicles", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
   plate: text("plate").notNull().unique(),
   model: text("model").notNull(),
@@ -67,8 +67,8 @@ export const ZodInsertVehicleSchema = insertVehicleSchema.extend({
 export type ZodInsertVehicle = z.infer<typeof ZodInsertVehicleSchema>;
 
 // Drivers table
-export const drivers = pgTable("drivers", {
-  id: serial("id").primaryKey(),
+export const drivers = sqliteTable("drivers", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
   license: text("license").notNull(),
   phone: text("phone").notNull(),
@@ -92,8 +92,8 @@ export const ZodInsertDriverSchema = insertDriverSchema.extend({
 export type ZodInsertDriver = z.infer<typeof ZodInsertDriverSchema>;
 
 // Fuel stations table
-export const fuelStations = pgTable("fuel_stations", {
-  id: serial("id").primaryKey(),
+export const fuelStations = sqliteTable("fuel_stations", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
   address: text("address"),
 });
@@ -105,10 +105,11 @@ export const insertFuelStationSchema = createInsertSchema(fuelStations).pick({
 
 export type InsertFuelStation = z.infer<typeof insertFuelStationSchema>;
 export type FuelStation = typeof fuelStations.$inferSelect;
+export type GasStation = FuelStation; // Alias for compatibility
 
 // Fuel types table
-export const fuelTypes = pgTable("fuel_types", {
-  id: serial("id").primaryKey(),
+export const fuelTypes = sqliteTable("fuel_types", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
 });
 
@@ -120,8 +121,8 @@ export type InsertFuelType = z.infer<typeof insertFuelTypeSchema>;
 export type FuelType = typeof fuelTypes.$inferSelect;
 
 // Maintenance types table
-export const maintenanceTypes = pgTable("maintenance_types", {
-  id: serial("id").primaryKey(),
+export const maintenanceTypes = sqliteTable("maintenance_types", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
 });
 
@@ -142,12 +143,12 @@ export const RegistrationType = {
 export type RegistrationType = (typeof RegistrationType)[keyof typeof RegistrationType];
 
 // Vehicle registrations table
-export const vehicleRegistrations = pgTable("vehicle_registrations", {
-  id: serial("id").primaryKey(),
+export const vehicleRegistrations = sqliteTable("vehicle_registrations", {
+  id: integer("id").primaryKey(),
   type: text("type").notNull(), // "fuel", "maintenance", "trip"
   vehicleId: integer("vehicle_id").notNull().references(() => vehicles.id),
   driverId: integer("driver_id").notNull().references(() => drivers.id),
-  date: timestamp("date").notNull().defaultNow(),
+  date: integer("date").notNull().default(Date.now()),
   initialKm: integer("initial_km").notNull(),
   finalKm: integer("final_km"),
   
@@ -156,8 +157,8 @@ export const vehicleRegistrations = pgTable("vehicle_registrations", {
   fuelTypeId: integer("fuel_type_id").references(() => fuelTypes.id),
   liters: integer("liters"),
   fuelCost: integer("fuel_cost"), // in cents
-  fullTank: boolean("full_tank"),
-  arla: boolean("arla"),
+  fullTank: integer("full_tank", { mode: 'boolean' }),
+  arla: integer("arla", { mode: 'boolean' }),
   
   // Maintenance fields
   maintenanceTypeId: integer("maintenance_type_id").references(() => maintenanceTypes.id),
@@ -249,12 +250,12 @@ export const tripRegistrationSchema = extendedRegistrationSchema.refine(
 
 // ========= Checklist de Veículos =========
 // Tabela para modelos de checklist
-export const checklistTemplates = pgTable("checklist_templates", {
-  id: serial("id").primaryKey(),
+export const checklistTemplates = sqliteTable("checklist_templates", {
+  id: integer("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
-  isDefault: boolean("is_default").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  isDefault: integer("is_default", { mode: 'boolean' }).default(false),
+  createdAt: integer("created_at").default(Date.now()),
 });
 
 export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).pick({
@@ -267,12 +268,12 @@ export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSche
 export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
 
 // Tabela para itens de checklist
-export const checklistItems = pgTable("checklist_items", {
-  id: serial("id").primaryKey(),
+export const checklistItems = sqliteTable("checklist_items", {
+  id: integer("id").primaryKey(),
   templateId: integer("template_id").notNull().references(() => checklistTemplates.id),
   name: text("name").notNull(),
   description: text("description"),
-  isRequired: boolean("is_required").default(true),
+  isRequired: integer("is_required", { mode: 'boolean' }).default(true),
   category: text("category"),
   order: integer("order").default(0),
 });
@@ -290,12 +291,12 @@ export type InsertChecklistItem = z.infer<typeof insertChecklistItemSchema>;
 export type ChecklistItem = typeof checklistItems.$inferSelect;
 
 // Tabela para checklists realizados
-export const vehicleChecklists = pgTable("vehicle_checklists", {
-  id: serial("id").primaryKey(),
+export const vehicleChecklists = sqliteTable("vehicle_checklists", {
+  id: integer("id").primaryKey(),
   vehicleId: integer("vehicle_id").notNull().references(() => vehicles.id),
   driverId: integer("driver_id").notNull().references(() => drivers.id),
   templateId: integer("template_id").notNull().references(() => checklistTemplates.id),
-  date: timestamp("date").notNull().defaultNow(),
+  date: integer("date").notNull().default(Date.now()),
   observations: text("observations"),
   odometer: integer("odometer").notNull(),
   status: text("status").notNull(), // 'pending', 'complete', 'failed'
@@ -310,8 +311,8 @@ export type InsertVehicleChecklist = z.infer<typeof insertVehicleChecklistSchema
 export type VehicleChecklist = typeof vehicleChecklists.$inferSelect;
 
 // Tabela para resultados dos itens de checklist
-export const checklistResults = pgTable("checklist_results", {
-  id: serial("id").primaryKey(),
+export const checklistResults = sqliteTable("checklist_results", {
+  id: integer("id").primaryKey(),
   checklistId: integer("checklist_id").notNull().references(() => vehicleChecklists.id),
   itemId: integer("item_id").notNull().references(() => checklistItems.id),
   status: text("status").notNull(), // 'ok', 'issue', 'not_applicable'

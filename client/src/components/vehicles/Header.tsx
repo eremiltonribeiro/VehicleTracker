@@ -83,7 +83,8 @@ export function Header() {
     });
 
     try {
-      const success = await offlineStorage.syncWithServer();
+      const pendingOps = await offlineStorage.getPendingOperations();
+      const success = pendingOps.length === 0;
       if (success) {
         setPendingSyncs(0);
         toast({

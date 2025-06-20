@@ -1,7 +1,19 @@
+import React, { useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ClipboardCheck, Palette, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { ClipboardCheck, Palette, FileText, Car, UserCircle, Fuel, Droplet, Wrench, Edit, Trash, Loader2 } from "lucide-react";
+import { offlineStorage } from "@/services/offlineStorage";
+import { VehicleForm } from "@/components/vehicles/VehicleForm";
+import { DriverForm } from "@/components/vehicles/DriverForm";
+import { FuelStationForm } from "@/components/vehicles/FuelStationForm";
+import { FuelTypeForm } from "@/components/vehicles/FuelTypeForm";
+import { MaintenanceTypeForm } from "@/components/vehicles/MaintenanceTypeForm";
+import type { Vehicle, Driver, FuelStation, FuelType, MaintenanceType } from "../../../shared/schema";
 
 export default function Settings() {
   const [, setLocation] = useLocation();

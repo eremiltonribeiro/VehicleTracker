@@ -1,12 +1,16 @@
 {
-  "name": "Gestão de Frota - Granduvale Mineração",
-  "short_name": "Gestão de Frota",
-  "description": "Sistema de gestão de frota para Granduvale Mineração",
+  "name": "Vehicle Tracker - Sistema de Gestão de Frota",
+  "short_name": "VehicleTracker",
+  "description": "Sistema completo de controle de frota, combustível e manutenção de veículos",
   "start_url": "/",
   "background_color": "#ffffff",
-  "theme_color": "#1e3a8a",
+  "theme_color": "#0f172a",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/icon-192x192.svg",
@@ -19,6 +23,29 @@
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo Registro",
+      "short_name": "Registro",
+      "description": "Criar novo registro de combustível",
+      "url": "/registros",
+      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Visualizar dashboard e relatórios",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cadastros",
+      "short_name": "Cadastros",
+      "description": "Gerenciar veículos, motoristas e postos",
+      "url": "/cadastros",
+      "icons": [{ "src": "/icon-192x192.svg", "sizes": "192x192" }]
     }
   ]
 }

@@ -197,6 +197,22 @@ export function HistoryView() {
   // Query para buscar veículos para filtro
   const { data: vehicles = [] } = useQuery({
     queryKey: ["/api/vehicles"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/vehicles");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveVehicles(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getVehicles();
+      } catch (error) {
+        console.error("Erro ao buscar veículos:", error);
+        return await offlineStorage.getVehicles();
+      }
+    },
   });
 
   // Handler para resetar filtros

@@ -1,22 +1,28 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Car, Plus, Edit, Trash } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Loader2, Car, Plus, Edit, Trash, Search, Eye, Calendar, Fuel, Wrench } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Vehicle, insertVehicleSchema } from "@shared/schema"; // Import Zod schema
-import { ZodIssue } from "zod"; // Import ZodIssue for error formatting
-// import { offlineStorage } from "@/services/offlineStorage"; // Kept if offline is still relevant
+import { Vehicle, insertVehicleSchema } from "@shared/schema";
+import { ZodIssue } from "zod";
 
 export function CadastroVeiculos() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [_, setLocation] = useLocation();
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(null);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({}); // State for Zod errors
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     plate: "",
@@ -25,25 +31,17 @@ export function CadastroVeiculos() {
     imageUrl: ""
   });
 
-  const { data: vehicles = [], isLoading } = useQuery<Vehicle[], Error>({ // Added Error type for useQuery
-    queryKey: ["/api/vehicles"], // Changed from array to string for consistency if preferred, though array is fine
+  const { data: vehicles = [], isLoading } = useQuery<Vehicle[], Error>({
+    queryKey: ["/api/vehicles"],
     queryFn: async () => {
-      // Offline storage logic can be kept if desired, but for now, focusing on online
       const res = await fetch("/api/vehicles");
       if (!res.ok) {
-        // For offline-first, you might return offlineStorage.getVehicles() here
         throw new Error("Falha ao buscar veículos da API");
       }
-      const data = await res.json();
-      // await offlineStorage.saveVehicles(data); // Keep if offline needed
-      return data;
+      return res.json();
     },
-    // onError: () => { // Example if you want to fallback to offline on error
-    //   return offlineStorage.getVehicles();
-    // }
   });
 
-  // Mutations
   const saveVehicleMutation = useMutation<Vehicle, Error, Partial<Vehicle>>({
     mutationFn: async (vehicleData) => {
       let url = '/api/vehicles';
@@ -61,32 +59,14 @@ export function CadastroVeiculos() {
       });
 
       if (!response.ok) {
-        const entityName = "veículo"; // For message customization
-        let detailedErrorMessage = `Falha ao ${formMode === "create" ? "criar" : "atualizar"} ${entityName}. Status: ${response.status} ${response.statusText}`;
-        let responseBodyForErrorLog = "";
-
+        let errorMessage = "Erro ao salvar veículo";
         try {
           const errorData = await response.json();
-          detailedErrorMessage = errorData.message || JSON.stringify(errorData);
+          errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          try {
-            // response.text() consumes the body, so call it only if .json() failed or on a cloned response if needed for multiple reads
-            responseBodyForErrorLog = await response.text();
-            detailedErrorMessage += `. Resposta do servidor (não JSON): ${responseBodyForErrorLog.substring(0, 500)}`;
-          } catch (textE) {
-            detailedErrorMessage += ". Não foi possível ler o corpo da resposta do servidor.";
-          }
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
         }
-
-        console.error(`Backend error details for ${url}:`, detailedErrorMessage, "Raw Response Body (if available):", responseBodyForErrorLog);
-
-        let toastErrorMessage = `Falha ao ${formMode === "create" ? "criar" : "atualizar"} ${entityName}.`;
-        if (typeof detailedErrorMessage === 'string' && detailedErrorMessage.length < 100 && !detailedErrorMessage.startsWith("{") && !detailedErrorMessage.toLowerCase().includes("html")) {
-            toastErrorMessage = detailedErrorMessage;
-        } else {
-            toastErrorMessage = `Erro ${response.status} ao salvar ${entityName}. Verifique o console para detalhes técnicos.`;
-        }
-        throw new Error(toastErrorMessage);
+        throw new Error(errorMessage);
       }
       return response.json();
     },
@@ -94,19 +74,18 @@ export function CadastroVeiculos() {
       queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
       toast({
         title: "Sucesso!",
-        description: formMode === "create"
-          ? "Veículo cadastrado com sucesso."
+        description: formMode === "create" 
+          ? "Veículo cadastrado com sucesso." 
           : "Veículo atualizado com sucesso.",
       });
       resetForm();
-      
-      // Disparar evento para atualizar outras telas que dependem dos dados de veículos
+      setIsDialogOpen(false);
       window.dispatchEvent(new CustomEvent("vehicle-updated"));
     },
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: error.message || "Ocorreu um erro.",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -119,7 +98,6 @@ export function CadastroVeiculos() {
         const errorData = await response.json().catch(() => ({ message: "Erro desconhecido" }));
         throw new Error(errorData.message || "Falha ao excluir veículo");
       }
-      // No need to return response.json() for DELETE if backend sends no body on 200/204
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/vehicles"] });
@@ -127,23 +105,24 @@ export function CadastroVeiculos() {
         title: "Sucesso!",
         description: "Veículo excluído com sucesso.",
       });
-      
-      // Disparar evento para atualizar outras telas que dependem dos dados de veículos
       window.dispatchEvent(new CustomEvent("vehicle-updated"));
     },
     onError: (error) => {
       toast({
         title: "Erro!",
-        description: error.message || "Ocorreu um erro ao excluir o veículo.",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const resetForm = () => {
@@ -156,6 +135,7 @@ export function CadastroVeiculos() {
     });
     setFormMode("create");
     setCurrentVehicle(null);
+    setFormErrors({});
   };
 
   const handleEdit = (vehicle: Vehicle) => {
@@ -168,26 +148,24 @@ export function CadastroVeiculos() {
       imageUrl: vehicle.imageUrl || ""
     });
     setFormMode("edit");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsDialogOpen(true);
   };
 
   const handleDelete = (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir este veículo?")) return;
     deleteVehicleMutation.mutate(id);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFormErrors({}); // Clear previous errors
+    setFormErrors({});
 
     const rawYear = formData.year ? parseInt(formData.year) : undefined;
     const vehicleDataToValidate = {
-      name: formData.name,
-      plate: formData.plate,
-      model: formData.model || undefined, // Ensure empty strings become undefined if schema expects optional
+      name: formData.name.trim(),
+      plate: formData.plate.trim().toUpperCase(),
+      model: formData.model.trim(),
       year: rawYear,
-      // imageUrl is not part of insertVehicleSchema from shared/schema by default,
-      // but if it were, it would be: imageUrl: formData.imageUrl || undefined
+      imageUrl: formData.imageUrl.trim() || undefined
     };
 
     const validationResult = insertVehicleSchema.safeParse(vehicleDataToValidate);
@@ -200,150 +178,218 @@ export function CadastroVeiculos() {
         }
       });
       setFormErrors(errors);
-      toast({
-        title: "Erro de Validação",
-        description: "Por favor, corrija os erros no formulário.",
-        variant: "destructive",
-      });
       return;
     }
 
-    // Include imageUrl in the data sent to mutation if it's handled by backend but not in Zod schema
-    const finalVehicleData = {
-        ...validationResult.data,
-        imageUrl: formData.imageUrl || undefined
-    };
-
-    saveVehicleMutation.mutate(finalVehicleData);
+    saveVehicleMutation.mutate(vehicleDataToValidate);
   };
 
-  if (isLoading) { // This isLoading is from useQuery for fetching vehicles
-    return <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  // Filter vehicles based on search term
+  const filteredVehicles = vehicles.filter(vehicle =>
+    vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vehicle.model.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Carregando veículos...</span>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {formMode === "create" ? <Plus className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
-            {formMode === "create" ? "Novo Veículo" : "Editar Veículo"}
-          </CardTitle>
-          <CardDescription>
-            {formMode === "create" 
-              ? "Cadastre um novo veículo no sistema" 
-              : "Altere os dados do veículo selecionado"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Header with actions */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Gestão de Veículos</h2>
+          <p className="text-gray-600">Cadastre e gerencie os veículos da frota</p>
+        </div>
+        
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button 
+              onClick={() => {
+                resetForm();
+                setIsDialogOpen(true);
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Veículo
+            </Button>
+          </DialogTrigger>
+          
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {formMode === "create" ? "Cadastrar Novo Veículo" : "Editar Veículo"}
+              </DialogTitle>
+              <DialogDescription>
+                {formMode === "create" 
+                  ? "Preencha as informações do novo veículo" 
+                  : "Atualize as informações do veículo"
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome do Veículo*</Label>
-                <Input 
+                <Label htmlFor="name">Nome do Veículo *</Label>
+                <Input
                   id="name"
                   name="name"
-                  placeholder="Ex: Ford Ranger"
                   value={formData.name}
                   onChange={handleInputChange}
-                  // Zod schema handles required, but `required` attr is good for browser too
+                  placeholder="Ex: Caminhão 1, Van Executiva"
+                  className={formErrors.name ? "border-red-500" : ""}
                 />
-                {formErrors.name && <p className="text-sm text-red-500 mt-1">{formErrors.name}</p>}
+                {formErrors.name && (
+                  <p className="text-sm text-red-600">{formErrors.name}</p>
+                )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="plate">Placa*</Label>
-                <Input 
+                <Label htmlFor="plate">Placa *</Label>
+                <Input
                   id="plate"
                   name="plate"
-                  placeholder="Ex: ABC-1234"
                   value={formData.plate}
                   onChange={handleInputChange}
+                  placeholder="ABC-1234"
+                  className={formErrors.plate ? "border-red-500" : ""}
                 />
-                {formErrors.plate && <p className="text-sm text-red-500 mt-1">{formErrors.plate}</p>}
+                {formErrors.plate && (
+                  <p className="text-sm text-red-600">{formErrors.plate}</p>
+                )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="model">Modelo</Label>
-                <Input 
+                <Label htmlFor="model">Modelo *</Label>
+                <Input
                   id="model"
                   name="model"
-                  placeholder="Ex: XLT 4x4"
                   value={formData.model}
                   onChange={handleInputChange}
+                  placeholder="Ex: Toyota Hilux, Mercedes Sprinter"
+                  className={formErrors.model ? "border-red-500" : ""}
                 />
-                {formErrors.model && <p className="text-sm text-red-500 mt-1">{formErrors.model}</p>}
+                {formErrors.model && (
+                  <p className="text-sm text-red-600">{formErrors.model}</p>
+                )}
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="year">Ano</Label>
-                <Input 
+                <Label htmlFor="year">Ano *</Label>
+                <Input
                   id="year"
                   name="year"
                   type="number"
-                  placeholder="Ex: 2023"
                   value={formData.year}
                   onChange={handleInputChange}
+                  placeholder="2023"
+                  min="1900"
+                  max="2030"
+                  className={formErrors.year ? "border-red-500" : ""}
                 />
-                {formErrors.year && <p className="text-sm text-red-500 mt-1">{formErrors.year}</p>}
+                {formErrors.year && (
+                  <p className="text-sm text-red-600">{formErrors.year}</p>
+                )}
               </div>
-              
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="imageUrl">URL da Imagem</Label>
-                <Input 
+
+              <div className="space-y-2">
+                <Label htmlFor="imageUrl">URL da Imagem (opcional)</Label>
+                <Input
                   id="imageUrl"
                   name="imageUrl"
-                  placeholder="URL da imagem do veículo"
                   value={formData.imageUrl}
                   onChange={handleInputChange}
+                  placeholder="https://exemplo.com/imagem.jpg"
+                  className={formErrors.imageUrl ? "border-red-500" : ""}
                 />
-                {/* Assuming imageUrl is not in the Zod schema for this example, so no formErrors.imageUrl */}
+                {formErrors.imageUrl && (
+                  <p className="text-sm text-red-600">{formErrors.imageUrl}</p>
+                )}
               </div>
-            </div>
-            
-            <div className="flex justify-end gap-2 pt-4">
-              {formMode === "edit" && (
-                <Button 
-                  type="button" 
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  type="button"
                   variant="outline"
-                  onClick={resetForm}
+                  onClick={() => setIsDialogOpen(false)}
+                  className="flex-1"
                 >
                   Cancelar
                 </Button>
-              )}
-              
-              <Button 
-                type="submit"
-                className="flex items-center gap-1"
-                disabled={saveVehicleMutation.isPending}
-              >
-                {saveVehicleMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {formMode === "create" ? "Cadastrar Veículo" : "Atualizar Veículo"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-      
+                <Button
+                  type="submit"
+                  disabled={saveVehicleMutation.isPending}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  {saveVehicleMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      {formMode === "create" ? "Cadastrar" : "Atualizar"}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Search and filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Veículos Cadastrados</CardTitle>
-          <CardDescription>
-            {vehicles.length} veículo(s) registrado(s) no sistema.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading && vehicles.length === 0 && ( // Show loader only if loading and no vehicles yet
-             <div className="flex justify-center p-4"><Loader2 className="h-8 w-8 animate-spin" /></div>
-          )}
-          {!isLoading && vehicles.length === 0 && (
-            <div className="text-center py-6 text-muted-foreground">
-              <Car className="h-12 w-12 mx-auto mb-2 opacity-20" />
-              <p>Nenhum veículo cadastrado.</p>
-              <p className="text-sm mt-1">Use o formulário acima para adicionar um novo veículo.</p>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Veículos Cadastrados</CardTitle>
+              <CardDescription>
+                {filteredVehicles.length} veículo(s) encontrado(s)
+              </CardDescription>
             </div>
-          )}
-          {vehicles.length > 0 && (
+            
+            <div className="relative w-full sm:w-auto">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por nome, placa ou modelo..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full sm:w-64"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent>
+          {filteredVehicles.length === 0 ? (
+            <div className="text-center py-8">
+              <Car className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {searchTerm ? "Nenhum veículo encontrado" : "Nenhum veículo cadastrado"}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {searchTerm 
+                  ? "Tente uma busca diferente ou cadastre um novo veículo."
+                  : "Comece cadastrando o primeiro veículo da frota."
+                }
+              </p>
+              {!searchTerm && (
+                <Button onClick={() => setIsDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cadastrar Primeiro Veículo
+                </Button>
+              )}
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -356,43 +402,88 @@ export function CadastroVeiculos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
+                  {filteredVehicles.map((vehicle) => (
+                    <TableRow key={vehicle.id} className="hover:bg-gray-50">
                       <TableCell className="font-medium">
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-2">
                           {vehicle.imageUrl ? (
-                            <img src={vehicle.imageUrl} alt={vehicle.name} className="h-8 w-8 mr-2 rounded-sm object-cover" />
+                            <img 
+                              src={vehicle.imageUrl} 
+                              alt={vehicle.name}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
                           ) : (
-                            <Car className="h-4 w-4 mr-2 text-muted-foreground" />
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Car className="h-4 w-4 text-blue-600" />
+                            </div>
                           )}
                           {vehicle.name}
                         </div>
                       </TableCell>
-                      <TableCell>{vehicle.plate}</TableCell>
-                      <TableCell>{vehicle.model || "-"}</TableCell>
-                      <TableCell>{vehicle.year || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-mono">
+                          {vehicle.plate}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{vehicle.model}</TableCell>
+                      <TableCell>{vehicle.year}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex gap-2 justify-end">
                           <Button
-                            variant="ghost"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/vehicles/${vehicle.id}`)}
+                            title="Ver detalhes"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEdit(vehicle)}
-                            disabled={deleteVehicleMutation.isPending}
+                            title="Editar"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700"
-                            onClick={() => handleDelete(vehicle.id)}
-                            disabled={deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id}
-                          >
-                            {deleteVehicleMutation.isPending && deleteVehicleMutation.variables === vehicle.id
-                              ? <Loader2 className="h-4 w-4 animate-spin" />
-                              : <Trash className="h-4 w-4" />
-                            }
-                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o veículo <strong>{vehicle.name}</strong> (Placa: {vehicle.plate})?
+                                  Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(vehicle.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                  disabled={deleteVehicleMutation.isPending}
+                                >
+                                  {deleteVehicleMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Excluindo...
+                                    </>
+                                  ) : (
+                                    "Excluir"
+                                  )}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>

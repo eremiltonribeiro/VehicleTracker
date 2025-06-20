@@ -8,6 +8,7 @@ import { extendedRegistrationSchema } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { offlineStorage } from "@/services/offlineStorage";
 
 import {
   Card,
@@ -86,22 +87,102 @@ export function RegistrationForm({ editId, editType, mode }: RegistrationFormPro
   // Fetch all required data for the form with staleTime to evitar recarregamentos desnecessários
   const { data: vehicles = [], isLoading: isLoadingVehicles } = useQuery({ 
     queryKey: ["/api/vehicles"], 
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/vehicles");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveVehicles(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getVehicles();
+      } catch (error) {
+        console.error("Erro ao buscar veículos:", error);
+        return await offlineStorage.getVehicles();
+      }
+    },
     staleTime: 60000 // 1 minuto
   });
   const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({ 
     queryKey: ["/api/drivers"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/drivers");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveDrivers(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getDrivers();
+      } catch (error) {
+        console.error("Erro ao buscar motoristas:", error);
+        return await offlineStorage.getDrivers();
+      }
+    },
     staleTime: 60000
   });
   const { data: fuelStations = [], isLoading: isLoadingFuelStations } = useQuery({ 
     queryKey: ["/api/fuel-stations"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/fuel-stations");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveFuelStations(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getFuelStations();
+      } catch (error) {
+        console.error("Erro ao buscar postos:", error);
+        return await offlineStorage.getFuelStations();
+      }
+    },
     staleTime: 60000
   });
   const { data: fuelTypes = [], isLoading: isLoadingFuelTypes } = useQuery({ 
     queryKey: ["/api/fuel-types"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/fuel-types");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveFuelTypes(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getFuelTypes();
+      } catch (error) {
+        console.error("Erro ao buscar tipos de combustível:", error);
+        return await offlineStorage.getFuelTypes();
+      }
+    },
     staleTime: 60000
   });
   const { data: maintenanceTypes = [], isLoading: isLoadingMaintenanceTypes } = useQuery({ 
     queryKey: ["/api/maintenance-types"],
+    queryFn: async () => {
+      try {
+        if (navigator.onLine) {
+          const res = await fetch("/api/maintenance-types");
+          if (res.ok) {
+            const data = await res.json();
+            await offlineStorage.saveMaintenanceTypes(data);
+            return data;
+          }
+        }
+        return await offlineStorage.getMaintenanceTypes();
+      } catch (error) {
+        console.error("Erro ao buscar tipos de manutenção:", error);
+        return await offlineStorage.getMaintenanceTypes();
+      }
+    },
     staleTime: 60000
   });
 

@@ -52,7 +52,7 @@ export const apiRequest = async (url: string, options: RequestInit = {}) => {
   }
 
   // Intercepta a requisição com o syncManager
-  return syncManager.interceptRequest(url, method, body, files);
+  return syncManager.interceptRequest(url, method, body, files || undefined);
 };
 
 type UnauthorizedBehavior = "returnNull" | "throw";

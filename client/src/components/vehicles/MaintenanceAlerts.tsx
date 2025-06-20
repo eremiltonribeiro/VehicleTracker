@@ -128,7 +128,7 @@ export function MaintenanceAlerts() {
   });
 
   // Preparar alertas
-  const alerts = [];
+  const alerts: any[] = [];
   maintenanceByVehicle.forEach((data: any) => {
     const { vehicle, maintenanceTypes } = data;
     

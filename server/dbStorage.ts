@@ -1,11 +1,11 @@
 import { db } from "./db";
 import { eq, and, sql } from "drizzle-orm"; // Added 'and' and 'sql' for dynamic queries
-import { PgTransaction } from 'drizzle-orm/pg-core';
+import { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import * as schemaShared from '@shared/schema';
 import { ExtractTablesWithRelations } from 'drizzle-orm';
 
-// Define a more precise transaction type using pg adapter
-type Transaction = PgTransaction<any, typeof schemaShared, ExtractTablesWithRelations<typeof schemaShared>>;
+// Define a more precise transaction type using sqlite adapter
+type Transaction = SQLiteTransaction<'sync', any, typeof schemaShared, ExtractTablesWithRelations<typeof schemaShared>>;
 
 import {
   User,
@@ -87,8 +87,8 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: finalUserData.profileImageUrl,
       passwordHash: finalUserData.passwordHash,
       roleId: finalUserData.roleId,
-      createdAt: existingUser ? existingUser.createdAt : (finalUserData.createdAt || new Date()),
-      updatedAt: new Date(),
+      createdAt: existingUser ? existingUser.createdAt : (finalUserData.createdAt || Date.now()),
+      updatedAt: Date.now(),
     };
 
     const onConflictSet: Partial<UpsertUser> = {
@@ -97,7 +97,7 @@ export class DatabaseStorage implements IStorage {
       lastName: finalUserData.lastName,
       profileImageUrl: finalUserData.profileImageUrl,
       roleId: finalUserData.roleId,
-      updatedAt: new Date(),
+      updatedAt: Date.now(),
     };
     if (finalUserData.passwordHash !== undefined) {
       onConflictSet.passwordHash = finalUserData.passwordHash;
@@ -350,6 +350,22 @@ export class DatabaseStorage implements IStorage {
     return newItem;
   }
 
+  async updateChecklistItem(id: number, updates: Partial<InsertChecklistItem>): Promise<ChecklistItem | undefined> {
+    const [item] = await db
+      .update(checklistItems)
+      .set(updates)
+      .where(eq(checklistItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteChecklistItem(id: number): Promise<boolean> {
+    const result = await db
+      .delete(checklistItems)
+      .where(eq(checklistItems.id, id));
+    return result.changes > 0;
+  }
+
   // Vehicle checklist methods
   async getVehicleChecklists(filters?: {
     vehicleId?: number;
@@ -387,12 +403,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVehicleChecklist(checklist: InsertVehicleChecklist, tx?: Transaction): Promise<VehicleChecklist> {
-    const [newChecklist] = await (tx || db).insert(vehicleChecklists).values(checklist).returning();
+    const [newChecklist] = await (tx || db).insert(vehicleChecklists).values(checklist).returning() as any;
     return newChecklist;
   }
 
   async updateVehicleChecklist(id: number, data: Partial<InsertVehicleChecklist>, tx?: Transaction): Promise<VehicleChecklist | undefined> {
-    const [updatedChecklist] = await (tx || db).update(vehicleChecklists).set(data).where(eq(vehicleChecklists.id, id)).returning();
+    const [updatedChecklist] = await (tx || db).update(vehicleChecklists).set(data).where(eq(vehicleChecklists.id, id)).returning() as any;
     return updatedChecklist;
   }
 
@@ -412,7 +428,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createChecklistResult(resultData: InsertChecklistResult, tx?: Transaction): Promise<ChecklistResult> {
-    const [newResult] = await (tx || db).insert(checklistResults).values(resultData).returning();
+    const [newResult] = await (tx || db).insert(checklistResults).values(resultData).returning() as any;
     return newResult;
   }
 
@@ -432,7 +448,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteChecklistResults(checklistId: number, tx?: Transaction): Promise<boolean> {
     // This deletes ALL results for a given checklistId.
-    const result = await (tx || db).delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id });
+    const result = await (tx || db).delete(checklistResults).where(eq(checklistResults.checklistId, checklistId)).returning({ id: checklistResults.id }) as any;
     return result.length > 0; // Returns true if any rows were deleted
   }
 
@@ -488,7 +504,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserPassword(id: string, passwordHash: string): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set({ passwordHash, updatedAt: new Date() })
+      .set({ passwordHash, updatedAt: Date.now() })
       .where(eq(users.id, id))
       .returning();
     return user;

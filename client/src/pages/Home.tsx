@@ -1,14 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { RegistrationForm } from "@/components/vehicles/RegistrationForm";
 import { SimpleRegistrationForm } from "@/components/vehicles/SimpleRegistrationForm";
 import { HistoryView } from "@/components/vehicles/HistoryView";
-import { DashboardWithFilters } from "@/components/vehicles/DashboardWithFilters";
+import { DashboardWithFilters } from "@/components/vehicles/DashboardModern";
 import { Header } from "@/components/vehicles/Header";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Wifi, WifiOff } from "lucide-react";
+import { Wifi, WifiOff, Plus, History, BarChart3, FileText, Activity } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { offlineStorage } from "@/services/offlineStorage";
+import { brandColors } from "@/lib/colors";
 
 interface HomeProps {
   defaultView?: string;
@@ -109,31 +113,106 @@ export default function Home({ defaultView = "form", editId, editType, mode }: H
   console.log("🎯 Home render state:", { showHistory, showDashboard, showForm });
 
   return (
-    <div id="app-container" className="flex flex-col">
-      {/* Removido o Header duplicado */}
-
-      {!navigator.onLine && (
-        <div className="bg-yellow-100 px-4 py-1">
-          <Alert className="border-yellow-500 bg-yellow-50">
-            <WifiOff className="h-4 w-4 text-yellow-600 mr-2" />
-            <AlertTitle>Modo Offline</AlertTitle>
-            <AlertDescription>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="container mx-auto px-4 py-6">
+        
+        {/* Network Status Alert */}
+        {!navigator.onLine && (
+          <Alert className="mb-6 border-yellow-500 bg-yellow-50">
+            <WifiOff className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-800">Modo Offline</AlertTitle>
+            <AlertDescription className="text-yellow-700">
               Você está trabalhando offline. Os dados serão sincronizados quando a conexão for restaurada.
             </AlertDescription>
           </Alert>
-        </div>
-      )}
-
-      <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
-        {showHistory ? (
-          <HistoryView />
-        ) : showDashboard ? (
-          <DashboardWithFilters />
-        ) : (
-          // Por padrão, exibe o formulário de registro
-          <RegistrationForm editId={editId} editType={editType} mode={mode} />
         )}
-      </main>
+
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="p-2 rounded-lg" style={{ backgroundColor: brandColors.primary[100] }}>
+                  <Activity className="h-8 w-8" style={{ color: brandColors.primary[600] }} />
+                </div>
+                Gestão de Registros
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Registre e monitore abastecimentos, manutenções e viagens da sua frota
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Modern Tabs Interface */}
+        <Card className="shadow-lg border-0">
+          <Tabs value={showForm ? "form" : showHistory ? "history" : "dashboard"} className="w-full">
+            <CardHeader className="pb-4">
+              <TabsList className="grid w-full grid-cols-3 bg-gray-100">
+                <TabsTrigger 
+                  value="form" 
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600"
+                >
+                  <Plus className="h-4 w-4" />
+                  Novo Registro
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="history" 
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600"
+                >
+                  <History className="h-4 w-4" />
+                  Histórico
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="dashboard" 
+                  className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:text-blue-600"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Dashboard
+                </TabsTrigger>
+              </TabsList>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <TabsContent value="form" className="mt-0">
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Novo Registro</h3>
+                    <p className="text-gray-600">
+                      {editId ? "Edite o registro selecionado" : "Registre um novo abastecimento, manutenção ou viagem"}
+                    </p>
+                  </div>
+                  <RegistrationForm editId={editId} editType={editType} mode={mode} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="mt-0">
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Histórico de Registros</h3>
+                    <p className="text-gray-600">
+                      Visualize e gerencie todos os registros da sua frota
+                    </p>
+                  </div>
+                  <HistoryView />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="dashboard" className="mt-0">
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Dashboard Analítico</h3>
+                    <p className="text-gray-600">
+                      Análises e métricas detalhadas da sua frota
+                    </p>
+                  </div>
+                  <DashboardWithFilters />
+                </div>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
+        </Card>
+      </div>
     </div>
   );
 }

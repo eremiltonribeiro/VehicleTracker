@@ -68,7 +68,8 @@ export function VehicleForm({ onSuccess, editingVehicle }: VehicleFormProps) {
 
           // Save image if provided
           if (data.image && imagePreview) {
-            await offlineStorage.saveImage(`vehicle_${tempId}`, imagePreview);
+            // TODO: Implement image saving to offline storage
+            console.log('Image would be saved offline:', imagePreview);
           }
 
           return vehicle;

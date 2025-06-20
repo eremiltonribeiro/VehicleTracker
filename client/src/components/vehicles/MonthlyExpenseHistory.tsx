@@ -119,7 +119,7 @@ export function MonthlyExpenseHistory() {
   // Calcular média móvel de 3 meses para previsão de tendência
   const movingAverages = [...monthlyExpenses];
   for (let i = 2; i < movingAverages.length; i++) {
-    movingAverages[i].mediaMovel = (
+    (movingAverages[i] as any).mediaMovel = (
       monthlyExpenses[i].total + 
       monthlyExpenses[i-1].total + 
       monthlyExpenses[i-2].total

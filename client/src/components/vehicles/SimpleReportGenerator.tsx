@@ -67,9 +67,9 @@ export function SimpleReportGenerator() {
       formattedDate: formatDate(reg.date),
       vehicleName: reg.vehicle?.name || "N/A",
       driverName: reg.driver?.name || "N/A",
-      fuelStation: reg.fuelStation?.name,
-      fuelType: reg.fuelType?.name,
-      maintenanceType: reg.maintenanceType?.name
+      fuelStation: (reg.fuelStation as any)?.name || reg.fuelStation || "N/A",
+      fuelType: (reg.fuelType as any)?.name || reg.fuelType || "N/A",
+      maintenanceType: (reg.maintenanceType as any)?.name || reg.maintenanceType || "N/A"
     }));
   };
 
@@ -376,7 +376,7 @@ export function SimpleReportGenerator() {
       doc.save(`relatorio_${reportType}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
-      alert("Ocorreu um erro ao gerar o PDF: " + (error.message || "Erro desconhecido") + 
+      alert("Ocorreu um erro ao gerar o PDF: " + ((error as any)?.message || "Erro desconhecido") + 
             "\nTente novamente com menos dados ou use a exportação CSV.");
     } finally {
       setIsGenerating(false);

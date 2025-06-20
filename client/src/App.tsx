@@ -143,7 +143,7 @@ function AppRouter() {
 
           <Route path="/">
             <PrivateRoute path="/">
-              <Home />
+              <Welcome />
             </PrivateRoute>
           </Route>
           

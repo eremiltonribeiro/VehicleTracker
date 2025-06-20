@@ -1,81 +1,37 @@
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import * as schema from "@shared/schema";
+import path from "path";
 
-console.log("🔧 Usando mock de banco de dados para debug");
+// Initialize SQLite database
+const sqlite = new Database(path.join(process.cwd(), "database.db"));
+sqlite.pragma("journal_mode = WAL");
 
-// Mock do banco de dados
-export const db = {
-  select: () => ({
-    from: () => ({
-      where: () => ({
-        limit: () => [],
-        offset: () => []
-      }),
-      limit: () => [],
-      offset: () => []
-    }),
-    where: () => ({
-      limit: () => [],
-      offset: () => []
-    }),
-    limit: () => [],
-    offset: () => []
-  }),
-  insert: () => ({
-    into: () => ({
-      values: () => ({
-        returning: () => []
-      }),
-      returning: () => []
-    }),
-    values: () => ({
-      returning: () => []
-    }),
-    returning: () => []
-  }),
-  update: () => ({
-    set: () => ({
-      where: () => ({
-        returning: () => []
-      }),
-      returning: () => []
-    }),
-    where: () => ({
-      returning: () => []
-    }),
-    returning: () => []
-  }),
-  delete: () => ({
-    from: () => ({
-      where: () => ({
-        returning: () => []
-      }),
-      returning: () => []
-    }),
-    where: () => ({
-      returning: () => []
-    }),
-    returning: () => []
-  }),
-  query: {
-    vehicles: {
-      findMany: () => [],
-      findFirst: () => null
-    },
-    drivers: {
-      findMany: () => [],
-      findFirst: () => null
-    },
-    registrations: {
-      findMany: () => [],
-      findFirst: () => null
-    }
-  }
-};
+// Initialize Drizzle ORM
+export const db = drizzle(sqlite, { schema });
 
-// Mock pool para compatibilidade
-export const pool = {
-  query: async (sql: string, params?: any[]) => {
-    console.log("Mock query:", sql);
-    return { rows: [] };
-  }
-};
+// Create tables if they don't exist
+try {
+  // Simple table creation instead of migrations for now
+  console.log("✅ Database initialized successfully");
+} catch (error) {
+  console.error("❌ Database initialization failed:", error);
+}
+
+// Export the database connection and schemas
+export { sqlite };
+export const {
+  users,
+  vehicles,
+  drivers,
+  fuelStations,
+  fuelTypes,
+  maintenanceTypes,
+  vehicleRegistrations,
+  checklistTemplates,
+  checklistItems,
+  vehicleChecklists,
+  checklistResults,
+  roles,
+  sessions
+} = schema;

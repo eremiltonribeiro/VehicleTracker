@@ -325,7 +325,7 @@ export class MemStorage implements IStorage {
         type: "fuel",
         vehicleId: data.vehicleId,
         driverId: (data.vehicleId % 3) + 1, // Distribuir motoristas
-        date: dates[index % dates.length],
+        date: dates[index % dates.length].getTime(),
         initialKm: data.km,
         fuelStationId: data.station,
         fuelTypeId: data.type,
@@ -354,7 +354,7 @@ export class MemStorage implements IStorage {
         type: "maintenance",
         vehicleId: data.vehicleId,
         driverId: (data.vehicleId % 3) + 1,
-        date: dates[(index * 3) % dates.length],
+        date: dates[(index * 3) % dates.length].getTime(),
         initialKm: data.km,
         maintenanceTypeId: data.type,
         maintenanceCost: data.cost
@@ -382,7 +382,7 @@ export class MemStorage implements IStorage {
         type: "trip",
         vehicleId: data.vehicleId,
         driverId: (data.vehicleId % 3) + 1,
-        date: dates[(index * 2) % dates.length],
+        date: dates[(index * 2) % dates.length].getTime(),
         initialKm: data.initialKm,
         finalKm: data.finalKm,
         origin: data.origin,
@@ -593,7 +593,7 @@ export class MemStorage implements IStorage {
       driverId: insertRegistration.driverId,
       initialKm: insertRegistration.initialKm,
       id,
-      date: insertRegistration.date || new Date(),
+      date: insertRegistration.date || Date.now(),
       finalKm: insertRegistration.finalKm || null,
       fuelStationId: insertRegistration.fuelStationId || null,
       fuelTypeId: insertRegistration.fuelTypeId || null,
@@ -632,7 +632,7 @@ export class MemStorage implements IStorage {
       id,
       description: template.description || null,
       isDefault: template.isDefault || null,
-      createdAt: new Date()
+      createdAt: Date.now()
     };
     this.checklistTemplates.set(id, checklistTemplate);
     return checklistTemplate;
@@ -751,7 +751,7 @@ export class MemStorage implements IStorage {
     const vehicleChecklist: VehicleChecklist = { 
       ...checklist, 
       id,
-      date: checklist.date || new Date(),
+      date: checklist.date || Date.now(),
       observations: checklist.observations || null,
       photoUrl: checklist.photoUrl || null
     };
@@ -876,7 +876,7 @@ export class MemStorage implements IStorage {
         ...existingUser,
         ...finalUserData,
         passwordHash: finalUserData.passwordHash !== undefined ? finalUserData.passwordHash : existingUser.passwordHash,
-        updatedAt: new Date()
+        updatedAt: Date.now()
       };
       this.users.set(updatedUser.id, updatedUser);
       return updatedUser;
@@ -889,8 +889,8 @@ export class MemStorage implements IStorage {
         profileImageUrl: finalUserData.profileImageUrl ?? null,
         passwordHash: finalUserData.passwordHash ?? null,
         roleId: finalUserData.roleId ?? null,
-        createdAt: finalUserData.createdAt || new Date(),
-        updatedAt: new Date(),
+        createdAt: finalUserData.createdAt || Date.now(),
+        updatedAt: Date.now(),
       };
       this.users.set(newUser.id, newUser);
       return newUser;
@@ -913,7 +913,7 @@ export class MemStorage implements IStorage {
     const user = this.users.get(id);
     if (user) {
       user.passwordHash = passwordHash;
-      user.updatedAt = new Date();
+      user.updatedAt = Date.now();
       this.users.set(id, user);
       return user;
     }
@@ -1013,7 +1013,7 @@ export class MemStorage implements IStorage {
       templateId: 1,
       odometer: 25100,
       status: "complete",
-      date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)
+      date: now.getTime() - 1 * 24 * 60 * 60 * 1000
     });
 
     // Checklist 2 - Uno (com problemas)
@@ -1023,7 +1023,7 @@ export class MemStorage implements IStorage {
       templateId: 1,
       odometer: 18250,
       status: "failed",
-      date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)
+      date: now.getTime() - 2 * 24 * 60 * 60 * 1000
     });
 
     // Checklist 3 - HB20 (manutenção)
@@ -1033,7 +1033,7 @@ export class MemStorage implements IStorage {
       templateId: 2,
       odometer: 12150,
       status: "complete",
-      date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+      date: now.getTime() - 3 * 24 * 60 * 60 * 1000
     });
 
     // Adicionar resultados para cada checklist

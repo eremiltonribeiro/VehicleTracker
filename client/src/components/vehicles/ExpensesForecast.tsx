@@ -292,7 +292,7 @@ export function ExpensesForecast() {
   });
   
   // Identificar possíveis manutenções programadas para os próximos meses
-  const scheduledMaintenances = [];
+  const scheduledMaintenances: any[] = [];
   
   // Manutenções programadas e seus intervalos em km
   const maintenanceIntervals = [

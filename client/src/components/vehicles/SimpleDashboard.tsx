@@ -709,7 +709,7 @@ export function SimpleDashboard() {
               <h3 className="font-medium mb-2">Veículos</h3>
               <p>Quilometragem: {totalKm.toLocaleString('pt-BR')} km</p>
               <p>Custo médio: {formatCurrency((totalFuelCost + totalMaintenanceCost) / Math.max(1, totalKm))} por km</p>
-              <p>Consumo médio: {vehicleData.reduce((sum, v) => sum + v.avgConsumption, 0) / Math.max(1, vehicleData.filter(v => v.avgConsumption > 0).length).toFixed(2)} L/100km</p>
+              <p>Consumo médio: {(vehicleData.reduce((sum, v) => sum + v.avgConsumption, 0) / Math.max(1, vehicleData.filter(v => v.avgConsumption > 0).length)).toFixed(2)} L/100km</p>
             </div>
           </div>
         </CardContent>

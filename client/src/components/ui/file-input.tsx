@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, FileImage } from "lucide-react";
 
 export interface FileInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'accept'> {
   label?: string;
   required?: boolean;
   description?: string;

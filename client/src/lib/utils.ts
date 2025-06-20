@@ -19,10 +19,23 @@ export function formatCurrency(value: number | null | undefined): string {
 }
 
 // Format date to Brazilian format (DD/MM/YYYY)
-export function formatDate(date: Date | string | null | undefined): string {
+export function formatDate(date: Date | string | number | null | undefined): string {
   if (!date) return "";
   
-  const dateObj = typeof date === "string" ? new Date(date) : date;
+  let dateObj: Date;
+  
+  if (typeof date === "string") {
+    dateObj = new Date(date);
+  } else if (typeof date === "number") {
+    dateObj = new Date(date);
+  } else {
+    dateObj = date;
+  }
+  
+  // Verificar se a data é válida
+  if (isNaN(dateObj.getTime())) {
+    return "";
+  }
   
   return dateObj.toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -76,6 +89,62 @@ export function getRegistrationTypeColor(type: string): {
         text: "text-white",
         icon: "text-xl mb-1"
       };
+  }
+}
+
+export const formatDateTimestamp = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleDateString('pt-BR')
+}
+
+export const formatDateTime = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleString('pt-BR')
+}
+
+export const validateBrazilianPhone = (phone: string): boolean => {
+  const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/
+  return phoneRegex.test(phone)
+}
+
+export const validatePlate = (plate: string): boolean => {
+  // Brazilian license plate format: ABC-1234 or ABC1D23 (Mercosul)
+  const plateRegex = /^[A-Z]{3}-?\d{4}$|^[A-Z]{3}\d[A-Z]\d{2}$/
+  return plateRegex.test(plate)
+}
+
+export const validateCPF = (cpf: string): boolean => {
+  // Basic CPF validation
+  const cleanCPF = cpf.replace(/\D/g, '')
+  if (cleanCPF.length !== 11) return false
+  
+  // Check for repeated digits
+  if (/^(\d)\1{10}$/.test(cleanCPF)) return false
+  
+  return true
+}
+
+export const formatPhone = (phone: string): string => {
+  const cleanPhone = phone.replace(/\D/g, '')
+  if (cleanPhone.length === 11) {
+    return cleanPhone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  } else if (cleanPhone.length === 10) {
+    return cleanPhone.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  }
+  return phone
+}
+
+export const calculateFuelEfficiency = (liters: number, distance: number): number => {
+  if (liters === 0) return 0
+  return distance / liters
+}
+
+export const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func(...args), delay)
   }
 }
 
